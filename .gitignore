@@ -1,0 +1,31 @@
+# Secretos: nunca se versionan
+.env
+*.env.local
+
+# Sistema operativo / editores
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+target/
+!.mvn/wrapper/maven-wrapper.properties
+
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+
+# Android / iOS
+.gradle/
+build/
+local.properties
+DerivedData/
+xcuserdata/
