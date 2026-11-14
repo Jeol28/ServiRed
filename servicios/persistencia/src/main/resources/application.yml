@@ -24,6 +24,24 @@ spring:
     port: ${RABBITMQ_PUERTO:5672}
     username: ${RABBITMQ_USUARIO:guest}
     password: ${RABBITMQ_CLAVE:guest}
+    # Confirmación del broker en cada publicación del relay del outbox.
+    publisher-confirm-type: simple
+    publisher-returns: true
+  jackson:
+    default-property-inclusion: non_null
+
+servired:
+  # Clave de cada servicio que puede invocar operaciones (mínimo 16 caracteres;
+  # vacía = servicio deshabilitado).
+  claves:
+    identidad: ${PERSISTENCIA_CLAVE_IDENTIDAD:}
+    reportes: ${PERSISTENCIA_CLAVE_REPORTES:}
+    atencion: ${PERSISTENCIA_CLAVE_ATENCION:}
+    indicadores: ${PERSISTENCIA_CLAVE_INDICADORES:}
+    auditoria: ${PERSISTENCIA_CLAVE_AUDITORIA:}
+  outbox:
+    intervalo-ms: 500
+    tamano-lote: 50
 
 management:
   endpoints:
