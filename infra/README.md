@@ -5,7 +5,7 @@
 | [`docker-compose.yml`](docker-compose.yml) | Todo el entorno. Se invoca desde la raíz (`compose.yaml` lo incluye). |
 | [`rabbitmq/generar-definiciones.py`](rabbitmq/generar-definiciones.py) | Genera `definiciones.json` (exchanges, colas y bindings). |
 | [`rabbitmq/aplicar-definiciones.sh`](rabbitmq/aplicar-definiciones.sh) | Lo ejecuta el contenedor `rabbitmq-init` para importar la topología. |
-| [`rabbitmq/verificar-topologia.py`](rabbitmq/verificar-topologia.py) | Prueba de humo: enrutamiento, DLQ y reintento con TTL. |
+| [`rabbitmq/verificar-topologia.py`](rabbitmq/verificar-topologia.py) | Prueba de humo: compara el broker con `definiciones.json` y prueba enrutamiento, DLQ y reintento con TTL en colas temporales (no toca las colas reales). |
 
 ## Servicios del compose
 

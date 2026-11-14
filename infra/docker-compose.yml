@@ -90,6 +90,12 @@ services:
       PERSISTENCIA_DB_URL: ${PERSISTENCIA_DB_URL:?definir en .env}
       PERSISTENCIA_DB_USUARIO: ${PERSISTENCIA_DB_USUARIO:?definir en .env}
       PERSISTENCIA_DB_CLAVE: ${PERSISTENCIA_DB_CLAVE:?definir en .env}
+      # Una clave por servicio cliente (mínimo privilegio por operación).
+      PERSISTENCIA_CLAVE_IDENTIDAD: ${PERSISTENCIA_CLAVE_IDENTIDAD:?definir en .env}
+      PERSISTENCIA_CLAVE_REPORTES: ${PERSISTENCIA_CLAVE_REPORTES:?definir en .env}
+      PERSISTENCIA_CLAVE_ATENCION: ${PERSISTENCIA_CLAVE_ATENCION:?definir en .env}
+      PERSISTENCIA_CLAVE_INDICADORES: ${PERSISTENCIA_CLAVE_INDICADORES:?definir en .env}
+      PERSISTENCIA_CLAVE_AUDITORIA: ${PERSISTENCIA_CLAVE_AUDITORIA:?definir en .env}
     depends_on:
       <<: *depende-rabbit
       postgres-local:
@@ -104,10 +110,26 @@ services:
   reportes:
     <<: *servicio-base
     build: ../servicios/reportes
+    environment:
+      <<: *entorno-rabbit
+      PERSISTENCIA_URL: http://persistencia:8080
+      PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_REPORTES:?definir en .env}
+    depends_on:
+      <<: *depende-rabbit
+      persistencia:
+        condition: service_healthy
 
   atencion:
     <<: *servicio-base
     build: ../servicios/atencion
+    environment:
+      <<: *entorno-rabbit
+      PERSISTENCIA_URL: http://persistencia:8080
+      PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_ATENCION:?definir en .env}
+    depends_on:
+      <<: *depende-rabbit
+      persistencia:
+        condition: service_healthy
 
   indicadores:
     <<: *servicio-base
