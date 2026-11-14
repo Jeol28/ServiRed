@@ -1,0 +1,139 @@
+# =====================================================================
+# SERVI-RED · entorno local
+# Se usa desde la raíz con:  docker compose up -d --build --wait
+# (compose.yaml de la raíz incluye este archivo; las variables vienen de .env)
+#
+# Redes:
+#   interna -> red aislada (internal: true): microservicios, RabbitMQ y BD
+#   borde   -> red con salida: gateway (puerto 8080), consola de RabbitMQ
+#              (solo 127.0.0.1) y persistencia (salida hacia Supabase)
+# =====================================================================
+
+name: servired
+
+x-servicio-base: &servicio-base
+  restart: unless-stopped
+  networks: [interna]
+  environment: &entorno-rabbit
+    RABBITMQ_HOST: rabbitmq
+    RABBITMQ_PUERTO: "5672"
+    RABBITMQ_USUARIO: ${RABBITMQ_USUARIO:?definir en .env}
+    RABBITMQ_CLAVE: ${RABBITMQ_CLAVE:?definir en .env}
+  depends_on: &depende-rabbit
+    rabbitmq-init:
+      condition: service_completed_successfully
+
+services:
+
+  # ------------------------------------------------------------------
+  # Infraestructura
+  # ------------------------------------------------------------------
+  postgres-local:
+    # Base de datos local que reemplaza a Supabase en desarrollo. Para usar
+    # Supabase basta con cambiar PERSISTENCIA_DB_URL en .env.
+    image: postgres:17-alpine
+    restart: unless-stopped
+    networks: [interna]
+    environment:
+      POSTGRES_DB: servired
+      POSTGRES_USER: ${POSTGRES_LOCAL_USUARIO:?definir en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_LOCAL_CLAVE:?definir en .env}
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d servired"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    restart: unless-stopped
+    hostname: rabbitmq
+    networks: [interna, borde]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USUARIO}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_CLAVE}
+    ports:
+      - "127.0.0.1:15672:15672"   # consola de administración, solo localhost
+    volumes:
+      - datos-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq-init:
+    # Aplica exchanges, colas (con reintento y DLQ) y bindings, y termina.
+    image: curlimages/curl:8.11.1
+    networks: [interna]
+    environment:
+      RABBITMQ_USUARIO: ${RABBITMQ_USUARIO}
+      RABBITMQ_CLAVE: ${RABBITMQ_CLAVE}
+    volumes:
+      - ./rabbitmq:/definiciones:ro
+    entrypoint: ["/bin/sh", "/definiciones/aplicar-definiciones.sh"]
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  # ------------------------------------------------------------------
+  # Microservicios
+  # ------------------------------------------------------------------
+  persistencia:
+    <<: *servicio-base
+    build: ../servicios/persistencia
+    networks: [interna, borde]   # necesita salida para llegar a Supabase
+    environment:
+      <<: *entorno-rabbit
+      PERSISTENCIA_DB_URL: ${PERSISTENCIA_DB_URL:?definir en .env}
+      PERSISTENCIA_DB_USUARIO: ${PERSISTENCIA_DB_USUARIO:?definir en .env}
+      PERSISTENCIA_DB_CLAVE: ${PERSISTENCIA_DB_CLAVE:?definir en .env}
+    depends_on:
+      <<: *depende-rabbit
+      postgres-local:
+        condition: service_healthy
+
+  identidad:
+    <<: *servicio-base
+    build: ../servicios/identidad
+    environment: {}
+    depends_on: {}
+
+  reportes:
+    <<: *servicio-base
+    build: ../servicios/reportes
+
+  atencion:
+    <<: *servicio-base
+    build: ../servicios/atencion
+
+  indicadores:
+    <<: *servicio-base
+    build: ../servicios/indicadores
+
+  auditoria:
+    <<: *servicio-base
+    build: ../servicios/auditoria
+
+  gateway:
+    build: ../servicios/gateway
+    restart: unless-stopped
+    networks: [borde, interna]
+    ports:
+      - "8080:8080"
+    depends_on:
+      identidad:   { condition: service_healthy }
+      reportes:    { condition: service_healthy }
+      atencion:    { condition: service_healthy }
+      indicadores: { condition: service_healthy }
+
+networks:
+  borde:
+  interna:
+    internal: true   # sin salida a Internet ni puertos publicados
+
+volumes:
+  datos-postgres:
+  datos-rabbitmq:

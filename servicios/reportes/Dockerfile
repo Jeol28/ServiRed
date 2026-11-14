@@ -4,9 +4,9 @@ FROM eclipse-temurin:21-jdk AS compilacion
 WORKDIR /fuente
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q dependency:go-offline
+RUN --mount=type=cache,target=/root/.m2,sharing=locked ./mvnw -B -q dependency:go-offline
 COPY src/ src/
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -q package -DskipTests \
+RUN --mount=type=cache,target=/root/.m2,sharing=locked ./mvnw -B -q package -DskipTests \
     && cp target/*.jar /fuente/app.jar
 
 # ---- Ejecución ----

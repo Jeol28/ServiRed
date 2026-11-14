@@ -4,7 +4,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS compilacion
 WORKDIR /fuente
 COPY Directory.Build.props ./
 COPY src/ src/
-RUN --mount=type=cache,target=/root/.nuget/packages \
+RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet publish src/Indicadores.Api/Indicadores.Api.csproj -c Release -o /publicado
 
 # ---- Ejecución ----

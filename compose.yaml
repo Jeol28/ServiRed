@@ -1,0 +1,5 @@
+# SERVI-RED · punto de entrada de Docker Compose.
+#   cp .env.ejemplo .env
+#   docker compose up -d --build --wait
+include:
+  - infra/docker-compose.yml

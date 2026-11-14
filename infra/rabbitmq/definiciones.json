@@ -1,0 +1,315 @@
+{
+  "exchanges": [
+    {
+      "name": "servired.eventos",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "servired.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "servired.reintentos",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "atencion.eventos-reportes",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "servired.dlx",
+        "x-dead-letter-routing-key": "atencion.eventos-reportes"
+      }
+    },
+    {
+      "name": "atencion.eventos-reportes.reintento",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 10000,
+        "x-dead-letter-exchange": "servired.reintentos",
+        "x-dead-letter-routing-key": "atencion.eventos-reportes"
+      }
+    },
+    {
+      "name": "atencion.eventos-reportes.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "reportes.eventos-casos",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "servired.dlx",
+        "x-dead-letter-routing-key": "reportes.eventos-casos"
+      }
+    },
+    {
+      "name": "reportes.eventos-casos.reintento",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 10000,
+        "x-dead-letter-exchange": "servired.reintentos",
+        "x-dead-letter-routing-key": "reportes.eventos-casos"
+      }
+    },
+    {
+      "name": "reportes.eventos-casos.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "indicadores.eventos",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "servired.dlx",
+        "x-dead-letter-routing-key": "indicadores.eventos"
+      }
+    },
+    {
+      "name": "indicadores.eventos.reintento",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 10000,
+        "x-dead-letter-exchange": "servired.reintentos",
+        "x-dead-letter-routing-key": "indicadores.eventos"
+      }
+    },
+    {
+      "name": "indicadores.eventos.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "auditoria.eventos",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-dead-letter-exchange": "servired.dlx",
+        "x-dead-letter-routing-key": "auditoria.eventos"
+      }
+    },
+    {
+      "name": "auditoria.eventos.reintento",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-message-ttl": 10000,
+        "x-dead-letter-exchange": "servired.reintentos",
+        "x-dead-letter-routing-key": "auditoria.eventos"
+      }
+    },
+    {
+      "name": "auditoria.eventos.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "atencion.eventos-reportes",
+      "destination_type": "queue",
+      "routing_key": "reporte.creado.v1",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "atencion.eventos-reportes",
+      "destination_type": "queue",
+      "routing_key": "restablecimiento.registrado.v1",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "atencion.eventos-reportes",
+      "destination_type": "queue",
+      "routing_key": "validacion.registrada.v1",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "atencion.eventos-reportes",
+      "destination_type": "queue",
+      "routing_key": "denuncia.recibida.v1",
+      "arguments": {}
+    },
+    {
+      "source": "servired.dlx",
+      "vhost": "/",
+      "destination": "atencion.eventos-reportes.dlq",
+      "destination_type": "queue",
+      "routing_key": "atencion.eventos-reportes",
+      "arguments": {}
+    },
+    {
+      "source": "servired.reintentos",
+      "vhost": "/",
+      "destination": "atencion.eventos-reportes",
+      "destination_type": "queue",
+      "routing_key": "atencion.eventos-reportes",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "reportes.eventos-casos",
+      "destination_type": "queue",
+      "routing_key": "caso.actualizado.v1",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "reportes.eventos-casos",
+      "destination_type": "queue",
+      "routing_key": "caso.cerrado.v1",
+      "arguments": {}
+    },
+    {
+      "source": "servired.dlx",
+      "vhost": "/",
+      "destination": "reportes.eventos-casos.dlq",
+      "destination_type": "queue",
+      "routing_key": "reportes.eventos-casos",
+      "arguments": {}
+    },
+    {
+      "source": "servired.reintentos",
+      "vhost": "/",
+      "destination": "reportes.eventos-casos",
+      "destination_type": "queue",
+      "routing_key": "reportes.eventos-casos",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "indicadores.eventos",
+      "destination_type": "queue",
+      "routing_key": "reporte.#",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "indicadores.eventos",
+      "destination_type": "queue",
+      "routing_key": "restablecimiento.#",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "indicadores.eventos",
+      "destination_type": "queue",
+      "routing_key": "validacion.#",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "indicadores.eventos",
+      "destination_type": "queue",
+      "routing_key": "caso.#",
+      "arguments": {}
+    },
+    {
+      "source": "servired.dlx",
+      "vhost": "/",
+      "destination": "indicadores.eventos.dlq",
+      "destination_type": "queue",
+      "routing_key": "indicadores.eventos",
+      "arguments": {}
+    },
+    {
+      "source": "servired.reintentos",
+      "vhost": "/",
+      "destination": "indicadores.eventos",
+      "destination_type": "queue",
+      "routing_key": "indicadores.eventos",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "auditoria.eventos",
+      "destination_type": "queue",
+      "routing_key": "#",
+      "arguments": {}
+    },
+    {
+      "source": "servired.dlx",
+      "vhost": "/",
+      "destination": "auditoria.eventos.dlq",
+      "destination_type": "queue",
+      "routing_key": "auditoria.eventos",
+      "arguments": {}
+    },
+    {
+      "source": "servired.reintentos",
+      "vhost": "/",
+      "destination": "auditoria.eventos",
+      "destination_type": "queue",
+      "routing_key": "auditoria.eventos",
+      "arguments": {}
+    }
+  ]
+}
