@@ -10,6 +10,27 @@ spring:
     port: ${RABBITMQ_PUERTO:5672}
     username: ${RABBITMQ_USUARIO:guest}
     password: ${RABBITMQ_CLAVE:guest}
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      # El contrato público declara additionalProperties: false.
+      fail-on-unknown-properties: true
+  mvc:
+    problemdetails:
+      enabled: true
+
+servired:
+  persistencia:
+    url: ${PERSISTENCIA_URL:http://persistencia:8080}
+    # Clave propia de este servicio ante Persistencia (PERSISTENCIA_CLAVE_REPORTES en .env).
+    clave: ${PERSISTENCIA_CLAVE:}
+    timeout-conexion: 2s
+    timeout-lectura: 5s
+    intentos: 3
+    espera-entre-intentos: 200ms
+  desarrollo:
+    # PROVISIONAL (fase 2): ciudadano fijo hasta que exista Identidad (fase 3).
+    id-ciudadano: 00000000-0000-4000-8000-000000000001
 
 management:
   endpoints:
