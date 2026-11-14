@@ -16,6 +16,7 @@ public class SaludIntegracionPruebas : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _rabbit.StartAsync();
+        await TopologiaPrueba.DeclararAsync(_rabbit.GetConnectionString());
         var uri = new Uri(_rabbit.GetConnectionString());
         var credenciales = uri.UserInfo.Split(':');
         _fabrica = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
@@ -41,9 +42,17 @@ public class SaludIntegracionPruebas : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ReadinessEstaHealthyConRabbitMq()
+    public async Task ReadinessEstaHealthyCuandoConsumeSuCola()
     {
-        var respuesta = await _cliente.GetAsync("/health/ready");
+        // El consumidor se conecta en segundo plano: readiness pasa a Healthy cuando consume.
+        HttpResponseMessage respuesta;
+        var limite = DateTime.UtcNow.AddSeconds(15);
+        do
+        {
+            respuesta = await _cliente.GetAsync("/health/ready");
+            if (respuesta.StatusCode == HttpStatusCode.OK) break;
+            await Task.Delay(200);
+        } while (DateTime.UtcNow < limite);
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
         Assert.Equal("Healthy", await respuesta.Content.ReadAsStringAsync());
