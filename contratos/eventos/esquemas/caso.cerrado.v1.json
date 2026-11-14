@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/caso.cerrado.v1.json",
+  "title": "Datos del evento caso.cerrado v1",
+  "description": "Un operador cerró el caso (RF-7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idCaso",
+    "idReporte",
+    "fechaCierre"
+  ],
+  "properties": {
+    "idCaso": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "idReporte": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "fechaCierre": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolucion": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  }
+}

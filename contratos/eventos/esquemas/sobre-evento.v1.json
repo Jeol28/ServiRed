@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/sobre-evento.v1.json",
+  "title": "Sobre común de eventos de SERVI-RED",
+  "description": "Todo evento publicado en el exchange servired.eventos usa este sobre. La routing key es <tipo>.v<version>. Los consumidores son idempotentes por idEvento.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idEvento",
+    "tipo",
+    "version",
+    "fechaOcurrencia",
+    "correlationId",
+    "origen",
+    "datos"
+  ],
+  "properties": {
+    "idEvento": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único del evento; clave de idempotencia de los consumidores"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "reporte.creado",
+        "restablecimiento.registrado",
+        "validacion.registrada",
+        "denuncia.recibida",
+        "caso.actualizado",
+        "caso.cerrado"
+      ]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "fechaOcurrencia": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "X-Correlation-Id de la transacción que originó el evento (RNF-OBS1)"
+    },
+    "origen": {
+      "type": "string",
+      "enum": [
+        "reportes",
+        "atencion"
+      ],
+      "description": "Servicio dueño del evento"
+    },
+    "datos": {
+      "type": "object",
+      "description": "Contenido específico del evento; ver el esquema <tipo>.v<version>.json"
+    }
+  }
+}

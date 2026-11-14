@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/validacion.registrada.v1.json",
+  "title": "Datos del evento validacion.registrada v1",
+  "description": "Un ciudadano cercano confirmó o controvirtió un evento o restablecimiento (RF-4). No incluye la identidad del validador.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idReporte",
+    "objeto",
+    "sentido",
+    "confirmacionesNetas",
+    "validado"
+  ],
+  "properties": {
+    "idReporte": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "objeto": {
+      "type": "string",
+      "enum": [
+        "CORTE",
+        "RESTABLECIMIENTO"
+      ]
+    },
+    "sentido": {
+      "type": "string",
+      "enum": [
+        "CONFIRMA",
+        "CONTROVIERTE"
+      ]
+    },
+    "confirmacionesNetas": {
+      "type": "integer"
+    },
+    "validado": {
+      "type": "boolean",
+      "description": "true cuando se alcanzó el umbral de validación comunitaria"
+    }
+  }
+}

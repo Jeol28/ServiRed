@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/reporte.creado.v1.json",
+  "title": "Datos del evento reporte.creado v1",
+  "description": "Un ciudadano registró un corte no programado (RF-1). Se publica solo después de persistir el reporte.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idReporte",
+    "tipoServicio",
+    "ubicacion",
+    "codigoMunicipio",
+    "inicioEstimado",
+    "magnitud",
+    "fechaRegistro"
+  ],
+  "properties": {
+    "idReporte": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tipoServicio": {
+      "type": "string",
+      "enum": [
+        "ENERGIA",
+        "GAS",
+        "ACUEDUCTO",
+        "ALCANTARILLADO",
+        "ASEO"
+      ],
+      "description": "Servicio público domiciliario afectado"
+    },
+    "ubicacion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "latitud",
+        "longitud"
+      ],
+      "properties": {
+        "latitud": {
+          "type": "number",
+          "minimum": -4.3,
+          "maximum": 13.5
+        },
+        "longitud": {
+          "type": "number",
+          "minimum": -82,
+          "maximum": -66.8
+        }
+      },
+      "description": "Coordenadas WGS84 dentro del territorio colombiano"
+    },
+    "codigoMunicipio": {
+      "type": "string",
+      "pattern": "^[0-9]{5}$",
+      "description": "Código DIVIPOLA (DANE) del municipio"
+    },
+    "inicioEstimado": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "magnitud": {
+      "type": "string",
+      "enum": [
+        "VIVIENDA",
+        "CUADRA",
+        "BARRIO",
+        "SECTOR"
+      ]
+    },
+    "descripcion": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "fechaRegistro": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tieneEvidencia": {
+      "type": "boolean"
+    }
+  }
+}

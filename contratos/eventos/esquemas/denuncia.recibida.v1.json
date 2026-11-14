@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/denuncia.recibida.v1.json",
+  "title": "Datos del evento denuncia.recibida v1",
+  "description": "Se recibió una denuncia anónima de conexión fraudulenta (RF-5). Por RNF-SEG4 NO contiene ningún identificador del denunciante.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idDenuncia",
+    "tipoServicio",
+    "codigoMunicipio",
+    "fechaRecepcion"
+  ],
+  "properties": {
+    "idDenuncia": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tipoServicio": {
+      "type": "string",
+      "enum": [
+        "ENERGIA",
+        "GAS",
+        "ACUEDUCTO",
+        "ALCANTARILLADO",
+        "ASEO"
+      ],
+      "description": "Servicio público domiciliario afectado"
+    },
+    "codigoMunicipio": {
+      "type": "string",
+      "pattern": "^[0-9]{5}$",
+      "description": "Código DIVIPOLA (DANE) del municipio"
+    },
+    "ubicacion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "latitud",
+        "longitud"
+      ],
+      "properties": {
+        "latitud": {
+          "type": "number",
+          "minimum": -4.3,
+          "maximum": 13.5
+        },
+        "longitud": {
+          "type": "number",
+          "minimum": -82,
+          "maximum": -66.8
+        }
+      },
+      "description": "Coordenadas WGS84 dentro del territorio colombiano"
+    },
+    "fechaRecepcion": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tieneEvidencia": {
+      "type": "boolean"
+    }
+  }
+}

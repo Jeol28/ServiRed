@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/caso.actualizado.v1.json",
+  "title": "Datos del evento caso.actualizado v1",
+  "description": "Cambió el estado, la prioridad o la asignación de un caso (RF-6, RF-7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idCaso",
+    "idReporte",
+    "estado",
+    "prioridad"
+  ],
+  "properties": {
+    "idCaso": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "idReporte": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "estadoAnterior": {
+      "type": "string",
+      "enum": [
+        "RECIBIDO",
+        "EN_ATENCION",
+        "RESUELTO",
+        "CERRADO"
+      ]
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "RECIBIDO",
+        "EN_ATENCION",
+        "RESUELTO",
+        "CERRADO"
+      ]
+    },
+    "prioridad": {
+      "type": "string",
+      "enum": [
+        "BAJA",
+        "MEDIA",
+        "ALTA",
+        "CRITICA"
+      ]
+    },
+    "idEmpresaOperadora": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "fechaActualizacion": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

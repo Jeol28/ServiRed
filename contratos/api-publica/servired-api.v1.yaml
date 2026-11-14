@@ -1,0 +1,231 @@
+# API pública de SERVI-RED expuesta por el API Gateway.
+# Es el ÚNICO contrato que consumen los portales web y las apps Android/iOS.
+# Versionado en la ruta (/api/v1); cambios incompatibles => /api/v2 (RNF-DAT3).
+# Estado: v1 inicial (fase 1). Cada fase agrega sus operaciones.
+openapi: 3.1.0
+info:
+  title: SERVI-RED · API pública
+  version: 1.0.0-fase1
+  description: |
+    Plataforma de reporte ciudadano y monitoreo de servicios públicos domiciliarios.
+
+    **Correlación (RNF-OBS1):** toda respuesta incluye `X-Correlation-Id`. El cliente
+    puede enviarlo (UUID); si falta o es inválido, el gateway genera uno. Reenviar
+    la misma solicitud con el mismo `X-Correlation-Id` es seguro: la creación es
+    idempotente.
+
+    **Errores:** formato `application/problem+json` (RFC 9457).
+  license:
+    name: Uso académico · Pontificia Universidad Javeriana
+servers:
+  - url: http://localhost:8080
+    description: Entorno local (Docker Compose)
+
+tags:
+  - name: reportes
+    description: Cortes no programados (RF-1, RF-2)
+  - name: salud
+    description: Estado del gateway
+
+paths:
+  /actuator/health:
+    get:
+      tags: [salud]
+      operationId: saludGateway
+      summary: Estado del gateway
+      security: []
+      responses:
+        "200":
+          description: El gateway está disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: UP }
+
+  /api/v1/reportes:
+    post:
+      tags: [reportes]
+      operationId: crearReporte
+      summary: Registrar un corte no programado (RF-1)
+      description: |
+        Registra el reporte y confirma su recepción (RF-2). El reporte queda
+        persistido antes de responder; los demás procesos (atención,
+        indicadores, auditoría) se enteran por eventos y su falla no impide
+        el registro (RNF-DC2). La fotografía se adjunta después
+        (`POST /api/v1/reportes/{idReporte}/evidencias`, fase 4).
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevoReporte" }
+      responses:
+        "201":
+          description: Reporte recibido
+          headers:
+            Location:
+              schema: { type: string }
+              description: /api/v1/reportes/{idReporte}
+            X-Correlation-Id: { $ref: "#/components/headers/IdCorrelacion" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reporte" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
+
+  /api/v1/reportes/{idReporte}:
+    get:
+      tags: [reportes]
+      operationId: consultarReporte
+      summary: Consultar el estado y la historia de un reporte (RF-2)
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - name: idReporte
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Reporte con su historia
+          headers:
+            X-Correlation-Id: { $ref: "#/components/headers/IdCorrelacion" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reporte" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+components:
+  securitySchemes:
+    jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Emitido por el servicio de identidad (fase 3).
+
+  parameters:
+    IdCorrelacion:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: UUID de la transacción. También es la clave de idempotencia.
+      schema: { type: string, format: uuid }
+
+  headers:
+    IdCorrelacion:
+      description: UUID de la transacción (el recibido o uno generado por el gateway).
+      schema: { type: string, format: uuid }
+
+  schemas:
+    TipoServicio:
+      type: string
+      enum: [ENERGIA, GAS, ACUEDUCTO, ALCANTARILLADO, ASEO]
+      description: |
+        ENERGIA = energía eléctrica · GAS = gas natural o licuado ·
+        ACUEDUCTO = agua potable · ALCANTARILLADO · ASEO = recolección de basuras y residuos
+
+    Magnitud:
+      type: string
+      enum: [VIVIENDA, CUADRA, BARRIO, SECTOR]
+      description: Magnitud del área afectada según el ciudadano
+
+    EstadoReporte:
+      type: string
+      enum: [RECIBIDO, EN_ATENCION, RESTABLECIDO, CERRADO]
+
+    Ubicacion:
+      type: object
+      required: [latitud, longitud]
+      properties:
+        latitud: { type: number, minimum: -4.3, maximum: 13.5, example: 4.6287 }
+        longitud: { type: number, minimum: -82, maximum: -66.8, example: -74.0648 }
+
+    NuevoReporte:
+      type: object
+      required: [tipoServicio, ubicacion, inicioEstimado, magnitud]
+      additionalProperties: false
+      properties:
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        ubicacion: { $ref: "#/components/schemas/Ubicacion" }
+        inicioEstimado:
+          type: string
+          format: date-time
+          description: Hora estimada de inicio del corte; no puede ser futura (RNF-DAT1)
+        magnitud: { $ref: "#/components/schemas/Magnitud" }
+        descripcion: { type: string, maxLength: 1000 }
+
+    EntradaHistoria:
+      type: object
+      required: [estado, fecha]
+      properties:
+        estado: { $ref: "#/components/schemas/EstadoReporte" }
+        fecha: { type: string, format: date-time }
+        detalle: { type: string }
+
+    Reporte:
+      type: object
+      required: [idReporte, tipoServicio, ubicacion, codigoMunicipio, inicioEstimado,
+                 magnitud, estado, fechaRegistro, historia]
+      properties:
+        idReporte: { type: string, format: uuid }
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        ubicacion: { $ref: "#/components/schemas/Ubicacion" }
+        codigoMunicipio:
+          type: string
+          pattern: "^[0-9]{5}$"
+          description: Código DIVIPOLA resuelto a partir de la ubicación
+        nombreMunicipio: { type: string }
+        inicioEstimado: { type: string, format: date-time }
+        magnitud: { $ref: "#/components/schemas/Magnitud" }
+        descripcion: { type: string }
+        estado: { $ref: "#/components/schemas/EstadoReporte" }
+        fechaRegistro: { type: string, format: date-time }
+        historia:
+          type: array
+          items: { $ref: "#/components/schemas/EntradaHistoria" }
+
+    Problema:
+      type: object
+      description: RFC 9457 Problem Details
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        correlationId: { type: string, format: uuid }
+        errores:
+          type: array
+          items:
+            type: object
+            properties:
+              campo: { type: string }
+              mensaje: { type: string }
+
+  responses:
+    SolicitudInvalida:
+      description: Datos inválidos (RNF-DAT1)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    NoAutenticado:
+      description: Falta un token válido (RNF-SEG1)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    NoEncontrado:
+      description: El recurso no existe o no es visible para el usuario
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    DemasiadasSolicitudes:
+      description: Límite de uso excedido (RNF-SEG5)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+
+security:
+  - jwt: []

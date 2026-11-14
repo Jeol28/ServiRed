@@ -1,0 +1,244 @@
+# AsyncAPI de SERVI-RED: eventos de dominio publicados en RabbitMQ.
+# Fuente de verdad de los esquemas: ./esquemas/*.json (JSON Schema 2020-12).
+# Convenciones:
+#   - exchange topic durable "servired.eventos"; routing key = <tipo>.v<version>
+#   - mensajes persistentes (delivery_mode 2), content-type application/json
+#   - se publican solo tras confirmar la persistencia (outbox en persistencia)
+#   - cambios incompatibles => nueva versión (v2) publicada en paralelo (RNF-DAT3)
+asyncapi: 3.0.0
+info:
+  title: SERVI-RED · Eventos de dominio
+  version: 1.0.0
+  description: Eventos intercambiados entre microservicios por RabbitMQ (ADR-03, ADR-04).
+defaultContentType: application/json
+servers:
+  local:
+    host: rabbitmq:5672
+    protocol: amqp
+    description: RabbitMQ del entorno Docker Compose
+channels:
+  reporte_creado:
+    address: reporte.creado.v1
+    description: "Reporte de corte persistido (RF-1). Consumidores: atencion, indicadores, auditoria."
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: servired.eventos
+          type: topic
+          durable: true
+          autoDelete: false
+    messages:
+      reporte_creado_v1:
+        $ref: '#/components/messages/reporte_creado_v1'
+  restablecimiento_registrado:
+    address: restablecimiento.registrado.v1
+    description: "Restablecimiento registrado (RF-3). Consumidores: atencion, indicadores, auditoria."
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: servired.eventos
+          type: topic
+          durable: true
+          autoDelete: false
+    messages:
+      restablecimiento_registrado_v1:
+        $ref: '#/components/messages/restablecimiento_registrado_v1'
+  validacion_registrada:
+    address: validacion.registrada.v1
+    description: "Validación comunitaria registrada (RF-4). Consumidores: atencion, indicadores, auditoria."
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: servired.eventos
+          type: topic
+          durable: true
+          autoDelete: false
+    messages:
+      validacion_registrada_v1:
+        $ref: '#/components/messages/validacion_registrada_v1'
+  denuncia_recibida:
+    address: denuncia.recibida.v1
+    description: "Denuncia anónima recibida (RF-5). Consumidores: atencion, auditoria."
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: servired.eventos
+          type: topic
+          durable: true
+          autoDelete: false
+    messages:
+      denuncia_recibida_v1:
+        $ref: '#/components/messages/denuncia_recibida_v1'
+  caso_actualizado:
+    address: caso.actualizado.v1
+    description: "Caso actualizado (RF-7). Consumidores: reportes, indicadores, auditoria."
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: servired.eventos
+          type: topic
+          durable: true
+          autoDelete: false
+    messages:
+      caso_actualizado_v1:
+        $ref: '#/components/messages/caso_actualizado_v1'
+  caso_cerrado:
+    address: caso.cerrado.v1
+    description: "Caso cerrado (RF-7). Consumidores: reportes, indicadores, auditoria."
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: servired.eventos
+          type: topic
+          durable: true
+          autoDelete: false
+    messages:
+      caso_cerrado_v1:
+        $ref: '#/components/messages/caso_cerrado_v1'
+operations:
+  publicar_reporte_creado:
+    action: send
+    summary: "Publicado por reportes"
+    channel:
+      $ref: '#/channels/reporte_creado'
+  publicar_restablecimiento_registrado:
+    action: send
+    summary: "Publicado por reportes"
+    channel:
+      $ref: '#/channels/restablecimiento_registrado'
+  publicar_validacion_registrada:
+    action: send
+    summary: "Publicado por reportes"
+    channel:
+      $ref: '#/channels/validacion_registrada'
+  publicar_denuncia_recibida:
+    action: send
+    summary: "Publicado por reportes"
+    channel:
+      $ref: '#/channels/denuncia_recibida'
+  publicar_caso_actualizado:
+    action: send
+    summary: "Publicado por atencion"
+    channel:
+      $ref: '#/channels/caso_actualizado'
+  publicar_caso_cerrado:
+    action: send
+    summary: "Publicado por atencion"
+    channel:
+      $ref: '#/channels/caso_cerrado'
+components:
+  messages:
+    reporte_creado_v1:
+      name: reporte.creado
+      title: reporte.creado v1
+      summary: "Reporte de corte persistido (RF-1)"
+      payload:
+        allOf:
+          - $ref: './esquemas/sobre-evento.v1.json'
+          - type: object
+            properties:
+              tipo:
+                const: reporte.creado
+              version:
+                const: 1
+              datos:
+                $ref: './esquemas/reporte.creado.v1.json'
+      bindings:
+        amqp:
+          deliveryMode: 2
+    restablecimiento_registrado_v1:
+      name: restablecimiento.registrado
+      title: restablecimiento.registrado v1
+      summary: "Restablecimiento registrado (RF-3)"
+      payload:
+        allOf:
+          - $ref: './esquemas/sobre-evento.v1.json'
+          - type: object
+            properties:
+              tipo:
+                const: restablecimiento.registrado
+              version:
+                const: 1
+              datos:
+                $ref: './esquemas/restablecimiento.registrado.v1.json'
+      bindings:
+        amqp:
+          deliveryMode: 2
+    validacion_registrada_v1:
+      name: validacion.registrada
+      title: validacion.registrada v1
+      summary: "Validación comunitaria registrada (RF-4)"
+      payload:
+        allOf:
+          - $ref: './esquemas/sobre-evento.v1.json'
+          - type: object
+            properties:
+              tipo:
+                const: validacion.registrada
+              version:
+                const: 1
+              datos:
+                $ref: './esquemas/validacion.registrada.v1.json'
+      bindings:
+        amqp:
+          deliveryMode: 2
+    denuncia_recibida_v1:
+      name: denuncia.recibida
+      title: denuncia.recibida v1
+      summary: "Denuncia anónima recibida (RF-5)"
+      payload:
+        allOf:
+          - $ref: './esquemas/sobre-evento.v1.json'
+          - type: object
+            properties:
+              tipo:
+                const: denuncia.recibida
+              version:
+                const: 1
+              datos:
+                $ref: './esquemas/denuncia.recibida.v1.json'
+      bindings:
+        amqp:
+          deliveryMode: 2
+    caso_actualizado_v1:
+      name: caso.actualizado
+      title: caso.actualizado v1
+      summary: "Caso actualizado (RF-7)"
+      payload:
+        allOf:
+          - $ref: './esquemas/sobre-evento.v1.json'
+          - type: object
+            properties:
+              tipo:
+                const: caso.actualizado
+              version:
+                const: 1
+              datos:
+                $ref: './esquemas/caso.actualizado.v1.json'
+      bindings:
+        amqp:
+          deliveryMode: 2
+    caso_cerrado_v1:
+      name: caso.cerrado
+      title: caso.cerrado v1
+      summary: "Caso cerrado (RF-7)"
+      payload:
+        allOf:
+          - $ref: './esquemas/sobre-evento.v1.json'
+          - type: object
+            properties:
+              tipo:
+                const: caso.cerrado
+              version:
+                const: 1
+              datos:
+                $ref: './esquemas/caso.cerrado.v1.json'
+      bindings:
+        amqp:
+          deliveryMode: 2

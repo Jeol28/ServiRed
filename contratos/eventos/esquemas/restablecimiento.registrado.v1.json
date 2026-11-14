@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/restablecimiento.registrado.v1.json",
+  "title": "Datos del evento restablecimiento.registrado v1",
+  "description": "Se registró el restablecimiento de un servicio interrumpido (RF-3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idReporte",
+    "fechaRestablecimiento",
+    "duracionMinutos"
+  ],
+  "properties": {
+    "idReporte": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "fechaRestablecimiento": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duracionMinutos": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "fechaRestablecimiento - inicioEstimado"
+    }
+  }
+}

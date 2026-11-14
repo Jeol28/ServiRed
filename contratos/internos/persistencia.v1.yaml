@@ -1,0 +1,182 @@
+# Contrato interno del servicio de Persistencia (ADR-02).
+# Solo accesible en la red interna; el gateway NO lo enruta.
+#
+# Reglas:
+#  - Operaciones de NEGOCIO (guardarReporte, actualizarEstadoCaso, ...),
+#    nunca un CRUD genérico de tablas. Ningún cliente conoce el esquema físico.
+#  - Cada servicio se autentica con su propia clave (X-Clave-Servicio) y solo
+#    puede invocar las operaciones de su dominio (mínimo privilegio).
+#  - X-Correlation-Id es obligatorio y es la clave de idempotencia junto con
+#    la operación: un reintento devuelve la respuesta original sin reescribir.
+#  - Las operaciones que generan un evento reciben el evento ya construido por
+#    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
+#    transacción y lo publica después (decisión B).
+# Estado: v1 inicial (fase 1). Cada fase agrega sus operaciones.
+openapi: 3.1.0
+info:
+  title: SERVI-RED · Persistencia (API interna)
+  version: 1.0.0-fase1
+servers:
+  - url: http://persistencia:8080
+    description: Red interna de Docker Compose
+
+security:
+  - claveServicio: []
+
+paths:
+  /interno/v1/reportes/guardar:
+    post:
+      operationId: guardarReporte
+      summary: Guardar un reporte nuevo y su evento reporte.creado
+      description: |
+        Invocable solo por `reportes`. En una transacción: inserta el reporte,
+        su primera entrada de historia y el evento en el outbox.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reporte, evento]
+              properties:
+                reporte: { $ref: "#/components/schemas/ReporteAGuardar" }
+                evento: { $ref: "#/components/schemas/EventoSaliente" }
+      responses:
+        "201":
+          description: Reporte guardado (o ya existía para este X-Correlation-Id)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReporteGuardado" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "409":
+          description: Viola una regla de integridad (p. ej. municipio inexistente)
+
+  /interno/v1/reportes/{idReporte}:
+    get:
+      operationId: consultarReporte
+      summary: Consultar un reporte con su historia
+      description: Invocable solo por `reportes`.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - name: idReporte
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Reporte encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReporteGuardado" }
+        "404":
+          description: No existe
+
+  /interno/v1/catalogo/municipio-cercano:
+    get:
+      operationId: resolverMunicipio
+      summary: Resolver el municipio (DIVIPOLA) más cercano a unas coordenadas
+      description: Centroide más cercano de la semilla DIVIPOLA (decisión D).
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: latitud, in: query, required: true, schema: { type: number } }
+        - { name: longitud, in: query, required: true, schema: { type: number } }
+      responses:
+        "200":
+          description: Municipio resuelto
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [codigo, nombre, departamento]
+                properties:
+                  codigo: { type: string, pattern: "^[0-9]{5}$" }
+                  nombre: { type: string }
+                  departamento: { type: string }
+
+components:
+  securitySchemes:
+    claveServicio:
+      type: apiKey
+      in: header
+      name: X-Clave-Servicio
+      description: Clave propia de cada servicio (PERSISTENCIA_CLAVE_<SERVICIO> en .env)
+
+  parameters:
+    IdCorrelacion:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    EventoSaliente:
+      description: |
+        Sobre completo del evento (contratos/eventos/esquemas/sobre-evento.v1.json).
+        Persistencia no interpreta `datos`; solo lo guarda y lo publica.
+      type: object
+      required: [idEvento, tipo, version, fechaOcurrencia, correlationId, origen, datos]
+      properties:
+        idEvento: { type: string, format: uuid }
+        tipo: { type: string }
+        version: { type: integer, minimum: 1 }
+        fechaOcurrencia: { type: string, format: date-time }
+        correlationId: { type: string, format: uuid }
+        origen: { type: string }
+        datos: { type: object }
+
+    ReporteAGuardar:
+      type: object
+      required: [idReporte, idCiudadano, tipoServicio, latitud, longitud, codigoMunicipio,
+                 inicioEstimado, magnitud, fechaRegistro]
+      properties:
+        idReporte: { type: string, format: uuid }
+        idCiudadano: { type: string, format: uuid }
+        tipoServicio: { type: string, enum: [ENERGIA, GAS, ACUEDUCTO, ALCANTARILLADO, ASEO] }
+        latitud: { type: number }
+        longitud: { type: number }
+        codigoMunicipio: { type: string, pattern: "^[0-9]{5}$" }
+        inicioEstimado: { type: string, format: date-time }
+        magnitud: { type: string, enum: [VIVIENDA, CUADRA, BARRIO, SECTOR] }
+        descripcion: { type: string, maxLength: 1000 }
+        fechaRegistro: { type: string, format: date-time }
+
+    ReporteGuardado:
+      allOf:
+        - $ref: "#/components/schemas/ReporteAGuardar"
+        - type: object
+          required: [estado, historia]
+          properties:
+            estado: { type: string, enum: [RECIBIDO, EN_ATENCION, RESTABLECIDO, CERRADO] }
+            nombreMunicipio: { type: string }
+            historia:
+              type: array
+              items:
+                type: object
+                required: [estado, fecha]
+                properties:
+                  estado: { type: string }
+                  fecha: { type: string, format: date-time }
+                  detalle: { type: string }
+
+    Problema:
+      type: object
+      properties:
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        correlationId: { type: string, format: uuid }
+
+  responses:
+    Invalido:
+      description: Datos inválidos
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    NoAutorizado:
+      description: Falta X-Clave-Servicio o es inválida
+    Prohibido:
+      description: El servicio no tiene permiso para esta operación
