@@ -1,0 +1,50 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: persistencia
+  # Único servicio con credenciales de la base de datos (ADR-02).
+  datasource:
+    url: ${PERSISTENCIA_DB_URL:jdbc:postgresql://localhost:5432/servired}
+    username: ${PERSISTENCIA_DB_USUARIO:servired}
+    password: ${PERSISTENCIA_DB_CLAVE:servired}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 3000
+      pool-name: pool-supabase
+  flyway:
+    locations: classpath:db/migracion
+    # Flyway guarda su historial fuera de los esquemas de negocio.
+    default-schema: infraestructura
+    create-schemas: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PUERTO:5672}
+    username: ${RABBITMQ_USUARIO:guest}
+    password: ${RABBITMQ_CLAVE:guest}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,rabbit
+  metrics:
+    tags:
+      servicio: ${spring.application.name}
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: ${spring.application.name}
