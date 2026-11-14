@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Infraestructura: adaptadores de salida (RabbitMQ, cliente de Persistencia). -->
+  <PropertyGroup>
+    <RootNamespace>ServiRed.Indicadores.Infraestructura</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Indicadores.Aplicacion/Indicadores.Aplicacion.csproj" />
+  </ItemGroup>
+</Project>

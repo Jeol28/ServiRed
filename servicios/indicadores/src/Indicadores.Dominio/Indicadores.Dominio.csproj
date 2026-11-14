@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Dominio: sin referencias a framework web, mensajería ni otras capas. -->
+  <PropertyGroup>
+    <RootNamespace>ServiRed.Indicadores.Dominio</RootNamespace>
+  </PropertyGroup>
+</Project>

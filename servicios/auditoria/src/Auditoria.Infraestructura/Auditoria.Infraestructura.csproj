@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Infraestructura: adaptadores de salida (RabbitMQ, cliente de Persistencia). -->
+  <PropertyGroup>
+    <RootNamespace>ServiRed.Auditoria.Infraestructura</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Auditoria.Aplicacion/Auditoria.Aplicacion.csproj" />
+  </ItemGroup>
+</Project>

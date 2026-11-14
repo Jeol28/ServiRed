@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Aplicación: casos de uso y puertos. Solo conoce el dominio. -->
+  <PropertyGroup>
+    <RootNamespace>ServiRed.Indicadores.Aplicacion</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Indicadores.Dominio/Indicadores.Dominio.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Adaptador de entrada HTTP y composición de dependencias. -->
+  <PropertyGroup>
+    <RootNamespace>ServiRed.Atencion.Api</RootNamespace>
+    <AssemblyName>ServiRed.Atencion.Api</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Atencion.Infraestructura/Atencion.Infraestructura.csproj" />
+  </ItemGroup>
+</Project>

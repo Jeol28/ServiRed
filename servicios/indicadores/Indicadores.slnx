@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Indicadores.Api/Indicadores.Api.csproj" />
+    <Project Path="src/Indicadores.Aplicacion/Indicadores.Aplicacion.csproj" />
+    <Project Path="src/Indicadores.Dominio/Indicadores.Dominio.csproj" />
+    <Project Path="src/Indicadores.Infraestructura/Indicadores.Infraestructura.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Indicadores.Pruebas/Indicadores.Pruebas.csproj" />
+  </Folder>
+</Solution>
