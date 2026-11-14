@@ -1,0 +1,51 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # Los clientes solo conocen /api/v1/**. Persistencia y auditoría
+          # NUNCA se enrutan: no son accesibles desde fuera.
+          routes:
+            - id: identidad
+              uri: ${SERVICIO_IDENTIDAD_URL:http://identidad:8080}
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/cuentas/**
+            - id: reportes
+              uri: ${SERVICIO_REPORTES_URL:http://reportes:8080}
+              predicates:
+                - Path=/api/v1/reportes/**,/api/v1/denuncias/**
+            - id: atencion
+              uri: ${SERVICIO_ATENCION_URL:http://atencion:8080}
+              predicates:
+                - Path=/api/v1/casos/**
+            - id: indicadores
+              uri: ${SERVICIO_INDICADORES_URL:http://indicadores:8080}
+              predicates:
+                - Path=/api/v1/indicadores/**,/api/v1/mapas/**,/api/v1/datos-abiertos/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      servicio: ${spring.application.name}
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: ${spring.application.name}
