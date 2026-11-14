@@ -1,11 +1,11 @@
 # API pública de SERVI-RED expuesta por el API Gateway.
 # Es el ÚNICO contrato que consumen los portales web y las apps Android/iOS.
 # Versionado en la ruta (/api/v1); cambios incompatibles => /api/v2 (RNF-DAT3).
-# Estado: v1 inicial (fase 1). Cada fase agrega sus operaciones.
+# Estado: fase 2 (crear y consultar reporte). Cada fase agrega sus operaciones.
 openapi: 3.1.0
 info:
   title: SERVI-RED · API pública
-  version: 1.0.0-fase1
+  version: 1.0.0-fase2
   description: |
     Plataforma de reporte ciudadano y monitoreo de servicios públicos domiciliarios.
 
@@ -76,6 +76,7 @@ paths:
         "400": { $ref: "#/components/responses/SolicitudInvalida" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
         "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
+        "503": { $ref: "#/components/responses/NoDisponible" }
 
   /api/v1/reportes/{idReporte}:
     get:
@@ -154,7 +155,9 @@ components:
         inicioEstimado:
           type: string
           format: date-time
-          description: Hora estimada de inicio del corte; no puede ser futura (RNF-DAT1)
+          description: |
+            Hora estimada de inicio del corte, con zona horaria (RNF-DAT1): no puede ser
+            futura (se toleran 5 minutos de diferencia de reloj) ni tener más de 30 días.
         magnitud: { $ref: "#/components/schemas/Magnitud" }
         descripcion: { type: string, maxLength: 1000 }
 
@@ -218,6 +221,13 @@ components:
           schema: { $ref: "#/components/schemas/Problema" }
     NoEncontrado:
       description: El recurso no existe o no es visible para el usuario
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    NoDisponible:
+      description: |
+        El registro no pudo completarse (Persistencia no disponible). Es seguro
+        reintentar con el mismo X-Correlation-Id.
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problema" }

@@ -11,11 +11,11 @@
 #  - Las operaciones que generan un evento reciben el evento ya construido por
 #    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
 #    transacción y lo publica después (decisión B).
-# Estado: v1 inicial (fase 1). Cada fase agrega sus operaciones.
+# Estado: fase 2 (guardarReporte, consultarReporte, resolverMunicipio, abrirCaso).
 openapi: 3.1.0
 info:
   title: SERVI-RED · Persistencia (API interna)
-  version: 1.0.0-fase1
+  version: 1.0.0-fase2
 servers:
   - url: http://persistencia:8080
     description: Red interna de Docker Compose
@@ -45,7 +45,12 @@ paths:
                 evento: { $ref: "#/components/schemas/EventoSaliente" }
       responses:
         "201":
-          description: Reporte guardado (o ya existía para este X-Correlation-Id)
+          description: Reporte guardado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReporteGuardado" }
+        "200":
+          description: Reintento de un X-Correlation-Id ya procesado; devuelve el reporte original
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReporteGuardado" }
@@ -53,7 +58,9 @@ paths:
         "401": { $ref: "#/components/responses/NoAutorizado" }
         "403": { $ref: "#/components/responses/Prohibido" }
         "409":
-          description: Viola una regla de integridad (p. ej. municipio inexistente)
+          description: |
+            Viola una regla de integridad (p. ej. municipio inexistente), el evento no
+            pertenece a la operación o su correlationId no coincide con X-Correlation-Id
 
   /interno/v1/reportes/{idReporte}:
     get:
@@ -75,11 +82,45 @@ paths:
         "404":
           description: No existe
 
+  /interno/v1/casos/abrir:
+    post:
+      operationId: abrirCaso
+      summary: Abrir el caso de atención de un reporte
+      description: |
+        Invocable solo por `atencion`, al consumir reporte.creado. Idempotente por
+        X-Correlation-Id (el del evento) y porque hay a lo sumo un caso por
+        reporte: si ya existe, devuelve el caso original con 200.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CasoAAbrir" }
+      responses:
+        "201":
+          description: Caso abierto
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CasoGuardado" }
+        "200":
+          description: El caso ya existía
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CasoGuardado" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "409":
+          description: Municipio inexistente
+
   /interno/v1/catalogo/municipio-cercano:
     get:
       operationId: resolverMunicipio
       summary: Resolver el municipio (DIVIPOLA) más cercano a unas coordenadas
-      description: Centroide más cercano de la semilla DIVIPOLA (decisión D).
+      description: |
+        Centroide más cercano de la semilla DIVIPOLA (decisión D). Invocable por
+        `reportes`, `atencion` e `indicadores`.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
         - { name: latitud, in: query, required: true, schema: { type: number } }
@@ -96,6 +137,8 @@ paths:
                   codigo: { type: string, pattern: "^[0-9]{5}$" }
                   nombre: { type: string }
                   departamento: { type: string }
+        "409":
+          description: Coordenadas fuera de Colombia
 
 components:
   securitySchemes:
@@ -161,6 +204,25 @@ components:
                   estado: { type: string }
                   fecha: { type: string, format: date-time }
                   detalle: { type: string }
+
+    CasoAAbrir:
+      type: object
+      required: [idCaso, idReporte, tipoServicio, codigoMunicipio, magnitud, abiertoEn]
+      properties:
+        idCaso: { type: string, format: uuid }
+        idReporte: { type: string, format: uuid }
+        tipoServicio: { type: string, enum: [ENERGIA, GAS, ACUEDUCTO, ALCANTARILLADO, ASEO] }
+        codigoMunicipio: { type: string, pattern: "^[0-9]{5}$" }
+        magnitud: { type: string, enum: [VIVIENDA, CUADRA, BARRIO, SECTOR] }
+        abiertoEn: { type: string, format: date-time }
+
+    CasoGuardado:
+      allOf:
+        - $ref: "#/components/schemas/CasoAAbrir"
+        - type: object
+          required: [estado]
+          properties:
+            estado: { type: string, enum: [RECIBIDO, EN_ATENCION, RESUELTO, CERRADO] }
 
     Problema:
       type: object

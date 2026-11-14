@@ -24,6 +24,22 @@ consumidor ──falla transitoria──▶ <cola>.reintento           (TTL 10 s
 - El consumidor cuenta los intentos en una cabecera; al superar el máximo
   rechaza sin reencolar y el mensaje termina en la DLQ.
 
+## Política de los consumidores (fase 2)
+- Confirmación manual (`ack`) y `prefetch` 10.
+- **Falla transitoria** (red, timeout, 5xx de Persistencia): se publica una copia
+  en `<q>.reintento` con la cabecera `x-intentos` incrementada (con publisher
+  confirms) y luego se confirma el original. Tras **5 intentos** va a `<q>.dlq`.
+- **Falla permanente** (mensaje ilegible, datos inválidos, 4xx de Persistencia):
+  `nack` sin reencolar → `<q>.dlq` de inmediato.
+- Tipos o versiones que el consumidor no maneja: `ack` y se ignoran (permite
+  agregar eventos o versiones sin romper consumidores existentes).
+- **Idempotencia:** la garantiza Persistencia con la clave
+  (`correlationId` del evento, operación) y restricciones de unicidad del
+  negocio (p. ej. un caso por reporte).
+- El readiness del servicio incluye que el consumidor esté activo.
+- Las colas de Indicadores y Auditoría acumulan eventos hasta que sus
+  consumidores existan (fases 6 y 7); es intencional: no se pierde historia.
+
 ## Lección aprendida
 Usar el exchange por defecto (`""`) como `x-dead-letter-exchange` de la cola de
 reintento **descartaba los mensajes**: al importar las definiciones el valor

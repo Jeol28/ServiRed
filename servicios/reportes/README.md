@@ -27,7 +27,30 @@ src/main/java/co/edu/javeriana/servired/<servicio>/
 Las pruebas de integración usan Testcontainers (ver el README raíz si usa Colima).
 Para correrlo junto al resto: `docker compose up -d --build reportes` desde la raíz.
 
+## API (detrás del gateway)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/api/v1/reportes` | Registrar un corte (RF-1). `201` + `Location`; idempotente por `X-Correlation-Id` |
+| `GET` | `/api/v1/reportes/{id}` | Estado e historia (RF-2); `404` si no existe o no es del ciudadano |
+
+Errores en `application/problem+json` con la lista `errores` (campo y mensaje).
+Si Persistencia no responde tras 3 intentos se devuelve `503` (es seguro reintentar
+con el mismo `X-Correlation-Id`).
+
+**Reglas (RNF-DAT1, ADR-08):** ubicación dentro de Colombia; inicio no futuro
+(tolerancia de 5 min) y de máximo 30 días; descripción de hasta 1.000 caracteres.
+El municipio se resuelve en Persistencia (centroide DIVIPOLA más cercano).
+
+> **Provisional (fase 2):** sin Identidad todavía, todas las peticiones se
+> atribuyen al ciudadano de desarrollo `servired.desarrollo.id-ciudadano`
+> (`CiudadanoActual`). La fase 3 lo reemplaza por el `sub` del JWT.
+
+## Variables
+`PERSISTENCIA_URL`, `PERSISTENCIA_CLAVE` (en el compose viene de
+`PERSISTENCIA_CLAVE_REPORTES`) y `RABBITMQ_*`.
+
 ## Estado
 - Fase 1 ✅ esqueleto, correlación, health (con RabbitMQ) y métricas.
-- Fase 2: crear y consultar reporte de punta a punta.
+- Fase 2 ✅ crear y consultar reporte de punta a punta con `reporte.creado`.
 - Fase 4: restablecimiento, validación, evidencias y denuncias.

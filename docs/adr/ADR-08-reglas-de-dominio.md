@@ -15,6 +15,10 @@ El SAD no fija umbrales ni reglas concretas para RF-3, RF-4 y RF-6.
 - **Enrutamiento (RF-6):** cada empresa operadora declara su cobertura
   (municipio × tipo de servicio). Un operador solo ve los casos de su empresa;
   el regulador ve todo en solo lectura y exporta.
+- **Inicio del corte (RNF-DAT1, fase 2):** no puede ser futuro (se toleran
+  **5 minutos** de diferencia de reloj del dispositivo y, en ese caso, se ajusta
+  al instante de registro) ni tener más de **30 días**. Las fechas viajan con
+  zona horaria (ISO 8601) y se guardan en UTC.
 - **Municipio:** el cliente envía latitud y longitud; Persistencia resuelve el
   municipio por el **centroide DIVIPOLA más cercano** y se valida que el punto
   esté dentro del territorio colombiano.

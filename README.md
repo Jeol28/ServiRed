@@ -70,6 +70,7 @@ microservicios y el gateway en **http://localhost:8080**.
 ```bash
 curl -i http://localhost:8080/actuator/health        # gateway
 python3 infra/rabbitmq/verificar-topologia.py        # prueba de humo de RabbitMQ
+python3 pruebas/e2e/flujo-reporte.py                 # prueba de punta a punta (fase 2)
 docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
 ```
@@ -90,7 +91,15 @@ cd servicios/reportes && ./mvnw verify
 
 # .NET (cada servicio)
 cd servicios/atencion && dotnet test Atencion.slnx
+
+# De punta a punta, con el compose arriba (usa el PostgreSQL local)
+python3 pruebas/e2e/flujo-reporte.py
 ```
+
+La prueba e2e crea, repite (idempotencia) y consulta un reporte por el gateway,
+verifica que Atención abra el caso, que el `X-Correlation-Id` aparezca en los
+logs de los cuatro servicios y que, **con Atención detenida, el reporte se
+registre igual** y el caso se abra al volver (RNF-DC2).
 
 Las pruebas de integración usan Docker (Testcontainers). Con **Colima** exporte antes:
 
@@ -115,8 +124,8 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Monorepo, Docker Compose, RabbitMQ, esqueletos con health, contratos iniciales | ✅ |
-| 2 | Corte vertical: crear y consultar reporte + `reporte.creado` consumido por atención | ⏳ |
-| 3 | Identidad: registro, login, JWT y RBAC en el gateway | |
+| 2 | Corte vertical: crear y consultar reporte + `reporte.creado` consumido por atención | ✅ |
+| 3 | Identidad: registro, login, JWT y RBAC en el gateway | ⏳ |
 | 4 | Reportes completo: restablecimiento, validación, evidencias, denuncias | |
 | 5 | Atención: casos, estados, asignación | |
 | 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | |

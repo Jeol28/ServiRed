@@ -6,7 +6,7 @@ Gestiona los casos del operador: crea el caso al recibir `reporte.creado`, lo en
 |---|---|
 | **Pila** | C# · .NET 10 · ASP.NET Core · RabbitMQ.Client 7 |
 | **Puerto** | 8080 (solo dentro de la red interna del compose) |
-| **Health** | `/health/live` y `/health/ready` (incluye RabbitMQ) |
+| **Health** | `/health/live` y `/health/ready` (RabbitMQ y consumidor activo) |
 | **Métricas** | `/metrics` |
 
 ## Estructura (arquitectura hexagonal)
@@ -30,7 +30,19 @@ dotnet run --project src/Atencion.Api
 Las pruebas de integración usan Testcontainers (ver el README raíz si usa Colima).
 Para correrlo junto al resto: `docker compose up -d --build atencion` desde la raíz.
 
+## Consumo de eventos
+Cola `atencion.eventos-reportes`. Al recibir `reporte.creado.v1` abre el caso en
+estado `RECIBIDO` mediante la operación `abrirCaso` de Persistencia (idempotente:
+un caso por reporte). Reintentos, DLQ y tipos ignorados según
+[ADR-10](../../docs/adr/ADR-10-topologia-rabbitmq.md). Métrica:
+`servired_eventos_procesados_total{tipo,resultado}`.
+
+## Variables
+`PERSISTENCIA_URL`, `PERSISTENCIA_CLAVE` (en el compose viene de
+`PERSISTENCIA_CLAVE_ATENCION`), `CONSUMIDOR_MAX_INTENTOS` (5), `CONSUMIDOR_PREFETCH` (10)
+y `RABBITMQ_*`.
+
 ## Estado
 - Fase 1 ✅ esqueleto hexagonal, correlación, health y métricas.
-- Fase 2: consumidor idempotente de `reporte.creado`.
+- Fase 2 ✅ consumidor de `reporte.creado` con reintento y DLQ; readiness incluye el consumidor.
 - Fase 5: casos, estados, asignación y moderación.
