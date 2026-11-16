@@ -104,8 +104,15 @@ services:
   identidad:
     <<: *servicio-base
     build: ../servicios/identidad
-    environment: {}
-    depends_on: {}
+    environment:
+      PERSISTENCIA_URL: http://persistencia:8080
+      PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_IDENTIDAD:?definir en .env}
+      IDENTIDAD_JWT_CLAVE_PRIVADA: ${IDENTIDAD_JWT_CLAVE_PRIVADA:-}
+      IDENTIDAD_ADMIN_CORREO: ${IDENTIDAD_ADMIN_CORREO:-}
+      IDENTIDAD_ADMIN_CLAVE: ${IDENTIDAD_ADMIN_CLAVE:-}
+    depends_on:
+      persistencia:
+        condition: service_healthy
 
   reportes:
     <<: *servicio-base

@@ -5,6 +5,7 @@
 | [`docker-compose.yml`](docker-compose.yml) | Todo el entorno. Se invoca desde la raíz (`compose.yaml` lo incluye). |
 | [`rabbitmq/generar-definiciones.py`](rabbitmq/generar-definiciones.py) | Genera `definiciones.json` (exchanges, colas y bindings). |
 | [`rabbitmq/aplicar-definiciones.sh`](rabbitmq/aplicar-definiciones.sh) | Lo ejecuta el contenedor `rabbitmq-init` para importar la topología. |
+| [`generar-clave-jwt.sh`](generar-clave-jwt.sh) | Genera la clave RSA de firma de los JWT para `IDENTIDAD_JWT_CLAVE_PRIVADA`. |
 | [`rabbitmq/verificar-topologia.py`](rabbitmq/verificar-topologia.py) | Prueba de humo: compara el broker con `definiciones.json` y prueba enrutamiento, DLQ y reintento con TTL en colas temporales (no toca las colas reales). |
 
 ## Servicios del compose
@@ -16,7 +17,7 @@
 | rabbitmq-init | curlimages/curl | interna | — (termina al aplicar la topología) |
 | persistencia | `servicios/persistencia` | interna, borde (salida a Supabase) | — |
 | identidad, reportes, atencion, indicadores, auditoria | `servicios/*` | interna | — |
-| gateway | `servicios/gateway` | borde, interna | **8080** |
+| gateway | `servicios/gateway` | borde, interna | **8080** (actuator en 8081, solo interno) |
 
 La red `interna` es `internal: true`: sin salida a Internet ni puertos publicados.
 

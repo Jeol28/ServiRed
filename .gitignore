@@ -29,3 +29,7 @@ build/
 local.properties
 DerivedData/
 xcuserdata/
+
+# Python
+__pycache__/
+*.pyc
