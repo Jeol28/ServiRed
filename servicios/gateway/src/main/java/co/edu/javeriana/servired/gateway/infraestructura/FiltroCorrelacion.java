@@ -29,7 +29,9 @@ public class FiltroCorrelacion implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        IdCorrelacion id = IdCorrelacion.desdeCabecera(
+        // Denuncias anónimas (ADR-09): el id se genera siempre aquí; uno enviado
+        // por el cliente podría servir para vincular la denuncia con su autor.
+        IdCorrelacion id = esDenuncia(exchange) ? IdCorrelacion.nuevo() : IdCorrelacion.desdeCabecera(
                 exchange.getRequest().getHeaders().getFirst(IdCorrelacion.CABECERA));
 
         ServerWebExchange conCorrelacion = exchange.mutate()
@@ -46,6 +48,10 @@ public class FiltroCorrelacion implements WebFilter {
                         .addKeyValue("estado", estado(conCorrelacion))
                         .addKeyValue("duracionMs", (System.nanoTime() - inicio) / 1_000_000)
                         .log("peticion atendida"));
+    }
+
+    static boolean esDenuncia(ServerWebExchange exchange) {
+        return exchange.getRequest().getPath().value().startsWith("/api/v1/denuncias");
     }
 
     private static int estado(ServerWebExchange exchange) {

@@ -34,7 +34,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"management.server.port=0", "servired.limites.autenticacion-por-minuto=1000",
-                "servired.limites.denuncias-por-minuto=3"})
+                "servired.limites.denuncias-por-minuto=4"})
 @AutoConfigureWebTestClient
 class GatewaySeguridadTest {
 
@@ -168,15 +168,32 @@ class GatewaySeguridadTest {
     }
 
     @Test
+    void laCorrelacionDeUnaDenunciaNuncaVieneDelCliente() {
+        String delCliente = UUID.randomUUID().toString();
+
+        String devuelto = cliente.post().uri("/api/v1/denuncias/x").header("X-Correlation-Id", delCliente).exchange()
+                .returnResult(String.class).getResponseHeaders().getFirst("X-Correlation-Id");
+
+        assertThat(devuelto).isNotEqualTo(delCliente);
+        assertThat(UUID.fromString(devuelto)).isNotNull();
+    }
+
+    @Test
     void lasDenunciasLleganSinCredencialesYTienenLimiteDeAbuso() {
         String ruta = "/api/v1/denuncias";
         cliente.post().uri(ruta).header("Authorization", token("CIUDADANO")).exchange().expectStatus().isOk();
         assertThat(AUTORIZACION_RECIBIDA.get(ruta)).isEqualTo("<ninguna>");
 
-        cliente.post().uri(ruta).exchange().expectStatus().isOk();
-        cliente.post().uri(ruta).exchange().expectStatus().isOk();
-        cliente.post().uri(ruta).exchange().expectStatus().isEqualTo(429)
-                .expectHeader().exists("Retry-After")
-                .expectHeader().contentType(MediaType.APPLICATION_PROBLEM_JSON);
+        // El contador es compartido con otras pruebas: se envía hasta superar el límite (4/min).
+        int limitadas = 0;
+        for (int i = 0; i < 6; i++) {
+            var r = cliente.post().uri(ruta).exchange().returnResult(String.class);
+            if (r.getStatus().value() == 429) {
+                limitadas++;
+                assertThat(r.getResponseHeaders().getFirst("Retry-After")).isNotBlank();
+                assertThat(r.getResponseHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
+            }
+        }
+        assertThat(limitadas).isPositive();
     }
 }
