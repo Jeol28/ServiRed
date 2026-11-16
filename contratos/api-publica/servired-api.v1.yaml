@@ -1,11 +1,11 @@
 # API pública de SERVI-RED expuesta por el API Gateway.
 # Es el ÚNICO contrato que consumen los portales web y las apps Android/iOS.
 # Versionado en la ruta (/api/v1); cambios incompatibles => /api/v2 (RNF-DAT3).
-# Estado: fase 2 (crear y consultar reporte). Cada fase agrega sus operaciones.
+# Estado: fase 3 (autenticación, cuentas y reportes). Cada fase agrega sus operaciones.
 openapi: 3.1.0
 info:
   title: SERVI-RED · API pública
-  version: 1.0.0-fase2
+  version: 1.0.0-fase3
   description: |
     Plataforma de reporte ciudadano y monitoreo de servicios públicos domiciliarios.
 
@@ -15,6 +15,17 @@ info:
     idempotente.
 
     **Errores:** formato `application/problem+json` (RFC 9457).
+
+    **Autenticación (RNF-SEG1):** `Authorization: Bearer <tokenAcceso>`. El token
+    es un JWT RS256 de 15 minutos emitido por `POST /api/v1/auth/login`; se renueva
+    con `POST /api/v1/auth/refrescar` (el token de refresco es de un solo uso y dura
+    14 días). Claims: `sub` (id de la cuenta), `rol` y, para operadores, `emp`.
+
+    **Roles (RNF-SEG2):** CIUDADANO, OPERADOR, REGULADOR, ADMINISTRADOR. Cada
+    operación indica en su descripción qué roles la pueden invocar.
+
+    **Límite de abuso (RNF-SEG5):** `/api/v1/auth/**` y `/api/v1/denuncias/**`
+    responden 429 con `Retry-After` al superar el límite por cliente.
   license:
     name: Uso académico · Pontificia Universidad Javeriana
 servers:
@@ -22,17 +33,21 @@ servers:
     description: Entorno local (Docker Compose)
 
 tags:
+  - name: autenticacion
+    description: Registro, inicio, renovación y cierre de sesión
+  - name: cuentas
+    description: Cuenta propia y administración de cuentas (RF-11)
   - name: reportes
     description: Cortes no programados (RF-1, RF-2)
   - name: salud
     description: Estado del gateway
 
 paths:
-  /actuator/health:
+  /readyz:
     get:
       tags: [salud]
       operationId: saludGateway
-      summary: Estado del gateway
+      summary: Estado del gateway (readiness)
       security: []
       responses:
         "200":
@@ -75,6 +90,7 @@ paths:
               schema: { $ref: "#/components/schemas/Reporte" }
         "400": { $ref: "#/components/responses/SolicitudInvalida" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
         "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
         "503": { $ref: "#/components/responses/NoDisponible" }
 
@@ -98,6 +114,229 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Reporte" }
         "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  # ------------------------------------------------------------ autenticación
+  /api/v1/auth/registro:
+    post:
+      tags: [autenticacion]
+      operationId: registrarCiudadano
+      summary: Registrar una cuenta de ciudadano (RF-11)
+      description: Pública. Exige autorizar el tratamiento de datos personales (Ley 1581 de 2012).
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevoCiudadano" }
+      responses:
+        "201":
+          description: Cuenta creada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cuenta" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "409": { $ref: "#/components/responses/Conflicto" }
+        "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
+
+  /api/v1/auth/login:
+    post:
+      tags: [autenticacion]
+      operationId: iniciarSesion
+      summary: Iniciar sesión
+      description: |
+        Pública. Un correo inexistente, una clave incorrecta o una cuenta
+        desactivada responden igual (401), para no revelar qué cuentas existen.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credenciales" }
+      responses:
+        "200":
+          description: Sesión iniciada (Cache-Control no-store)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sesion" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
+
+  /api/v1/auth/refrescar:
+    post:
+      tags: [autenticacion]
+      operationId: renovarSesion
+      summary: Renovar la sesión con el token de refresco
+      description: |
+        Pública. Rota el token: el anterior deja de servir. Presentar un token ya
+        usado revoca todas las sesiones de la cuenta (posible robo) y responde 401.
+        No reintente automáticamente con el mismo token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SolicitudRefresco" }
+      responses:
+        "200":
+          description: Nuevo par de tokens
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sesion" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
+
+  /api/v1/auth/cerrar-sesion:
+    post:
+      tags: [autenticacion]
+      operationId: cerrarSesion
+      summary: Cerrar la sesión (revoca el token de refresco)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SolicitudRefresco" }
+      responses:
+        "204": { description: Sesión cerrada (también si el token no existía) }
+
+  # ------------------------------------------------------------------ cuentas
+  /api/v1/cuentas/yo:
+    get:
+      tags: [cuentas]
+      operationId: consultarCuentaPropia
+      summary: Consultar la cuenta propia
+      description: Cualquier rol autenticado.
+      responses:
+        "200":
+          description: La cuenta del usuario del token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cuenta" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+    patch:
+      tags: [cuentas]
+      operationId: actualizarCuentaPropia
+      summary: Editar el nombre o cambiar la clave
+      description: Cambiar la clave exige la clave actual y cierra todas las sesiones.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CambiosCuentaPropia" }
+      responses:
+        "200":
+          description: Cuenta actualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cuenta" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+    delete:
+      tags: [cuentas]
+      operationId: suprimirCuentaPropia
+      summary: Suprimir la cuenta propia (derecho de supresión)
+      description: |
+        Anonimiza correo y nombre y revoca las sesiones. Los reportes se conservan
+        asociados a un identificador seudónimo. Un administrador no puede usarla.
+      responses:
+        "204": { description: Cuenta suprimida }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/cuentas:
+    post:
+      tags: [cuentas]
+      operationId: crearCuenta
+      summary: Crear una cuenta de cualquier rol (RF-11)
+      description: Solo ADMINISTRADOR. Un OPERADOR debe indicar su empresa prestadora.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevaCuentaPersonal" }
+      responses:
+        "201":
+          description: Cuenta creada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cuenta" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "409": { $ref: "#/components/responses/Conflicto" }
+    get:
+      tags: [cuentas]
+      operationId: listarCuentas
+      summary: Listar cuentas
+      description: Solo ADMINISTRADOR.
+      parameters:
+        - { name: rol, in: query, schema: { $ref: "#/components/schemas/Rol" } }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: Página de cuentas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginaCuentas" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/cuentas/{idCuenta}:
+    parameters:
+      - { name: idCuenta, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [cuentas]
+      operationId: consultarCuenta
+      summary: Consultar una cuenta
+      description: Solo ADMINISTRADOR.
+      responses:
+        "200":
+          description: La cuenta
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cuenta" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    patch:
+      tags: [cuentas]
+      operationId: actualizarCuenta
+      summary: Editar, activar o desactivar una cuenta
+      description: |
+        Solo ADMINISTRADOR. Desactivar revoca las sesiones; el token de acceso ya
+        emitido sigue valiendo hasta su expiración (máximo 15 min). Un
+        administrador no puede desactivarse a sí mismo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CambiosCuenta" }
+      responses:
+        "200":
+          description: Cuenta actualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cuenta" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    delete:
+      tags: [cuentas]
+      operationId: eliminarCuenta
+      summary: Eliminar (anonimizar) una cuenta
+      description: Solo ADMINISTRADOR; no puede eliminar su propia cuenta.
+      responses:
+        "204": { description: Cuenta eliminada }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
 
 components:
@@ -106,7 +345,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Emitido por el servicio de identidad (fase 3).
+      description: JWT RS256 emitido por Identidad (POST /api/v1/auth/login).
 
   parameters:
     IdCorrelacion:
@@ -191,6 +430,109 @@ components:
           type: array
           items: { $ref: "#/components/schemas/EntradaHistoria" }
 
+    Rol:
+      type: string
+      enum: [CIUDADANO, OPERADOR, REGULADOR, ADMINISTRADOR]
+
+    Clave:
+      type: string
+      minLength: 10
+      maxLength: 64
+      description: Entre 10 y 64 caracteres (máximo 72 bytes) y distinta del correo.
+
+    NuevoCiudadano:
+      type: object
+      required: [correo, clave, aceptaTratamientoDatos]
+      additionalProperties: false
+      properties:
+        correo: { type: string, format: email, maxLength: 254 }
+        clave: { $ref: "#/components/schemas/Clave" }
+        nombre: { type: string, maxLength: 120 }
+        aceptaTratamientoDatos:
+          type: boolean
+          const: true
+          description: Autorización de tratamiento de datos personales (Ley 1581 de 2012)
+
+    Credenciales:
+      type: object
+      required: [correo, clave]
+      additionalProperties: false
+      properties:
+        correo: { type: string }
+        clave: { type: string }
+
+    SolicitudRefresco:
+      type: object
+      required: [tokenRefresco]
+      additionalProperties: false
+      properties:
+        tokenRefresco: { type: string }
+
+    Sesion:
+      type: object
+      required: [tokenAcceso, tipoToken, expiraEn, tokenRefresco, cuenta]
+      properties:
+        tokenAcceso: { type: string, description: JWT para la cabecera Authorization }
+        tipoToken: { type: string, const: Bearer }
+        expiraEn: { type: integer, description: Segundos de vigencia del token de acceso }
+        tokenRefresco: { type: string, description: Opaco, de un solo uso; guárdelo de forma segura }
+        cuenta:
+          type: object
+          required: [idCuenta, rol]
+          properties:
+            idCuenta: { type: string, format: uuid }
+            rol: { $ref: "#/components/schemas/Rol" }
+            nombre: { type: string }
+            idEmpresa: { type: string, format: uuid }
+
+    Cuenta:
+      type: object
+      required: [idCuenta, correo, rol, activa, creadaEn]
+      properties:
+        idCuenta: { type: string, format: uuid }
+        correo: { type: string, format: email }
+        rol: { $ref: "#/components/schemas/Rol" }
+        idEmpresa: { type: string, format: uuid, description: Solo para OPERADOR }
+        nombre: { type: string }
+        activa: { type: boolean }
+        creadaEn: { type: string, format: date-time }
+
+    PaginaCuentas:
+      type: object
+      required: [elementos, total, pagina, tamano]
+      properties:
+        elementos: { type: array, items: { $ref: "#/components/schemas/Cuenta" } }
+        total: { type: integer }
+        pagina: { type: integer }
+        tamano: { type: integer }
+
+    NuevaCuentaPersonal:
+      type: object
+      required: [correo, clave, rol]
+      additionalProperties: false
+      properties:
+        correo: { type: string, format: email, maxLength: 254 }
+        clave: { $ref: "#/components/schemas/Clave" }
+        nombre: { type: string, maxLength: 120 }
+        rol: { $ref: "#/components/schemas/Rol" }
+        idEmpresa: { type: string, format: uuid, description: Obligatoria si rol = OPERADOR }
+
+    CambiosCuenta:
+      type: object
+      additionalProperties: false
+      properties:
+        nombre: { type: string, maxLength: 120 }
+        activa: { type: boolean }
+        idEmpresa: { type: string, format: uuid }
+
+    CambiosCuentaPropia:
+      type: object
+      additionalProperties: false
+      properties:
+        nombre: { type: string, maxLength: 120 }
+        claveActual: { type: string }
+        claveNueva: { $ref: "#/components/schemas/Clave" }
+
     Problema:
       type: object
       description: RFC 9457 Problem Details
@@ -216,6 +558,16 @@ components:
           schema: { $ref: "#/components/schemas/Problema" }
     NoAutenticado:
       description: Falta un token válido (RNF-SEG1)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    Prohibido:
+      description: El rol del token no tiene permiso para esta operación (RNF-SEG2)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    Conflicto:
+      description: El recurso ya existe (p. ej. correo registrado)
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problema" }

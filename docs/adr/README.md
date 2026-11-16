@@ -13,3 +13,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-09](ADR-09-denuncias-anonimas.md) | Anonimato de las denuncias | Aceptada |
 | [ADR-10](ADR-10-topologia-rabbitmq.md) | Topología de RabbitMQ: reintentos y mensajes fallidos | Aceptada |
 | [ADR-11](ADR-11-alcance-mvp.md) | Alcance del MVP: notificaciones, observabilidad y seguridad entre servicios | Aceptada |
+| [ADR-12](ADR-12-identidad-y-control-de-acceso.md) | Identidad, tokens y control de acceso | Aceptada |

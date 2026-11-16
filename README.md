@@ -68,14 +68,18 @@ Con eso quedan arriba PostgreSQL local, RabbitMQ (con su topología), los siete
 microservicios y el gateway en **http://localhost:8080**.
 
 ```bash
-curl -i http://localhost:8080/actuator/health        # gateway
+curl -i http://localhost:8080/readyz                 # gateway
 python3 infra/rabbitmq/verificar-topologia.py        # prueba de humo de RabbitMQ
-python3 pruebas/e2e/flujo-reporte.py                 # prueba de punta a punta (fase 2)
+python3 pruebas/e2e/flujo-reporte.py                 # e2e: reporte de punta a punta
+python3 pruebas/e2e/identidad-y-acceso.py            # e2e: cuentas, tokens y RBAC
 docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
 ```
 
 - Consola de RabbitMQ: http://127.0.0.1:15672 (usuario y clave de `.env`).
+- Primer administrador: `IDENTIDAD_ADMIN_CORREO` / `IDENTIDAD_ADMIN_CLAVE` de `.env`.
+- Clave de firma de los JWT: `echo "IDENTIDAD_JWT_CLAVE_PRIVADA=$(sh infra/generar-clave-jwt.sh)"`
+  y péguela en `.env` (si se deja vacía se usa una clave efímera).
 - Ningún microservicio, ni la base de datos, publica puertos: solo el gateway.
 
 ### Usar Supabase en lugar del PostgreSQL local
@@ -94,12 +98,16 @@ cd servicios/atencion && dotnet test Atencion.slnx
 
 # De punta a punta, con el compose arriba (usa el PostgreSQL local)
 python3 pruebas/e2e/flujo-reporte.py
+python3 pruebas/e2e/identidad-y-acceso.py   # al final: agota el límite de /auth por un minuto
 ```
 
 La prueba e2e crea, repite (idempotencia) y consulta un reporte por el gateway,
 verifica que Atención abra el caso, que el `X-Correlation-Id` aparezca en los
 logs de los cuatro servicios y que, **con Atención detenida, el reporte se
-registre igual** y el caso se abra al volver (RNF-DC2).
+registre igual** y el caso se abra al volver (RNF-DC2). La de identidad prueba
+registro, login, tokens sin datos personales, mínimo privilegio por rol, rotación
+del token de refresco, desactivación, supresión, ausencia de secretos en los logs
+y el límite de abuso.
 
 Las pruebas de integración usan Docker (Testcontainers). Con **Colima** exporte antes:
 
@@ -113,6 +121,8 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 - **Correlación:** `X-Correlation-Id` (UUID) en HTTP, eventos y logs; es la clave de idempotencia.
 - **Eventos:** exchange topic `servired.eventos`, routing key `<agregado>.<evento>.v<N>`,
   colas quorum con reintento y DLQ ([ADR-10](docs/adr/ADR-10-topologia-rabbitmq.md)).
+- **Seguridad:** JWT RS256 de Identidad validado en el gateway y en cada servicio;
+  RBAC con mínimo privilegio ([ADR-12](docs/adr/ADR-12-identidad-y-control-de-acceso.md)).
 - **Observabilidad:** logs JSON por stdout sin datos personales; health
   (`/actuator/health` en Java, `/health/live` y `/health/ready` en .NET) y métricas
   Prometheus (`/actuator/prometheus` y `/metrics`).
@@ -125,8 +135,8 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 |---|---|---|
 | 1 | Monorepo, Docker Compose, RabbitMQ, esqueletos con health, contratos iniciales | ✅ |
 | 2 | Corte vertical: crear y consultar reporte + `reporte.creado` consumido por atención | ✅ |
-| 3 | Identidad: registro, login, JWT y RBAC en el gateway | ⏳ |
-| 4 | Reportes completo: restablecimiento, validación, evidencias, denuncias | |
+| 3 | Identidad: registro, login, JWT y RBAC en el gateway | ✅ |
+| 4 | Reportes completo: restablecimiento, validación, evidencias, denuncias | ⏳ |
 | 5 | Atención: casos, estados, asignación | |
 | 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | |
 | 7 | Auditoría y alertas | |

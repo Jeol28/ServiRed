@@ -11,11 +11,11 @@
 #  - Las operaciones que generan un evento reciben el evento ya construido por
 #    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
 #    transacción y lo publica después (decisión B).
-# Estado: fase 2 (guardarReporte, consultarReporte, resolverMunicipio, abrirCaso).
+# Estado: fase 3 (reportes, casos, catálogo, cuentas y sesiones).
 openapi: 3.1.0
 info:
   title: SERVI-RED · Persistencia (API interna)
-  version: 1.0.0-fase2
+  version: 1.0.0-fase3
 servers:
   - url: http://persistencia:8080
     description: Red interna de Docker Compose
@@ -114,6 +114,181 @@ paths:
         "409":
           description: Municipio inexistente
 
+  # ---------------------------------------------- identidad (solo `identidad`)
+  /interno/v1/cuentas/registrar:
+    post:
+      operationId: registrarCuenta
+      summary: Guardar una cuenta nueva (guardarUsuario)
+      description: Idempotente por X-Correlation-Id. 409 si el correo ya existe o la empresa no existe.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CuentaAGuardar" }
+      responses:
+        "201": { description: Creada, content: { application/json: { schema: { $ref: "#/components/schemas/CuentaGuardada" } } } }
+        "200": { description: Reintento ya procesado, content: { application/json: { schema: { $ref: "#/components/schemas/CuentaGuardada" } } } }
+        "409": { description: Correo ya registrado o viola una regla de integridad }
+
+  /interno/v1/cuentas/credenciales:
+    post:
+      operationId: buscarCredenciales
+      summary: Credenciales para verificar un inicio de sesión
+      description: El correo va en el cuerpo (nunca en la URL). Única operación que devuelve el hash de la clave.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [correo], properties: { correo: { type: string } } }
+      responses:
+        "200":
+          description: Credenciales
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [idCuenta, hashClave, rol, activa]
+                properties:
+                  idCuenta: { type: string, format: uuid }
+                  hashClave: { type: string }
+                  rol: { type: string }
+                  idEmpresa: { type: string, format: uuid }
+                  nombre: { type: string }
+                  activa: { type: boolean }
+        "404": { description: No existe (o fue eliminada) }
+
+  /interno/v1/cuentas:
+    get:
+      operationId: listarCuentas
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: rol, in: query, schema: { type: string } }
+        - { name: pagina, in: query, schema: { type: integer } }
+        - { name: tamano, in: query, schema: { type: integer, maximum: 100 } }
+      responses:
+        "200":
+          description: Página
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos: { type: array, items: { $ref: "#/components/schemas/CuentaGuardada" } }
+                  total: { type: integer }
+                  pagina: { type: integer }
+                  tamano: { type: integer }
+
+  /interno/v1/cuentas/{idCuenta}:
+    get:
+      operationId: consultarCuenta
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCuenta, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Cuenta, content: { application/json: { schema: { $ref: "#/components/schemas/CuentaGuardada" } } } }
+        "404": { description: No existe }
+
+  /interno/v1/cuentas/{idCuenta}/actualizar:
+    post:
+      operationId: actualizarCuenta
+      description: Cambios parciales. Desactivar o cambiar el hash de la clave revoca todas las sesiones.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCuenta, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre: { type: string }
+                activa: { type: boolean }
+                idEmpresa: { type: string, format: uuid }
+                hashClave: { type: string }
+      responses:
+        "200": { description: Actualizada, content: { application/json: { schema: { $ref: "#/components/schemas/CuentaGuardada" } } } }
+        "404": { description: No existe }
+
+  /interno/v1/cuentas/{idCuenta}/eliminar:
+    post:
+      operationId: eliminarCuenta
+      description: Anonimiza correo y nombre, invalida la clave y revoca las sesiones.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCuenta, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Eliminada }
+        "404": { description: No existe }
+
+  /interno/v1/sesiones/abrir:
+    post:
+      operationId: abrirSesion
+      description: Solo se guarda el SHA-256 (hex) del token de refresco.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idSesion, idCuenta, hashRefresco, expiraEn]
+              properties:
+                idSesion: { type: string, format: uuid }
+                idCuenta: { type: string, format: uuid }
+                hashRefresco: { type: string, pattern: "^[0-9a-f]{64}$" }
+                expiraEn: { type: string, format: date-time }
+      responses:
+        "201": { description: Sesión abierta }
+
+  /interno/v1/sesiones/rotar:
+    post:
+      operationId: rotarSesion
+      description: |
+        Revoca la sesión actual y abre la nueva en una transacción. Si la sesión
+        ya estaba revocada (reutilización) revoca todas las de la cuenta.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hashRefrescoActual, idSesionNueva, hashRefrescoNuevo, expiraEn]
+              properties:
+                hashRefrescoActual: { type: string, pattern: "^[0-9a-f]{64}$" }
+                idSesionNueva: { type: string, format: uuid }
+                hashRefrescoNuevo: { type: string, pattern: "^[0-9a-f]{64}$" }
+                expiraEn: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Rotada
+          content:
+            application/json:
+              schema: { type: object, properties: { cuenta: { $ref: "#/components/schemas/CuentaGuardada" } } }
+        "409":
+          description: Sesión inválida
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  motivo: { type: string, enum: [INEXISTENTE, EXPIRADA, CUENTA_INACTIVA, REUTILIZADA] }
+
+  /interno/v1/sesiones/cerrar:
+    post:
+      operationId: cerrarSesion
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [hashRefresco], properties: { hashRefresco: { type: string } } }
+      responses:
+        "204": { description: Cerrada (idempotente) }
+
   /interno/v1/catalogo/municipio-cercano:
     get:
       operationId: resolverMunicipio
@@ -204,6 +379,31 @@ components:
                   estado: { type: string }
                   fecha: { type: string, format: date-time }
                   detalle: { type: string }
+
+    CuentaAGuardar:
+      type: object
+      required: [idCuenta, correo, hashClave, rol, creadaEn]
+      properties:
+        idCuenta: { type: string, format: uuid }
+        correo: { type: string, description: Normalizado por Identidad }
+        hashClave: { type: string, description: bcrypt }
+        rol: { type: string, enum: [CIUDADANO, OPERADOR, REGULADOR, ADMINISTRADOR] }
+        idEmpresa: { type: string, format: uuid, description: Obligatoria solo para OPERADOR }
+        nombre: { type: string, maxLength: 120 }
+        consentimientoDatosEn: { type: string, format: date-time }
+        creadaEn: { type: string, format: date-time }
+
+    CuentaGuardada:
+      type: object
+      required: [idCuenta, correo, rol, activa, creadaEn]
+      properties:
+        idCuenta: { type: string, format: uuid }
+        correo: { type: string }
+        rol: { type: string }
+        idEmpresa: { type: string, format: uuid }
+        nombre: { type: string }
+        activa: { type: boolean }
+        creadaEn: { type: string, format: date-time }
 
     CasoAAbrir:
       type: object

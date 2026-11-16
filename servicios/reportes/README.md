@@ -42,15 +42,16 @@ con el mismo `X-Correlation-Id`).
 (tolerancia de 5 min) y de máximo 30 días; descripción de hasta 1.000 caracteres.
 El municipio se resuelve en Persistencia (centroide DIVIPOLA más cercano).
 
-> **Provisional (fase 2):** sin Identidad todavía, todas las peticiones se
-> atribuyen al ciudadano de desarrollo `servired.desarrollo.id-ciudadano`
-> (`CiudadanoActual`). La fase 3 lo reemplaza por el `sub` del JWT.
+**Seguridad (fase 3):** revalida el JWT con el JWKS de Identidad (emisor y
+audiencia); solo el rol CIUDADANO accede, y el ciudadano es el claim `sub`
+(`CiudadanoActual`). Un ciudadano solo ve sus propios reportes.
 
 ## Variables
 `PERSISTENCIA_URL`, `PERSISTENCIA_CLAVE` (en el compose viene de
-`PERSISTENCIA_CLAVE_REPORTES`) y `RABBITMQ_*`.
+`PERSISTENCIA_CLAVE_REPORTES`), `IDENTIDAD_JWKS_URL` y `RABBITMQ_*`.
 
 ## Estado
 - Fase 1 ✅ esqueleto, correlación, health (con RabbitMQ) y métricas.
 - Fase 2 ✅ crear y consultar reporte de punta a punta con `reporte.creado`.
+- Fase 3 ✅ JWT revalidado y ciudadano tomado del token.
 - Fase 4: restablecimiento, validación, evidencias y denuncias.

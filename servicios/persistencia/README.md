@@ -40,6 +40,8 @@ Migraciones en `src/main/resources/db/migracion`.
 | `consultarReporte` | `GET /interno/v1/reportes/{id}` | reportes |
 | `abrirCaso` | `POST /interno/v1/casos/abrir` | atencion |
 | `resolverMunicipio` | `GET /interno/v1/catalogo/municipio-cercano` | reportes, atencion, indicadores |
+| `registrarCuenta`, `buscarCredenciales`, `consultarCuenta`, `listarCuentas`, `actualizarCuenta`, `eliminarCuenta` | `/interno/v1/cuentas/**` | identidad |
+| `abrirSesion`, `rotarSesion`, `cerrarSesion` | `/interno/v1/sesiones/**` | identidad |
 
 - **Autenticación:** cada servicio envía su clave en `X-Clave-Servicio`
   (`PERSISTENCIA_CLAVE_<SERVICIO>`, mínimo 16 caracteres). Los permisos por
@@ -66,4 +68,5 @@ Migraciones en `src/main/resources/db/migracion`.
 
 ## Estado
 - Fase 1 ✅ esquemas, tablas de outbox e idempotencia, health y métricas.
-- Fase 2 ✅ operaciones de la tabla anterior, relay del outbox y datos semilla.
+- Fase 2 ✅ reportes, casos, catálogo, relay del outbox y datos semilla.
+- Fase 3 ✅ cuentas y sesiones (esquema `identidad`).
