@@ -29,6 +29,10 @@ spring:
     publisher-returns: true
   jackson:
     default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 7MB
 
 servired:
   # Clave de cada servicio que puede invocar operaciones (mínimo 16 caracteres;
@@ -39,6 +43,15 @@ servired:
     atencion: ${PERSISTENCIA_CLAVE_ATENCION:}
     indicadores: ${PERSISTENCIA_CLAVE_INDICADORES:}
     auditoria: ${PERSISTENCIA_CLAVE_AUDITORIA:}
+  almacen:
+    # Endpoint S3: SeaweedFS local por defecto; para Supabase Storage use
+    # https://<proyecto>.supabase.co/storage/v1/s3 con sus claves S3.
+    url: ${ALMACEN_S3_URL:http://almacen:8333}
+    region: ${ALMACEN_S3_REGION:us-east-1}
+    acceso: ${ALMACEN_S3_ACCESO:servired}
+    secreto: ${ALMACEN_S3_SECRETO:servired}
+    bucket: ${ALMACEN_S3_BUCKET:evidencias}
+    crear-bucket: ${ALMACEN_S3_CREAR_BUCKET:true}
   outbox:
     intervalo-ms: 500
     tamano-lote: 50
@@ -54,7 +67,7 @@ management:
         enabled: true
       group:
         readiness:
-          include: readinessState,db,rabbit
+          include: readinessState,db,rabbit,almacen
   metrics:
     tags:
       servicio: ${spring.application.name}

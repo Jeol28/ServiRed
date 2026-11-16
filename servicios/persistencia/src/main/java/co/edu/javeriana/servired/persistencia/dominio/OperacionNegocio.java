@@ -10,6 +10,13 @@ import java.util.Set;
 public enum OperacionNegocio {
     GUARDAR_REPORTE("guardarReporte", EnumSet.of(ServicioCliente.REPORTES)),
     CONSULTAR_REPORTE("consultarReporte", EnumSet.of(ServicioCliente.REPORTES)),
+    LISTAR_REPORTES_CIUDADANO("listarReportesDeCiudadano", EnumSet.of(ServicioCliente.REPORTES)),
+    BUSCAR_REPORTES_CERCANOS("buscarReportesCercanos", EnumSet.of(ServicioCliente.REPORTES)),
+    REGISTRAR_RESTABLECIMIENTO("registrarRestablecimiento", EnumSet.of(ServicioCliente.REPORTES)),
+    REGISTRAR_VALIDACION("registrarValidacion", EnumSet.of(ServicioCliente.REPORTES)),
+    GUARDAR_EVIDENCIA("guardarEvidencia", EnumSet.of(ServicioCliente.REPORTES)),
+    OBTENER_EVIDENCIA("obtenerEvidencia", EnumSet.of(ServicioCliente.REPORTES)),
+    GUARDAR_DENUNCIA("guardarDenuncia", EnumSet.of(ServicioCliente.REPORTES)),
     ABRIR_CASO("abrirCaso", EnumSet.of(ServicioCliente.ATENCION)),
     REGISTRAR_CUENTA("registrarCuenta", EnumSet.of(ServicioCliente.IDENTIDAD)),
     BUSCAR_CREDENCIALES("buscarCredenciales", EnumSet.of(ServicioCliente.IDENTIDAD)),

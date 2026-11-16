@@ -41,7 +41,8 @@ class GuardarReporteTest {
         public Optional<ReporteGuardado> buscar(UUID id) {
             return Optional.ofNullable(reportes.get(id)).map(r -> new ReporteGuardado(r.idReporte(),
                     r.idCiudadano(), r.tipoServicio(), r.latitud(), r.longitud(), r.codigoMunicipio(), "X",
-                    r.inicioEstimado(), r.magnitud(), r.descripcion(), "RECIBIDO", r.fechaRegistro(), List.of()));
+                    r.inicioEstimado(), r.magnitud(), r.descripcion(), "RECIBIDO", r.fechaRegistro(), null, null, 0,
+                    ReporteGuardado.Conteo.VACIO, ReporteGuardado.Conteo.VACIO, List.of(), List.of()));
         }
     };
 

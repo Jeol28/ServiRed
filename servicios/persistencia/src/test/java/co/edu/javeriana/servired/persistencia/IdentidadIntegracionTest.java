@@ -46,6 +46,15 @@ class IdentidadIntegracionTest {
     @ServiceConnection
     static RabbitMQContainer rabbit = new RabbitMQContainer("rabbitmq:4.1-management-alpine");
 
+    @Container
+    static org.testcontainers.containers.GenericContainer<?> almacen =
+            co.edu.javeriana.servired.persistencia.soporte.AlmacenDePrueba.crear();
+
+    @org.springframework.test.context.DynamicPropertySource
+    static void propiedadesAlmacen(org.springframework.test.context.DynamicPropertyRegistry r) {
+        co.edu.javeriana.servired.persistencia.soporte.AlmacenDePrueba.registrar(almacen, r);
+    }
+
     @Autowired
     MockMvc mvc;
 

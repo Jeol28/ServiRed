@@ -2,7 +2,9 @@ package co.edu.javeriana.servired.persistencia.infraestructura.jdbc;
 
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioReportes;
 import co.edu.javeriana.servired.persistencia.dominio.ReporteGuardado;
+import co.edu.javeriana.servired.persistencia.dominio.ReporteGuardado.Conteo;
 import co.edu.javeriana.servired.persistencia.dominio.ReporteGuardado.EntradaHistoria;
+import co.edu.javeriana.servired.persistencia.dominio.ReporteGuardado.EvidenciaGuardada;
 import co.edu.javeriana.servired.persistencia.dominio.ReporteNuevo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -65,28 +67,59 @@ public class RepositorioReportesJdbc implements RepositorioReportes {
                 .query((rs, n) -> new EntradaHistoria(rs.getString("estado"),
                         instante(rs, "fecha"), rs.getString("detalle")))
                 .list();
-        return jdbc.sql("""
-                        SELECT r.*, m.nombre AS nombre_municipio
-                        FROM reportes.reportes r
-                        JOIN catalogo.municipios m ON m.codigo = r.codigo_municipio
-                        WHERE r.id = :id
+        List<EvidenciaGuardada> evidencias = jdbc.sql("""
+                        SELECT id, tipo_contenido, tamano_bytes, creada_en FROM reportes.evidencias
+                        WHERE id_reporte = :id ORDER BY creada_en, id
                         """)
                 .param("id", idReporte)
-                .query((rs, n) -> new ReporteGuardado(
-                        rs.getObject("id", UUID.class),
-                        rs.getObject("id_ciudadano", UUID.class),
-                        rs.getString("tipo_servicio"),
-                        rs.getDouble("latitud"),
-                        rs.getDouble("longitud"),
-                        rs.getString("codigo_municipio"),
-                        rs.getString("nombre_municipio"),
-                        instante(rs, "inicio_estimado"),
-                        rs.getString("magnitud"),
-                        rs.getString("descripcion"),
-                        rs.getString("estado"),
-                        instante(rs, "fecha_registro"),
-                        historia))
+                .query((rs, n) -> new EvidenciaGuardada(rs.getObject("id", UUID.class),
+                        rs.getString("tipo_contenido"), rs.getInt("tamano_bytes"), instante(rs, "creada_en")))
+                .list();
+        return jdbc.sql(CONSULTA_REPORTE + " WHERE r.id = :id" + AGRUPAR)
+                .param("id", idReporte)
+                .query((rs, n) -> mapear(rs, historia, evidencias))
                 .optional();
+    }
+
+    /** Reporte con su municipio y el conteo de validaciones por objeto. */
+    static final String CONSULTA_REPORTE = """
+            SELECT r.*, m.nombre AS nombre_municipio,
+                   count(*) FILTER (WHERE v.objeto = 'CORTE' AND v.sentido = 'CONFIRMA') AS corte_confirma,
+                   count(*) FILTER (WHERE v.objeto = 'CORTE' AND v.sentido = 'CONTROVIERTE') AS corte_controvierte,
+                   count(*) FILTER (WHERE v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONFIRMA') AS rest_confirma,
+                   count(*) FILTER (WHERE v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONTROVIERTE') AS rest_controvierte
+            FROM reportes.reportes r
+            JOIN catalogo.municipios m ON m.codigo = r.codigo_municipio
+            LEFT JOIN reportes.validaciones v ON v.id_reporte = r.id
+            """;
+
+    static final String AGRUPAR = " GROUP BY r.id, m.nombre";
+
+    static ReporteGuardado mapear(ResultSet rs, List<EntradaHistoria> historia, List<EvidenciaGuardada> evidencias)
+            throws SQLException {
+        Timestamp restablecido = rs.getTimestamp("fecha_restablecimiento");
+        int duracion = rs.getInt("duracion_minutos");
+        boolean sinDuracion = rs.wasNull();
+        return new ReporteGuardado(
+                rs.getObject("id", UUID.class),
+                rs.getObject("id_ciudadano", UUID.class),
+                rs.getString("tipo_servicio"),
+                rs.getDouble("latitud"),
+                rs.getDouble("longitud"),
+                rs.getString("codigo_municipio"),
+                rs.getString("nombre_municipio"),
+                instante(rs, "inicio_estimado"),
+                rs.getString("magnitud"),
+                rs.getString("descripcion"),
+                rs.getString("estado"),
+                instante(rs, "fecha_registro"),
+                restablecido == null ? null : restablecido.toInstant(),
+                sinDuracion ? null : duracion,
+                rs.getInt("version_validaciones"),
+                new Conteo(rs.getInt("corte_confirma"), rs.getInt("corte_controvierte")),
+                new Conteo(rs.getInt("rest_confirma"), rs.getInt("rest_controvierte")),
+                historia,
+                evidencias);
     }
 
     static Instant instante(ResultSet rs, String columna) throws SQLException {

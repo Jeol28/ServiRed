@@ -1,6 +1,8 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.web;
 
 import co.edu.javeriana.servired.persistencia.dominio.AccesoDenegado;
+import co.edu.javeriana.servired.persistencia.dominio.Conflicto;
+import co.edu.javeriana.servired.persistencia.dominio.RecursoNoEncontrado;
 import co.edu.javeriana.servired.persistencia.dominio.SolicitudRechazada;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,18 @@ public class ManejadorErrores {
         return problema(HttpStatus.FORBIDDEN, "Prohibido", e.getMessage());
     }
 
+    @ExceptionHandler(Conflicto.class)
+    ProblemDetail conflicto(Conflicto e) {
+        ProblemDetail p = problema(HttpStatus.CONFLICT, "Conflicto", e.getMessage());
+        p.setProperty("motivo", e.motivo());
+        return p;
+    }
+
+    @ExceptionHandler(RecursoNoEncontrado.class)
+    ProblemDetail noEncontrado(RecursoNoEncontrado e) {
+        return problema(HttpStatus.NOT_FOUND, "No encontrado", e.getMessage());
+    }
+
     @ExceptionHandler(SolicitudRechazada.class)
     ProblemDetail rechazada(SolicitudRechazada e) {
         return problema(HttpStatus.CONFLICT, "Solicitud rechazada", e.getMessage());
@@ -37,7 +51,9 @@ public class ManejadorErrores {
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
-            IllegalArgumentException.class})
+            IllegalArgumentException.class, org.springframework.web.multipart.MultipartException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class})
     ProblemDetail invalida(Exception e) {
         return problema(HttpStatus.BAD_REQUEST, "Solicitud inválida", "Datos inválidos");
     }
