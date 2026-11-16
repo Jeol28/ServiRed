@@ -97,6 +97,14 @@ public class ManejadorErrores {
                 "No fue posible registrar la solicitud; intente de nuevo con el mismo X-Correlation-Id");
     }
 
+    /** Cualquier error no previsto: 500 sin detalles internos, con el correlationId para rastrearlo. */
+    @ExceptionHandler(Exception.class)
+    ProblemDetail inesperado(Exception e) {
+        log.error("error no previsto", e);
+        return problema(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno",
+                "Ocurrió un error inesperado; use el correlationId para reportarlo");
+    }
+
     private static ProblemDetail problema(HttpStatus estado, String titulo, String detalle) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(estado, detalle);
         p.setTitle(titulo);

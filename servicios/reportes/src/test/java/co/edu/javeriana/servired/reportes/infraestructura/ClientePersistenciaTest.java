@@ -92,4 +92,32 @@ class ClientePersistenciaTest {
 
         assertThat(cliente.buscar(id, correlacion)).isEmpty();
     }
+
+    @Test
+    void enviaLaDenunciaComoMultipartConSuFoto() {
+        var denuncia = co.edu.javeriana.servired.reportes.dominio.NuevaDenuncia.recibir(TipoServicio.ENERGIA,
+                new Ubicacion(10.98, -74.81), "Conexión directa al poste", Instant.parse("2026-11-16T12:00:00Z"));
+        var foto = new co.edu.javeriana.servired.reportes.aplicacion.Vistas.ImagenSaneada("image/png",
+                new byte[]{(byte) 0x89, 'P', 'N', 'G'}, 1, 1);
+        servidor.expect(requestTo(URL + "/interno/v1/denuncias"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("X-Correlation-Id", correlacion.valor()))
+                .andExpect(r -> {
+                    String cuerpo = ((org.springframework.mock.http.client.MockClientHttpRequest) r).getBodyAsString();
+                    assertThat(r.getHeaders().getContentType().toString()).startsWith("multipart/form-data");
+                    assertThat(cuerpo).contains("name=\"solicitud\"", "name=\"foto\"", "\"codigoMunicipio\":\"08001\"",
+                            "denuncia.recibida");
+                })
+                .andRespond(withStatus(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body("""
+                        {"idDenuncia":"%s","tipoServicio":"ENERGIA","codigoMunicipio":"08001",
+                         "estado":"PENDIENTE_VALIDACION","fechaRecepcion":"2026-11-16T12:00:00Z","tieneEvidencia":true}"""
+                        .formatted(denuncia.idDenuncia())));
+
+        var r = cliente.guardarDenuncia(denuncia, "08001", foto,
+                co.edu.javeriana.servired.reportes.aplicacion.EventosReporte.denunciaRecibida(denuncia, "08001", true,
+                        correlacion), correlacion);
+
+        assertThat(r.tieneEvidencia()).isTrue();
+        servidor.verify();
+    }
 }

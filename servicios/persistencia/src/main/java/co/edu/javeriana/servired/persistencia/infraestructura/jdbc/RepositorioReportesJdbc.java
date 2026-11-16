@@ -61,7 +61,7 @@ public class RepositorioReportesJdbc implements RepositorioReportes {
     public Optional<ReporteGuardado> buscar(UUID idReporte) {
         List<EntradaHistoria> historia = jdbc.sql("""
                         SELECT estado, fecha, detalle FROM reportes.historia_reporte
-                        WHERE id_reporte = :id ORDER BY fecha, id
+                        WHERE id_reporte = :id ORDER BY id
                         """)
                 .param("id", idReporte)
                 .query((rs, n) -> new EntradaHistoria(rs.getString("estado"),

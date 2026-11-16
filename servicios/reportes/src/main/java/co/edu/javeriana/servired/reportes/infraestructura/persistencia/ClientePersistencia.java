@@ -32,7 +32,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -184,23 +186,23 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
     @Override
     public DenunciaRecibida guardarDenuncia(NuevaDenuncia d, String codigoMunicipio, ImagenSaneada foto,
                                             SobreEvento evento, IdCorrelacion correlacion) {
-        var partes = new MultipartBodyBuilder();
-        partes.part("solicitud", aJson(Map.of(
+        var partes = new LinkedMultiValueMap<String, Object>();
+        partes.add("solicitud", parte(aJson(Map.of(
                 "denuncia", Map.of("idDenuncia", d.idDenuncia(), "tipoServicio", d.tipoServicio().name(),
                         "latitud", d.ubicacion().latitud(), "longitud", d.ubicacion().longitud(),
                         "codigoMunicipio", codigoMunicipio, "descripcion", d.descripcion(),
                         "fechaRecepcion", d.fechaRecepcion()),
-                "evento", evento)), MediaType.APPLICATION_JSON);
+                "evento", evento)), MediaType.APPLICATION_JSON, null));
         if (foto != null) {
             String nombre = "image/png".equals(foto.tipoContenido()) ? "foto.png" : "foto.jpg";
-            partes.part("foto", new ByteArrayResource(foto.contenido()) {
+            partes.add("foto", parte(new ByteArrayResource(foto.contenido()) {
                 @Override
                 public String getFilename() {
                     return nombre;
                 }
-            }, MediaType.parseMediaType(foto.tipoContenido()));
+            }, MediaType.parseMediaType(foto.tipoContenido()), nombre));
         }
-        var cuerpo = partes.build();
+        var cuerpo = partes;
         var r = conReintentos("guardarDenuncia", () -> http.post()
                 .uri("/interno/v1/denuncias")
                 .header(CABECERA_CORRELACION, correlacion.valor())
@@ -212,6 +214,12 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
     }
 
     // --------------------------------------------------------------- auxiliares
+    private static HttpEntity<Object> parte(Object contenido, MediaType tipo, String archivo) {
+        HttpHeaders cabeceras = new HttpHeaders();
+        cabeceras.setContentType(tipo);
+        return new HttpEntity<>(contenido, cabeceras);
+    }
+
     private String aJson(Object valor) {
         try {
             return json.writeValueAsString(valor);
