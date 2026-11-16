@@ -11,6 +11,15 @@ public enum OperacionNegocio {
     GUARDAR_REPORTE("guardarReporte", EnumSet.of(ServicioCliente.REPORTES)),
     CONSULTAR_REPORTE("consultarReporte", EnumSet.of(ServicioCliente.REPORTES)),
     ABRIR_CASO("abrirCaso", EnumSet.of(ServicioCliente.ATENCION)),
+    REGISTRAR_CUENTA("registrarCuenta", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    BUSCAR_CREDENCIALES("buscarCredenciales", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    CONSULTAR_CUENTA("consultarCuenta", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    LISTAR_CUENTAS("listarCuentas", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    ACTUALIZAR_CUENTA("actualizarCuenta", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    ELIMINAR_CUENTA("eliminarCuenta", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    ABRIR_SESION("abrirSesion", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    ROTAR_SESION("rotarSesion", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    CERRAR_SESION("cerrarSesion", EnumSet.of(ServicioCliente.IDENTIDAD)),
     RESOLVER_MUNICIPIO("resolverMunicipio",
             EnumSet.of(ServicioCliente.REPORTES, ServicioCliente.ATENCION, ServicioCliente.INDICADORES));
 
