@@ -1,6 +1,15 @@
 package co.edu.javeriana.servired.reportes.infraestructura.web;
 
+import co.edu.javeriana.servired.reportes.aplicacion.puertos.RepositorioReportes;
+import co.edu.javeriana.servired.reportes.dominio.EvidenciaInvalida;
+import co.edu.javeriana.servired.reportes.dominio.ReglaIncumplida;
 import co.edu.javeriana.servired.reportes.dominio.ReporteInvalido;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import co.edu.javeriana.servired.reportes.dominio.ReporteNoEncontrado;
 import co.edu.javeriana.servired.reportes.infraestructura.persistencia.PersistenciaNoDisponible;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -43,6 +52,37 @@ public class ManejadorErrores {
             p.setProperty("errores", List.of(Map.of("campo", campo, "mensaje", "valor no permitido")));
         }
         return p;
+    }
+
+    @ExceptionHandler(ReglaIncumplida.class)
+    ProblemDetail reglaIncumplida(ReglaIncumplida e) {
+        ProblemDetail p = problema(HttpStatus.CONFLICT, "Operación no permitida", e.getMessage());
+        p.setProperty("motivo", e.motivo());
+        return p;
+    }
+
+    @ExceptionHandler(EvidenciaInvalida.class)
+    ProblemDetail evidenciaInvalida(EvidenciaInvalida e) {
+        ProblemDetail p = problema(HttpStatus.UNPROCESSABLE_ENTITY, "Evidencia inválida", e.getMessage());
+        p.setProperty("errores", List.of(Map.of("campo", "foto", "mensaje", e.getMessage())));
+        return p;
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ProblemDetail demasiadoGrande(MaxUploadSizeExceededException e) {
+        return problema(HttpStatus.PAYLOAD_TOO_LARGE, "Archivo demasiado grande", "La fotografía supera 5 MB");
+    }
+
+    @ExceptionHandler({MissingServletRequestPartException.class, MultipartException.class,
+            MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class,
+            HttpMediaTypeNotSupportedException.class})
+    ProblemDetail partesInvalidas(Exception e) {
+        return problema(HttpStatus.BAD_REQUEST, "Solicitud inválida", "Faltan partes o parámetros, o no son válidos");
+    }
+
+    @ExceptionHandler(RepositorioReportes.ConflictoDeVersion.class)
+    ProblemDetail concurrencia(RuntimeException e) {
+        return problema(HttpStatus.CONFLICT, "Conflicto", "Hubo muchas validaciones simultáneas; intente de nuevo");
     }
 
     @ExceptionHandler(ReporteNoEncontrado.class)

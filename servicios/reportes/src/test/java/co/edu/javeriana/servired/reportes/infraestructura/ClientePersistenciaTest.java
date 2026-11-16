@@ -36,7 +36,8 @@ class ClientePersistenciaTest {
     private final RestClient.Builder constructor = RestClient.builder();
     private final MockRestServiceServer servidor = MockRestServiceServer.bindTo(constructor).build();
     private final ClientePersistencia cliente = new ClientePersistencia(constructor,
-            new PropiedadesPersistencia(URL, "clave-de-reportes-123", null, null, 3, Duration.ofMillis(1)));
+            new PropiedadesPersistencia(URL, "clave-de-reportes-123", null, null, 3, Duration.ofMillis(1)),
+            new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
     private final IdCorrelacion correlacion = IdCorrelacion.nuevo();
 
     private static final String GUARDADO = """

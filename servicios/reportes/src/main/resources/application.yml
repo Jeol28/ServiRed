@@ -18,6 +18,11 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  servlet:
+    multipart:
+      # La política de evidencias (5 MB) se valida en el dominio; aquí un tope técnico.
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 servired:
   persistencia:
@@ -28,6 +33,10 @@ servired:
     timeout-lectura: 5s
     intentos: 3
     espera-entre-intentos: 200ms
+  validacion:
+    # Validación comunitaria (RF-4, ADR-08)
+    umbral: 3
+    radio-metros: 1000
   jwt:
     # Revalida el token emitido por Identidad (decisión F).
     jwks-url: ${IDENTIDAD_JWKS_URL:http://identidad:8080/.well-known/jwks.json}
