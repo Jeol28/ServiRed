@@ -23,6 +23,9 @@ public interface RepositorioFase4 {
     boolean registrarRestablecimiento(UUID idReporte, Restablecimiento r);
 
     /** Incrementa la versión de validaciones solo si coincide con la esperada. */
+    /** Cambia el estado solo si el actual está en {@code desde}; devuelve false si no aplicaba. */
+    boolean cambiarEstado(UUID idReporte, String estadoNuevo, List<String> desde);
+
     boolean avanzarVersionValidaciones(UUID idReporte, int versionEsperada);
 
     /** @return false si el ciudadano ya había votado ese objeto */

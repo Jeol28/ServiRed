@@ -98,6 +98,21 @@ public class ControladorFase4 {
         return ResponseEntity.status(HttpStatus.CREATED).body(reporte);
     }
 
+    /** Reportes refleja un evento de caso en el estado visible del reporte (ADR-07). */
+    @PostMapping("/reportes/{idReporte}/estado-por-caso")
+    public ReporteGuardado estadoPorCaso(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
+                                         @PathVariable UUID idReporte, @Valid @RequestBody SolicitudEstadoPorCaso e) {
+        return operaciones.aplicarEstadoDeCaso(s, idReporte,
+                new co.edu.javeriana.servired.persistencia.dominio.Atencion.EstadoPorCaso(e.idEvento(), e.estadoNuevo(),
+                        e.desde(), e.detalle(), e.fecha()));
+    }
+
+    public record SolicitudEstadoPorCaso(@NotNull UUID idEvento,
+                                         @NotNull @Pattern(regexp = "EN_ATENCION|RESTABLECIDO|CERRADO") String estadoNuevo,
+                                         @NotNull List<@Pattern(regexp = "RECIBIDO|EN_ATENCION|RESTABLECIDO") String> desde,
+                                         @NotNull @Size(max = 500) String detalle, @NotNull Instant fecha) {
+    }
+
     /** Cuerpo: los bytes de la imagen ya saneada; Content-Type image/jpeg o image/png. */
     @PostMapping(value = "/reportes/{idReporte}/evidencias", consumes = {"image/jpeg", "image/png"})
     public ResponseEntity<ReporteGuardado> guardarEvidencia(

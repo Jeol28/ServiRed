@@ -95,6 +95,30 @@ public class OperacionesReporte {
         });
     }
 
+    /**
+     * Refleja en el reporte un evento de caso (ADR-07). Idempotente por idEvento: una
+     * redelivery no duplica la historia. Si el reporte ya está en un estado posterior,
+     * no se modifica (nunca retrocede).
+     */
+    public ReporteGuardado aplicarEstadoDeCaso(ServicioCliente servicio, UUID idReporte,
+                                               co.edu.javeriana.servired.persistencia.dominio.Atencion.EstadoPorCaso e) {
+        var operacion = OperacionNegocio.APLICAR_ESTADO_DE_CASO;
+        operacion.autorizar(servicio);
+        var clave = new IdCorrelacion(e.idEvento().toString());
+        return transaccion.ejecutar(() -> {
+            if (idempotencia.reclamar(clave, operacion, servicio).isEmpty()) {
+                if (!repositorio.existeReporte(idReporte)) {
+                    throw new RecursoNoEncontrado("Reporte inexistente");
+                }
+                if (repositorio.cambiarEstado(idReporte, e.estadoNuevo(), e.desde())) {
+                    repositorio.agregarHistoria(idReporte, e.estadoNuevo(), e.fecha(), e.detalle());
+                }
+                idempotencia.registrarResultado(clave, operacion, idReporte);
+            }
+            return cargar(idReporte);
+        });
+    }
+
     public PaginaReportes listarDeCiudadano(ServicioCliente servicio, UUID idCiudadano, int pagina, int tamano) {
         OperacionNegocio.LISTAR_REPORTES_CIUDADANO.autorizar(servicio);
         return repositorio.listarDeCiudadano(idCiudadano, Math.max(0, pagina), Math.clamp(tamano, 1, 100));

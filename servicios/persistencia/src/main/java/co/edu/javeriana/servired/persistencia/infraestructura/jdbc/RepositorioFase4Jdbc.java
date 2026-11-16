@@ -48,12 +48,23 @@ public class RepositorioFase4Jdbc implements RepositorioFase4 {
                             duracion_minutos = :duracion,
                             comentario_restablecimiento = :comentario,
                             actualizado_en = now()
-                        WHERE id = :id AND estado IN ('RECIBIDO', 'EN_ATENCION')
+                        WHERE id = :id AND (estado IN ('RECIBIDO', 'EN_ATENCION')
+                              OR (estado = 'RESTABLECIDO' AND fecha_restablecimiento IS NULL))
                         """)
                 .param("fecha", Timestamp.from(r.fechaRestablecimiento()))
                 .param("duracion", r.duracionMinutos())
                 .param("comentario", r.comentario())
                 .param("id", idReporte)
+                .update() == 1;
+    }
+
+    @Override
+    public boolean cambiarEstado(UUID idReporte, String estadoNuevo, List<String> desde) {
+        if (desde.isEmpty()) {
+            return false;
+        }
+        return jdbc.sql("UPDATE reportes.reportes SET estado = :nuevo, actualizado_en = now() WHERE id = :id AND estado IN (:desde)")
+                .param("nuevo", estadoNuevo).param("id", idReporte).param("desde", desde)
                 .update() == 1;
     }
 

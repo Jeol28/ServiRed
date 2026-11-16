@@ -4,7 +4,9 @@ import co.edu.javeriana.servired.persistencia.aplicacion.AbrirCaso;
 import co.edu.javeriana.servired.persistencia.aplicacion.ConsultarReporte;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionCuentas;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionEvidencias;
+import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAtencion;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesReporte;
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAtencion;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.AlmacenEvidencias;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioFase4;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionSesiones;
@@ -73,6 +75,12 @@ public class ConfiguracionCasosDeUso {
                                         RepositorioFase4 f, CatalogoTerritorial c, AlmacenEvidencias a, Outbox o,
                                         Clock reloj) {
         return new GestionEvidencias(t, i, r, f, c, a, o, reloj);
+    }
+
+    @Bean
+    OperacionesAtencion operacionesAtencion(UnidadDeTrabajo t, RegistroIdempotencia i, RepositorioAtencion r,
+                                            AlmacenEvidencias a, Outbox o) {
+        return new OperacionesAtencion(t, i, r, a, o);
     }
 
     @Bean
