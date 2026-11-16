@@ -64,6 +64,26 @@ services:
       timeout: 5s
       retries: 20
 
+  almacen:
+    # Almacén de evidencias compatible con S3 (SeaweedFS) que reemplaza a
+    # Supabase Storage en desarrollo. Solo persistencia lo usa; sin puertos
+    # publicados. Para Supabase basta con cambiar ALMACEN_S3_* en .env.
+    image: chrislusf/seaweedfs:3.97
+    restart: unless-stopped
+    networks: [interna]
+    environment:
+      ALMACEN_S3_ACCESO: ${ALMACEN_S3_ACCESO:?definir en .env}
+      ALMACEN_S3_SECRETO: ${ALMACEN_S3_SECRETO:?definir en .env}
+    entrypoint: ["/bin/sh", "/iniciar-almacen.sh"]
+    volumes:
+      - ./almacen/iniciar-almacen.sh:/iniciar-almacen.sh:ro
+      - datos-almacen:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8333/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   rabbitmq-init:
     # Aplica exchanges, colas (con reintento y DLQ) y bindings, y termina.
     image: curlimages/curl:8.11.1
@@ -96,9 +116,17 @@ services:
       PERSISTENCIA_CLAVE_ATENCION: ${PERSISTENCIA_CLAVE_ATENCION:?definir en .env}
       PERSISTENCIA_CLAVE_INDICADORES: ${PERSISTENCIA_CLAVE_INDICADORES:?definir en .env}
       PERSISTENCIA_CLAVE_AUDITORIA: ${PERSISTENCIA_CLAVE_AUDITORIA:?definir en .env}
+      ALMACEN_S3_URL: ${ALMACEN_S3_URL:-http://almacen:8333}
+      ALMACEN_S3_REGION: ${ALMACEN_S3_REGION:-us-east-1}
+      ALMACEN_S3_ACCESO: ${ALMACEN_S3_ACCESO:?definir en .env}
+      ALMACEN_S3_SECRETO: ${ALMACEN_S3_SECRETO:?definir en .env}
+      ALMACEN_S3_BUCKET: ${ALMACEN_S3_BUCKET:-evidencias}
+      ALMACEN_S3_CREAR_BUCKET: ${ALMACEN_S3_CREAR_BUCKET:-true}
     depends_on:
       <<: *depende-rabbit
       postgres-local:
+        condition: service_healthy
+      almacen:
         condition: service_healthy
 
   identidad:
@@ -164,5 +192,6 @@ networks:
     internal: true   # sin salida a Internet ni puertos publicados
 
 volumes:
+  datos-almacen:
   datos-postgres:
   datos-rabbitmq:

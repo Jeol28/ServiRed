@@ -38,7 +38,18 @@ def terminar():
     raise SystemExit(1 if fallos else 0)
 
 
-def http(metodo, ruta, cuerpo=None, correlacion=None, token=None, cabeceras_extra=None):
+def http(metodo, ruta, cuerpo=None, correlacion=None, token=None, cabeceras_extra=None, reintentar_429=True):
+    """Petición JSON al gateway. Ante un 429 espera Retry-After y reintenta (salvo que se pida lo contrario),
+    para que el límite de abuso compartido entre suites no altere los resultados."""
+    for _ in range(3):
+        resultado = _http(metodo, ruta, cuerpo, correlacion, token, cabeceras_extra)
+        if resultado[0] != 429 or not reintentar_429:
+            return resultado
+        time.sleep(int(resultado[1].get("Retry-After", "5")) + 1)
+    return resultado
+
+
+def _http(metodo, ruta, cuerpo, correlacion, token, cabeceras_extra):
     cabeceras = {"content-type": "application/json", **(cabeceras_extra or {})}
     if correlacion:
         cabeceras["X-Correlation-Id"] = correlacion
@@ -118,3 +129,45 @@ def esperar_valor(llamada, segundos=30):
         if resultado[0] not in (401, 503) or time.time() > limite:
             return resultado
         time.sleep(1)
+
+
+def http_crudo(metodo, ruta, cuerpo, tipo, token=None, cabeceras_extra=None):
+    """Petición con cuerpo binario; devuelve (estado, cabeceras, bytes)."""
+    cabeceras = {"content-type": tipo, **(cabeceras_extra or {})} if cuerpo is not None else dict(cabeceras_extra or {})
+    if token:
+        cabeceras["Authorization"] = f"Bearer {token}"
+    peticion = urllib.request.Request(GATEWAY + ruta, method=metodo, headers=cabeceras, data=cuerpo)
+    try:
+        with urllib.request.urlopen(peticion, timeout=30) as r:
+            return r.status, dict(r.headers), r.read()
+    except urllib.error.HTTPError as e:
+        return e.code, dict(e.headers), e.read()
+
+
+def multipart(partes):
+    """partes: lista de (nombre, nombre_archivo|None, tipo, bytes). Devuelve (cuerpo, content-type)."""
+    limite = "----servired" + uuid.uuid4().hex
+    cuerpo = b""
+    for nombre, archivo, tipo, datos in partes:
+        disposicion = f'form-data; name="{nombre}"' + (f'; filename="{archivo}"' if archivo else "")
+        cuerpo += (f"--{limite}\r\nContent-Disposition: {disposicion}\r\nContent-Type: {tipo}\r\n\r\n").encode()
+        cuerpo += datos + b"\r\n"
+    cuerpo += f"--{limite}--\r\n".encode()
+    return cuerpo, f"multipart/form-data; boundary={limite}"
+
+
+def png_con_metadatos(ancho=16, alto=16):
+    """PNG válido con chunks eXIf y tEXt que simulan GPS y modelo del teléfono."""
+    import struct
+    import zlib
+
+    def chunk(tipo, datos):
+        return struct.pack(">I", len(datos)) + tipo + datos + struct.pack(">I", zlib.crc32(tipo + datos) & 0xFFFFFFFF)
+
+    filas = b"".join(b"\x00" + bytes([200, 30, 30]) * ancho for _ in range(alto))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", ancho, alto, 8, 2, 0, 0, 0))
+            + chunk(b"eXIf", b"MM\x00*GPSLatitude=7.1193;GPSLongitude=-73.1227")
+            + chunk(b"tEXt", b"Make\x00TelefonoDelDenunciante")
+            + chunk(b"IDAT", zlib.compress(filas))
+            + chunk(b"IEND", b""))
