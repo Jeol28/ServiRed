@@ -15,21 +15,43 @@ spring:
             - id: identidad
               uri: ${SERVICIO_IDENTIDAD_URL:http://identidad:8080}
               predicates:
-                - Path=/api/v1/auth/**,/api/v1/cuentas/**
+                - Path=/api/v1/auth/**,/api/v1/cuentas,/api/v1/cuentas/**
             - id: reportes
               uri: ${SERVICIO_REPORTES_URL:http://reportes:8080}
               predicates:
-                - Path=/api/v1/reportes/**,/api/v1/denuncias/**
+                - Path=/api/v1/reportes,/api/v1/reportes/**
+            # Denuncias anónimas (ADR-09): se descarta cualquier credencial para
+            # que el servicio no pueda asociar la denuncia a una cuenta.
+            - id: denuncias
+              uri: ${SERVICIO_REPORTES_URL:http://reportes:8080}
+              predicates:
+                - Path=/api/v1/denuncias,/api/v1/denuncias/**
+              filters:
+                - RemoveRequestHeader=Authorization
+                - RemoveRequestHeader=Cookie
             - id: atencion
               uri: ${SERVICIO_ATENCION_URL:http://atencion:8080}
               predicates:
-                - Path=/api/v1/casos/**
+                - Path=/api/v1/casos,/api/v1/casos/**
             - id: indicadores
               uri: ${SERVICIO_INDICADORES_URL:http://indicadores:8080}
               predicates:
                 - Path=/api/v1/indicadores/**,/api/v1/mapas/**,/api/v1/datos-abiertos/**
 
+servired:
+  jwt:
+    jwks-url: ${IDENTIDAD_JWKS_URL:http://identidad:8080/.well-known/jwks.json}
+    emisor: servired-identidad
+    audiencia: servired-api
+  limites:
+    autenticacion-por-minuto: 20
+    denuncias-por-minuto: 5
+
 management:
+  # Actuator (métricas incluidas) solo en el puerto de gestión, que no se
+  # publica fuera de la red interna. Hacia fuera solo /livez y /readyz.
+  server:
+    port: 8081
   endpoints:
     web:
       exposure:
@@ -38,6 +60,7 @@ management:
     health:
       probes:
         enabled: true
+        add-additional-paths: true
   metrics:
     tags:
       servicio: ${spring.application.name}
