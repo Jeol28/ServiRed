@@ -5,6 +5,28 @@ server:
 spring:
   application:
     name: identidad
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true
+
+servired:
+  jwt:
+    emisor: servired-identidad
+    audiencia: servired-api
+    duracion-acceso: 15m
+    duracion-refresco: 14d
+    # RSA PKCS#8 DER en Base64, una línea (ver README). Vacía = clave efímera.
+    clave-privada: ${IDENTIDAD_JWT_CLAVE_PRIVADA:}
+  bcrypt:
+    costo: 12
+  persistencia:
+    url: ${PERSISTENCIA_URL:http://persistencia:8080}
+    # Clave propia de este servicio ante Persistencia (PERSISTENCIA_CLAVE_IDENTIDAD en .env).
+    clave: ${PERSISTENCIA_CLAVE:}
+  admin-inicial:
+    correo: ${IDENTIDAD_ADMIN_CORREO:}
+    clave: ${IDENTIDAD_ADMIN_CLAVE:}
 
 management:
   endpoints:
