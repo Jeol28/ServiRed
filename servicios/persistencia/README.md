@@ -40,6 +40,7 @@ Migraciones en `src/main/resources/db/migracion`.
 | `consultarReporte` | `GET /interno/v1/reportes/{id}` | reportes |
 | `abrirCaso` | `POST /interno/v1/casos/abrir` | atencion |
 | `resolverMunicipio` | `GET /interno/v1/catalogo/municipio-cercano` | reportes, atencion, indicadores |
+| `listarReportesDeCiudadano`, `buscarReportesCercanos`, `registrarRestablecimiento`, `registrarValidacion`, `guardarEvidencia`, `obtenerEvidencia`, `guardarDenuncia` | `/interno/v1/reportes/**`, `/interno/v1/denuncias` | reportes |
 | `registrarCuenta`, `buscarCredenciales`, `consultarCuenta`, `listarCuentas`, `actualizarCuenta`, `eliminarCuenta` | `/interno/v1/cuentas/**` | identidad |
 | `abrirSesion`, `rotarSesion`, `cerrarSesion` | `/interno/v1/sesiones/**` | identidad |
 
@@ -54,6 +55,12 @@ Migraciones en `src/main/resources/db/migracion`.
   Métricas: `servired_outbox_pendientes`, `servired_outbox_publicados_total`,
   `servired_outbox_fallos_total`.
 
+## Evidencias
+Fotos en un almacén **S3**: Supabase Storage en producción o SeaweedFS en local
+(`ALMACEN_S3_*`). El objeto se sube en la transacción y se borra si la referencia
+no se puede guardar. Readiness incluye el almacén. Ver
+[ADR-13](../../docs/adr/ADR-13-evidencias-y-almacenamiento.md).
+
 ## Datos semilla
 - **DIVIPOLA** (DANE, datos.gov.co conjunto `gdxc-w37w`): 33 departamentos y
   1.122 municipios y áreas no municipalizadas con su centroide. La migración
@@ -64,9 +71,10 @@ Migraciones en `src/main/resources/db/migracion`.
 
 ## Variables
 `PERSISTENCIA_DB_URL`, `PERSISTENCIA_DB_USUARIO`, `PERSISTENCIA_DB_CLAVE`,
-`PERSISTENCIA_CLAVE_<SERVICIO>` y `RABBITMQ_*` (ver `.env.ejemplo`).
+`PERSISTENCIA_CLAVE_<SERVICIO>`, `ALMACEN_S3_*` y `RABBITMQ_*` (ver `.env.ejemplo`).
 
 ## Estado
 - Fase 1 ✅ esquemas, tablas de outbox e idempotencia, health y métricas.
 - Fase 2 ✅ reportes, casos, catálogo, relay del outbox y datos semilla.
 - Fase 3 ✅ cuentas y sesiones (esquema `identidad`).
+- Fase 4 ✅ restablecimiento, validaciones (concurrencia optimista), evidencias en S3 y denuncias.

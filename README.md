@@ -64,13 +64,14 @@ cp .env.ejemplo .env          # una sola vez; cambie las claves
 docker compose up -d --build --wait
 ```
 
-Con eso quedan arriba PostgreSQL local, RabbitMQ (con su topología), los siete
+Con eso quedan arriba PostgreSQL local, el almacén de evidencias (SeaweedFS), RabbitMQ (con su topología), los siete
 microservicios y el gateway en **http://localhost:8080**.
 
 ```bash
 curl -i http://localhost:8080/readyz                 # gateway
 python3 infra/rabbitmq/verificar-topologia.py        # prueba de humo de RabbitMQ
 python3 pruebas/e2e/flujo-reporte.py                 # e2e: reporte de punta a punta
+python3 pruebas/e2e/reportes-completo.py             # e2e: fotos, validación, restablecimiento, denuncias
 python3 pruebas/e2e/identidad-y-acceso.py            # e2e: cuentas, tokens y RBAC
 docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
@@ -81,6 +82,13 @@ docker compose down                                  # detener (agregue -v para 
 - Clave de firma de los JWT: `echo "IDENTIDAD_JWT_CLAVE_PRIVADA=$(sh infra/generar-clave-jwt.sh)"`
   y péguela en `.env` (si se deja vacía se usa una clave efímera).
 - Ningún microservicio, ni la base de datos, publica puertos: solo el gateway.
+
+### Almacén de evidencias
+Por defecto las fotos van a **SeaweedFS** (S3 compatible) dentro del compose. Para
+**Supabase Storage**, cree un bucket privado y claves S3 en el panel del proyecto y
+cambie en `.env`: `ALMACEN_S3_URL=https://<proyecto>.supabase.co/storage/v1/s3`,
+`ALMACEN_S3_REGION`, `ALMACEN_S3_ACCESO`, `ALMACEN_S3_SECRETO` y
+`ALMACEN_S3_CREAR_BUCKET=false`.
 
 ### Usar Supabase en lugar del PostgreSQL local
 En `.env`, cambie `PERSISTENCIA_DB_URL`, `PERSISTENCIA_DB_USUARIO` y
@@ -98,7 +106,8 @@ cd servicios/atencion && dotnet test Atencion.slnx
 
 # De punta a punta, con el compose arriba (usa el PostgreSQL local)
 python3 pruebas/e2e/flujo-reporte.py
-python3 pruebas/e2e/identidad-y-acceso.py   # al final: agota el límite de /auth por un minuto
+python3 pruebas/e2e/reportes-completo.py
+python3 pruebas/e2e/identidad-y-acceso.py
 ```
 
 La prueba e2e crea, repite (idempotencia) y consulta un reporte por el gateway,
@@ -136,8 +145,8 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | 1 | Monorepo, Docker Compose, RabbitMQ, esqueletos con health, contratos iniciales | ✅ |
 | 2 | Corte vertical: crear y consultar reporte + `reporte.creado` consumido por atención | ✅ |
 | 3 | Identidad: registro, login, JWT y RBAC en el gateway | ✅ |
-| 4 | Reportes completo: restablecimiento, validación, evidencias, denuncias | ⏳ |
-| 5 | Atención: casos, estados, asignación | |
+| 4 | Reportes completo: restablecimiento, validación, evidencias, denuncias | ✅ |
+| 5 | Atención: casos, estados, asignación | ⏳ |
 | 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | |
 | 7 | Auditoría y alertas | |
 | 8 | Portales Angular | |

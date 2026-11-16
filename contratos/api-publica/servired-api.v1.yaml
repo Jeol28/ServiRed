@@ -1,11 +1,11 @@
 # API pública de SERVI-RED expuesta por el API Gateway.
 # Es el ÚNICO contrato que consumen los portales web y las apps Android/iOS.
 # Versionado en la ruta (/api/v1); cambios incompatibles => /api/v2 (RNF-DAT3).
-# Estado: fase 3 (autenticación, cuentas y reportes). Cada fase agrega sus operaciones.
+# Estado: fase 4 (reportes completo y denuncias). Cada fase agrega sus operaciones.
 openapi: 3.1.0
 info:
   title: SERVI-RED · API pública
-  version: 1.0.0-fase3
+  version: 1.0.0-fase4
   description: |
     Plataforma de reporte ciudadano y monitoreo de servicios públicos domiciliarios.
 
@@ -38,7 +38,9 @@ tags:
   - name: cuentas
     description: Cuenta propia y administración de cuentas (RF-11)
   - name: reportes
-    description: Cortes no programados (RF-1, RF-2)
+    description: Cortes, restablecimientos, evidencias y validación comunitaria (RF-1 a RF-4)
+  - name: denuncias
+    description: Denuncias anónimas de conexiones fraudulentas (RF-5)
   - name: salud
     description: Estado del gateway
 
@@ -60,6 +62,22 @@ paths:
                   status: { type: string, example: UP }
 
   /api/v1/reportes:
+    get:
+      tags: [reportes]
+      operationId: listarMisReportes
+      summary: Reportes del ciudadano, del más reciente al más antiguo (RF-2)
+      description: Solo CIUDADANO. Las entradas de la lista no incluyen la historia.
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: Página de reportes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginaReportes" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
     post:
       tags: [reportes]
       operationId: crearReporte
@@ -68,8 +86,8 @@ paths:
         Registra el reporte y confirma su recepción (RF-2). El reporte queda
         persistido antes de responder; los demás procesos (atención,
         indicadores, auditoría) se enteran por eventos y su falla no impide
-        el registro (RNF-DC2). La fotografía se adjunta después
-        (`POST /api/v1/reportes/{idReporte}/evidencias`, fase 4).
+        el registro (RNF-DC2). La fotografía se adjunta después con
+        `POST /api/v1/reportes/{idReporte}/evidencias`. Solo CIUDADANO.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
       requestBody:
@@ -94,6 +112,27 @@ paths:
         "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
         "503": { $ref: "#/components/responses/NoDisponible" }
 
+  /api/v1/reportes/cercanos:
+    get:
+      tags: [reportes]
+      operationId: buscarReportesCercanos
+      summary: Eventos activos cercanos para validar (RF-4)
+      description: |
+        Solo CIUDADANO. Reportes no cerrados a máximo 1 km, excluyendo los propios.
+        No incluye autor ni descripción (minimización de datos).
+      parameters:
+        - { name: latitud, in: query, required: true, schema: { type: number, minimum: -4.3, maximum: 13.5 } }
+        - { name: longitud, in: query, required: true, schema: { type: number, minimum: -82, maximum: -66.8 } }
+      responses:
+        "200":
+          description: Eventos ordenados por distancia
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ReporteCercano" } }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
   /api/v1/reportes/{idReporte}:
     get:
       tags: [reportes]
@@ -116,6 +155,158 @@ paths:
         "401": { $ref: "#/components/responses/NoAutenticado" }
         "403": { $ref: "#/components/responses/Prohibido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /api/v1/reportes/{idReporte}/restablecimiento:
+    post:
+      tags: [reportes]
+      operationId: registrarRestablecimiento
+      summary: Registrar el restablecimiento y calcular la duración (RF-3)
+      description: |
+        Solo el autor. `duracionMinutos = fechaRestablecimiento − inicioEstimado`.
+        La fecha debe ser posterior al inicio y no futura. Una sola vez (409
+        `YA_RESTABLECIDO`). Publica `restablecimiento.registrado`.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevoRestablecimiento" }
+      responses:
+        "200":
+          description: Reporte restablecido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reporte" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/reportes/{idReporte}/validaciones:
+    post:
+      tags: [reportes]
+      operationId: validarReporte
+      summary: Confirmar o controvertir un corte o restablecimiento cercano (RF-4)
+      description: |
+        Solo CIUDADANO distinto del autor, ubicado a máximo 1 km. Un voto por
+        ciudadano y objeto: repetirlo responde 200 con el estado actual sin
+        cambiarlo. Validado = 3 confirmaciones netas (ADR-08). Validar no cambia
+        el estado del reporte. Motivos de 409: AUTOR, LEJOS, CERRADO,
+        SIN_RESTABLECIMIENTO. Publica `validacion.registrada`.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevaValidacion" }
+      responses:
+        "201":
+          description: Voto registrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Validacion" }
+        "200":
+          description: El ciudadano ya había votado; estado actual sin cambios
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Validacion" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/reportes/{idReporte}/evidencias:
+    post:
+      tags: [reportes]
+      operationId: adjuntarEvidencia
+      summary: Adjuntar una fotografía al reporte (RF-1)
+      description: |
+        Solo el autor. JPEG o PNG (tipo detectado por contenido), máximo 5 MB y
+        40 megapíxeles, hasta 3 por reporte. La imagen se vuelve a codificar:
+        se eliminan EXIF, GPS y demás metadatos (y la orientación EXIF; envíela
+        ya orientada).
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [foto]
+              properties:
+                foto: { type: string, format: binary }
+      responses:
+        "201":
+          description: Evidencia guardada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reporte" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+        "413": { description: La fotografía supera 5 MB }
+        "422": { $ref: "#/components/responses/EvidenciaInvalida" }
+
+  /api/v1/reportes/{idReporte}/evidencias/{idEvidencia}:
+    get:
+      tags: [reportes]
+      operationId: obtenerEvidencia
+      summary: Descargar una fotografía del reporte
+      description: Solo el autor. Se sirve con Cache-Control no-store y X-Content-Type-Options nosniff.
+      parameters:
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: idEvidencia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: La imagen
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  # ---------------------------------------------------------------- denuncias
+  /api/v1/denuncias:
+    post:
+      tags: [denuncias]
+      operationId: denunciarConexionFraudulenta
+      summary: Denuncia anónima de una conexión fraudulenta (RF-5)
+      description: |
+        Pública y sin token (ADR-09): el gateway descarta Authorization y Cookie y
+        genera un X-Correlation-Id aleatorio. No se guarda ningún identificador del
+        denunciante (RNF-SEG4). La foto opcional se sanea igual que en los reportes.
+        Límite: 5 por minuto por cliente (429). Publica `denuncia.recibida`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevaDenuncia" }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [denuncia]
+              properties:
+                denuncia: { $ref: "#/components/schemas/NuevaDenuncia" }
+                foto: { type: string, format: binary }
+            encoding:
+              denuncia: { contentType: application/json }
+      responses:
+        "202":
+          description: Recibida; queda pendiente de validación por Atención
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DenunciaRecibida" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "413": { description: La fotografía supera 5 MB }
+        "422": { $ref: "#/components/responses/EvidenciaInvalida" }
+        "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
 
   # ------------------------------------------------------------ autenticación
   /api/v1/auth/registro:
@@ -426,9 +617,110 @@ components:
         descripcion: { type: string }
         estado: { $ref: "#/components/schemas/EstadoReporte" }
         fechaRegistro: { type: string, format: date-time }
+        fechaRestablecimiento: { type: string, format: date-time }
+        duracionMinutos: { type: integer, minimum: 0, description: fechaRestablecimiento − inicioEstimado }
+        validacion:
+          type: object
+          properties:
+            corte: { $ref: "#/components/schemas/ConteoValidacion" }
+            restablecimiento: { $ref: "#/components/schemas/ConteoValidacion" }
+        evidencias:
+          type: array
+          items: { $ref: "#/components/schemas/Evidencia" }
         historia:
           type: array
+          description: En orden de registro
           items: { $ref: "#/components/schemas/EntradaHistoria" }
+
+    ConteoValidacion:
+      type: object
+      required: [confirmaciones, controversias, confirmacionesNetas]
+      properties:
+        confirmaciones: { type: integer }
+        controversias: { type: integer }
+        confirmacionesNetas: { type: integer }
+
+    Evidencia:
+      type: object
+      required: [idEvidencia, tipoContenido, tamanoBytes, creadaEn, url]
+      properties:
+        idEvidencia: { type: string, format: uuid }
+        tipoContenido: { type: string, enum: [image/jpeg, image/png] }
+        tamanoBytes: { type: integer }
+        creadaEn: { type: string, format: date-time }
+        url: { type: string, description: Ruta de descarga en este API }
+
+    PaginaReportes:
+      type: object
+      required: [elementos, total, pagina, tamano]
+      properties:
+        elementos: { type: array, items: { $ref: "#/components/schemas/Reporte" } }
+        total: { type: integer }
+        pagina: { type: integer }
+        tamano: { type: integer }
+
+    ReporteCercano:
+      type: object
+      required: [idReporte, tipoServicio, magnitud, estado, inicioEstimado, ubicacion, distanciaMetros]
+      properties:
+        idReporte: { type: string, format: uuid }
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        magnitud: { $ref: "#/components/schemas/Magnitud" }
+        estado: { $ref: "#/components/schemas/EstadoReporte" }
+        inicioEstimado: { type: string, format: date-time }
+        ubicacion: { $ref: "#/components/schemas/Ubicacion" }
+        distanciaMetros: { type: integer }
+        validacionCorte: { $ref: "#/components/schemas/ConteoValidacion" }
+        validacionRestablecimiento: { $ref: "#/components/schemas/ConteoValidacion" }
+
+    NuevoRestablecimiento:
+      type: object
+      required: [fechaRestablecimiento]
+      additionalProperties: false
+      properties:
+        fechaRestablecimiento: { type: string, format: date-time }
+        comentario: { type: string, maxLength: 500 }
+
+    NuevaValidacion:
+      type: object
+      required: [objeto, sentido, ubicacion]
+      additionalProperties: false
+      properties:
+        objeto: { type: string, enum: [CORTE, RESTABLECIMIENTO] }
+        sentido: { type: string, enum: [CONFIRMA, CONTROVIERTE] }
+        ubicacion:
+          allOf: [{ $ref: "#/components/schemas/Ubicacion" }]
+          description: Ubicación actual del validador; solo se usa para comprobar la distancia y no se guarda
+
+    Validacion:
+      type: object
+      required: [idReporte, objeto, confirmaciones, controversias, confirmacionesNetas, validado]
+      properties:
+        idReporte: { type: string, format: uuid }
+        objeto: { type: string, enum: [CORTE, RESTABLECIMIENTO] }
+        confirmaciones: { type: integer }
+        controversias: { type: integer }
+        confirmacionesNetas: { type: integer }
+        validado: { type: boolean, description: true con 3 o más confirmaciones netas }
+
+    NuevaDenuncia:
+      type: object
+      required: [tipoServicio, ubicacion, descripcion]
+      additionalProperties: false
+      properties:
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        ubicacion: { $ref: "#/components/schemas/Ubicacion" }
+        descripcion: { type: string, minLength: 10, maxLength: 2000 }
+
+    DenunciaRecibida:
+      type: object
+      required: [idDenuncia, estado, fechaRecepcion, tieneEvidencia]
+      properties:
+        idDenuncia: { type: string, format: uuid }
+        estado: { type: string, enum: [PENDIENTE_VALIDACION] }
+        fechaRecepcion: { type: string, format: date-time }
+        tieneEvidencia: { type: boolean }
+        mensaje: { type: string }
 
     Rol:
       type: string
@@ -542,6 +834,7 @@ components:
         status: { type: integer }
         detail: { type: string }
         correlationId: { type: string, format: uuid }
+        motivo: { type: string, description: Código estable de la regla incumplida (409) }
         errores:
           type: array
           items:
@@ -558,6 +851,16 @@ components:
           schema: { $ref: "#/components/schemas/Problema" }
     NoAutenticado:
       description: Falta un token válido (RNF-SEG1)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    ReglaIncumplida:
+      description: Una regla de negocio impide la operación; ver `motivo`
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    EvidenciaInvalida:
+      description: El archivo no es una fotografía JPEG/PNG aceptable
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problema" }

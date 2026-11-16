@@ -14,3 +14,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-10](ADR-10-topologia-rabbitmq.md) | Topología de RabbitMQ: reintentos y mensajes fallidos | Aceptada |
 | [ADR-11](ADR-11-alcance-mvp.md) | Alcance del MVP: notificaciones, observabilidad y seguridad entre servicios | Aceptada |
 | [ADR-12](ADR-12-identidad-y-control-de-acceso.md) | Identidad, tokens y control de acceso | Aceptada |
+| [ADR-13](ADR-13-evidencias-y-almacenamiento.md) | Evidencias fotográficas y almacenamiento de objetos | Aceptada |

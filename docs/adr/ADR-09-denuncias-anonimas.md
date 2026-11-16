@@ -12,6 +12,14 @@
 - El evento `denuncia.recibida` no contiene identificadores del denunciante e
   Indicadores no lo consume (no hay riesgo de publicarlo como dato abierto).
 
+## Implementación (fase 4)
+- El gateway ignora el `X-Correlation-Id` del cliente en `/api/v1/denuncias/**`
+  y genera uno nuevo; además descarta `Authorization` y `Cookie`.
+- La tabla `reportes.denuncias` no tiene columnas de identidad (ni cuenta, ni IP,
+  ni dispositivo); la prueba e2e lo verifica, igual que el evento y los logs.
+- La foto se valida y sanea como en los reportes ([ADR-13](ADR-13-evidencias-y-almacenamiento.md)).
+- Límite de 5 denuncias por minuto por cliente (hash salado de la IP, en memoria).
+
 ## Consecuencias
 - No es posible contactar al denunciante; la moderación (Atención) trabaja solo
   con el contenido y la evidencia.

@@ -5,6 +5,7 @@
 | [`docker-compose.yml`](docker-compose.yml) | Todo el entorno. Se invoca desde la raíz (`compose.yaml` lo incluye). |
 | [`rabbitmq/generar-definiciones.py`](rabbitmq/generar-definiciones.py) | Genera `definiciones.json` (exchanges, colas y bindings). |
 | [`rabbitmq/aplicar-definiciones.sh`](rabbitmq/aplicar-definiciones.sh) | Lo ejecuta el contenedor `rabbitmq-init` para importar la topología. |
+| [`almacen/iniciar-almacen.sh`](almacen/iniciar-almacen.sh) | Arranca SeaweedFS (S3) con la identidad de `.env`; sin ella rechaza el acceso anónimo. |
 | [`generar-clave-jwt.sh`](generar-clave-jwt.sh) | Genera la clave RSA de firma de los JWT para `IDENTIDAD_JWT_CLAVE_PRIVADA`. |
 | [`rabbitmq/verificar-topologia.py`](rabbitmq/verificar-topologia.py) | Prueba de humo: compara el broker con `definiciones.json` y prueba enrutamiento, DLQ y reintento con TTL en colas temporales (no toca las colas reales). |
 
@@ -13,6 +14,7 @@
 | Servicio | Imagen / origen | Red | Puerto en el host |
 |---|---|---|---|
 | postgres-local | postgres:17-alpine | interna | — |
+| almacen | chrislusf/seaweedfs:3.97 (S3) | interna | — (solo lo usa persistencia) |
 | rabbitmq | rabbitmq:4.1-management-alpine | interna, borde | 127.0.0.1:15672 (consola) |
 | rabbitmq-init | curlimages/curl | interna | — (termina al aplicar la topología) |
 | persistencia | `servicios/persistencia` | interna, borde (salida a Supabase) | — |

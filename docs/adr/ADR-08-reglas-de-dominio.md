@@ -10,6 +10,16 @@ El SAD no fija umbrales ni reglas concretas para RF-3, RF-4 y RF-6.
   con **3 confirmaciones netas** (confirmaciones − controversias) de ciudadanos
   distintos ubicados a **≤ 1 km**. El autor no valida su propio reporte; un voto
   por usuario. Umbral y radio son configurables.
+- **Implementación de la validación (fase 4):** el voto de un ciudadano sobre un
+  objeto es definitivo (repetirlo es idempotente y no lo cambia). Validar **no**
+  cambia el estado del reporte, para evitar cierres prematuros: el cierre lo
+  decide el operador. Reportes calcula las confirmaciones netas y Persistencia
+  guarda el voto con **concurrencia optimista** (`version_validaciones`): si otro
+  voto entró en medio, Reportes vuelve a leer y recalcular (hasta 3 veces), así
+  el evento `validacion.registrada` siempre lleva el total real. La ubicación del
+  validador solo se usa para medir la distancia (haversine) y no se guarda.
+- **Restablecimiento (fase 4):** lo registra el autor del reporte, una sola vez,
+  desde `RECIBIDO` o `EN_ATENCION`; los vecinos lo confirman o controvierten.
 - **Duración (RF-3):** `fechaRestablecimiento − inicioEstimado`. El inicio no
   puede ser futuro y el restablecimiento debe ser posterior (RNF-DAT1).
 - **Enrutamiento (RF-6):** cada empresa operadora declara su cobertura

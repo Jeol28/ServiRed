@@ -11,11 +11,11 @@
 #  - Las operaciones que generan un evento reciben el evento ya construido por
 #    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
 #    transacción y lo publica después (decisión B).
-# Estado: fase 3 (reportes, casos, catálogo, cuentas y sesiones).
+# Estado: fase 4 (reportes completo, denuncias, evidencias, casos, catálogo, cuentas y sesiones).
 openapi: 3.1.0
 info:
   title: SERVI-RED · Persistencia (API interna)
-  version: 1.0.0-fase3
+  version: 1.0.0-fase4
 servers:
   - url: http://persistencia:8080
     description: Red interna de Docker Compose
@@ -81,6 +81,168 @@ paths:
               schema: { $ref: "#/components/schemas/ReporteGuardado" }
         "404":
           description: No existe
+
+  /interno/v1/reportes:
+    get:
+      operationId: listarReportesDeCiudadano
+      description: Solo `reportes`. Las entradas no incluyen historia ni evidencias.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCiudadano, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: pagina, in: query, schema: { type: integer } }
+        - { name: tamano, in: query, schema: { type: integer, maximum: 100 } }
+      responses:
+        "200":
+          description: Página
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos: { type: array, items: { $ref: "#/components/schemas/ReporteGuardado" } }
+                  total: { type: integer }
+                  pagina: { type: integer }
+                  tamano: { type: integer }
+
+  /interno/v1/reportes/cercanos:
+    get:
+      operationId: buscarReportesCercanos
+      description: Solo `reportes`. Haversine; excluye cerrados y los del ciudadano indicado. Sin datos del autor.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: latitud, in: query, required: true, schema: { type: number } }
+        - { name: longitud, in: query, required: true, schema: { type: number } }
+        - { name: radioMetros, in: query, schema: { type: integer, maximum: 5000, default: 1000 } }
+        - { name: excluirCiudadano, in: query, schema: { type: string, format: uuid } }
+        - { name: limite, in: query, schema: { type: integer, maximum: 100, default: 50 } }
+      responses:
+        "200": { description: Lista ordenada por distancia }
+
+  /interno/v1/reportes/{idReporte}/restablecimiento:
+    post:
+      operationId: registrarRestablecimiento
+      description: |
+        Solo `reportes`. En una transacción: estado RESTABLECIDO (solo desde RECIBIDO
+        o EN_ATENCION), historia y `restablecimiento.registrado` en el outbox.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fechaRestablecimiento, duracionMinutos, evento]
+              properties:
+                fechaRestablecimiento: { type: string, format: date-time }
+                duracionMinutos: { type: integer, minimum: 0 }
+                comentario: { type: string, maxLength: 500 }
+                evento: { $ref: "#/components/schemas/EventoSaliente" }
+      responses:
+        "200": { description: Reporte actualizado, content: { application/json: { schema: { $ref: "#/components/schemas/ReporteGuardado" } } } }
+        "404": { description: No existe }
+        "409": { $ref: "#/components/responses/Conflicto" }
+
+  /interno/v1/reportes/{idReporte}/validaciones:
+    post:
+      operationId: registrarValidacion
+      description: |
+        Solo `reportes`. Concurrencia optimista: `versionEsperada` debe coincidir con
+        `versionValidaciones` (409 `VERSION`). Un voto por ciudadano y objeto
+        (409 `YA_VOTO`). No guarda la ubicación del validador.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [objeto, sentido, idCiudadano, fecha, versionEsperada, evento]
+              properties:
+                objeto: { type: string, enum: [CORTE, RESTABLECIMIENTO] }
+                sentido: { type: string, enum: [CONFIRMA, CONTROVIERTE] }
+                idCiudadano: { type: string, format: uuid }
+                fecha: { type: string, format: date-time }
+                versionEsperada: { type: integer, minimum: 0 }
+                evento: { $ref: "#/components/schemas/EventoSaliente" }
+      responses:
+        "201": { description: Voto guardado, content: { application/json: { schema: { $ref: "#/components/schemas/ReporteGuardado" } } } }
+        "404": { description: No existe }
+        "409": { $ref: "#/components/responses/Conflicto" }
+
+  /interno/v1/reportes/{idReporte}/evidencias:
+    post:
+      operationId: guardarEvidencia
+      description: |
+        Solo `reportes`, con la imagen YA saneada en el cuerpo. Sube el objeto al
+        almacén S3 y guarda la referencia (si la base falla, se borra el objeto).
+        Máximo 3 por reporte (409 `LIMITE`).
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: X-Id-Evidencia, in: header, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          image/jpeg: { schema: { type: string, format: binary } }
+          image/png: { schema: { type: string, format: binary } }
+      responses:
+        "201": { description: Guardada, content: { application/json: { schema: { $ref: "#/components/schemas/ReporteGuardado" } } } }
+        "404": { description: No existe }
+        "409": { $ref: "#/components/responses/Conflicto" }
+
+  /interno/v1/reportes/{idReporte}/evidencias/{idEvidencia}:
+    get:
+      operationId: obtenerEvidencia
+      description: Solo `reportes`. 404 si la evidencia no pertenece a ese reporte.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: idEvidencia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Bytes de la imagen
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404": { description: No existe }
+
+  /interno/v1/denuncias:
+    post:
+      operationId: guardarDenuncia
+      description: |
+        Solo `reportes`. Denuncia anónima, foto opcional (ya saneada) y
+        `denuncia.recibida` en una sola transacción. Sin identificadores del denunciante.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [solicitud]
+              properties:
+                solicitud:
+                  type: object
+                  description: JSON con `denuncia` (idDenuncia, tipoServicio, latitud, longitud, codigoMunicipio, descripcion, fechaRecepcion) y `evento`
+                foto: { type: string, format: binary }
+      responses:
+        "201":
+          description: Guardada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  idDenuncia: { type: string, format: uuid }
+                  tipoServicio: { type: string }
+                  codigoMunicipio: { type: string }
+                  estado: { type: string, enum: [PENDIENTE_VALIDACION, VALIDADA, DESCARTADA] }
+                  fechaRecepcion: { type: string, format: date-time }
+                  tieneEvidencia: { type: boolean }
 
   /interno/v1/casos/abrir:
     post:
@@ -370,6 +532,20 @@ components:
           properties:
             estado: { type: string, enum: [RECIBIDO, EN_ATENCION, RESTABLECIDO, CERRADO] }
             nombreMunicipio: { type: string }
+            fechaRestablecimiento: { type: string, format: date-time }
+            duracionMinutos: { type: integer }
+            versionValidaciones: { type: integer, description: Versión optimista de las validaciones }
+            validacionCorte: { $ref: "#/components/schemas/Conteo" }
+            validacionRestablecimiento: { $ref: "#/components/schemas/Conteo" }
+            evidencias:
+              type: array
+              items:
+                type: object
+                properties:
+                  idEvidencia: { type: string, format: uuid }
+                  tipoContenido: { type: string }
+                  tamanoBytes: { type: integer }
+                  creadaEn: { type: string, format: date-time }
             historia:
               type: array
               items:
@@ -379,6 +555,12 @@ components:
                   estado: { type: string }
                   fecha: { type: string, format: date-time }
                   detalle: { type: string }
+
+    Conteo:
+      type: object
+      properties:
+        confirmaciones: { type: integer }
+        controversias: { type: integer }
 
     CuentaAGuardar:
       type: object
@@ -433,6 +615,15 @@ components:
         correlationId: { type: string, format: uuid }
 
   responses:
+    Conflicto:
+      description: La operación no se aplicó por el estado de los datos; ver `motivo`
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              motivo: { type: string, enum: [ESTADO, VERSION, YA_VOTO, LIMITE] }
+              detail: { type: string }
     Invalido:
       description: Datos inválidos
       content:
