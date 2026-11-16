@@ -28,9 +28,11 @@ servired:
     timeout-lectura: 5s
     intentos: 3
     espera-entre-intentos: 200ms
-  desarrollo:
-    # PROVISIONAL (fase 2): ciudadano fijo hasta que exista Identidad (fase 3).
-    id-ciudadano: 00000000-0000-4000-8000-000000000001
+  jwt:
+    # Revalida el token emitido por Identidad (decisión F).
+    jwks-url: ${IDENTIDAD_JWKS_URL:http://identidad:8080/.well-known/jwks.json}
+    emisor: servired-identidad
+    audiencia: servired-api
 
 management:
   endpoints:

@@ -1,6 +1,7 @@
 package co.edu.javeriana.servired.reportes.infraestructura;
 
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -15,6 +16,7 @@ import co.edu.javeriana.servired.reportes.dominio.IdCorrelacion;
 import co.edu.javeriana.servired.reportes.dominio.NuevoReporte;
 import co.edu.javeriana.servired.reportes.dominio.Reporte;
 import co.edu.javeriana.servired.reportes.infraestructura.persistencia.PersistenciaNoDisponible;
+import co.edu.javeriana.servired.reportes.infraestructura.seguridad.ConfiguracionSeguridad;
 import co.edu.javeriana.servired.reportes.infraestructura.web.CiudadanoActual;
 import co.edu.javeriana.servired.reportes.infraestructura.web.ControladorReportes;
 import java.time.Clock;
@@ -28,11 +30,13 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /** API pública de reportes con los casos de uso reales y Persistencia en memoria. */
 @WebMvcTest(ControladorReportes.class)
-@Import({CiudadanoActual.class, ControladorReportesTest.Casos.class})
+@Import({CiudadanoActual.class, ConfiguracionSeguridad.class, ControladorReportesTest.Casos.class})
 class ControladorReportesTest {
 
     @TestConfiguration
@@ -66,6 +70,18 @@ class ControladorReportesTest {
     @Autowired
     MockMvc mvc;
 
+    private final UUID ciudadano = UUID.randomUUID();
+
+    /** JWT ya validado de un usuario con el rol indicado (el decoder no interviene). */
+    private static RequestPostProcessor usuario(UUID sub, String rol) {
+        return jwt().jwt(j -> j.subject(sub.toString()).claim("rol", rol))
+                .authorities(new SimpleGrantedAuthority("ROLE_" + rol));
+    }
+
+    private RequestPostProcessor ciudadano() {
+        return usuario(ciudadano, "CIUDADANO");
+    }
+
     @Autowired
     PersistenciaCaible persistencia;
 
@@ -84,7 +100,7 @@ class ControladorReportesTest {
     void creaElReporteYRespondeConLocation() throws Exception {
         String correlacion = UUID.randomUUID().toString();
 
-        mvc.perform(post("/api/v1/reportes").header("X-Correlation-Id", correlacion)
+        mvc.perform(post("/api/v1/reportes").with(ciudadano()).header("X-Correlation-Id", correlacion)
                         .contentType(MediaType.APPLICATION_JSON).content(cuerpo(Instant.now().minusSeconds(3600).toString())))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", startsWith("/api/v1/reportes/")))
@@ -100,13 +116,13 @@ class ControladorReportesTest {
     void aceptaFechasConZonaHorariaDeColombia() throws Exception {
         String inicio = java.time.OffsetDateTime.now(java.time.ZoneOffset.ofHours(-5)).minusHours(1).toString();
 
-        mvc.perform(post("/api/v1/reportes").contentType(MediaType.APPLICATION_JSON).content(cuerpo(inicio)))
+        mvc.perform(post("/api/v1/reportes").with(ciudadano()).contentType(MediaType.APPLICATION_JSON).content(cuerpo(inicio)))
                 .andExpect(status().isCreated());
     }
 
     @Test
     void devuelveLosErroresDeValidacionComoProblemDetails() throws Exception {
-        mvc.perform(post("/api/v1/reportes").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/reportes").with(ciudadano()).contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpo(Instant.now().plusSeconds(7200).toString())))
                 .andExpect(status().isBadRequest())
                 .andExpect(header().string("Content-Type", "application/problem+json"))
@@ -116,7 +132,7 @@ class ControladorReportesTest {
 
     @Test
     void rechazaValoresFueraDelCatalogo() throws Exception {
-        mvc.perform(post("/api/v1/reportes").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/reportes").with(ciudadano()).contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpo(Instant.now().toString()).replace("ENERGIA", "TELEFONIA")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errores[0].campo").value("tipoServicio"));
@@ -124,7 +140,7 @@ class ControladorReportesTest {
 
     @Test
     void rechazaCamposNoDeclarados() throws Exception {
-        mvc.perform(post("/api/v1/reportes").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/reportes").with(ciudadano()).contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpo(Instant.now().toString()).replace("{\"tipo", "{\"idCiudadano\":\"x\",\"tipo")))
                 .andExpect(status().isBadRequest());
     }
@@ -133,18 +149,37 @@ class ControladorReportesTest {
     void respondeServicioNoDisponibleSiPersistenciaEstaCaida() throws Exception {
         persistencia.disponible = false;
 
-        mvc.perform(post("/api/v1/reportes").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/reportes").with(ciudadano()).contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpo(Instant.now().toString())))
                 .andExpect(status().isServiceUnavailable());
     }
 
     @Test
-    void consultaElReporteCreado() throws Exception {
-        String location = mvc.perform(post("/api/v1/reportes").contentType(MediaType.APPLICATION_JSON)
+    void sinTokenResponde401YConOtroRol403() throws Exception {
+        mvc.perform(get("/api/v1/reportes/" + UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Content-Type", "application/problem+json"));
+        mvc.perform(post("/api/v1/reportes").with(usuario(UUID.randomUUID(), "OPERADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo(Instant.now().toString())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void otroCiudadanoNoVeElReporte() throws Exception {
+        String location = mvc.perform(post("/api/v1/reportes").with(ciudadano()).contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpo(Instant.now().toString())))
                 .andReturn().getResponse().getHeader("Location");
 
-        mvc.perform(get(location)).andExpect(status().isOk()).andExpect(jsonPath("$.magnitud").value("CUADRA"));
-        mvc.perform(get("/api/v1/reportes/" + UUID.randomUUID())).andExpect(status().isNotFound());
+        mvc.perform(get(location).with(usuario(UUID.randomUUID(), "CIUDADANO"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void consultaElReporteCreado() throws Exception {
+        String location = mvc.perform(post("/api/v1/reportes").with(ciudadano()).contentType(MediaType.APPLICATION_JSON)
+                        .content(cuerpo(Instant.now().toString())))
+                .andReturn().getResponse().getHeader("Location");
+
+        mvc.perform(get(location).with(ciudadano())).andExpect(status().isOk()).andExpect(jsonPath("$.magnitud").value("CUADRA"));
+        mvc.perform(get("/api/v1/reportes/" + UUID.randomUUID()).with(ciudadano())).andExpect(status().isNotFound());
     }
 }
