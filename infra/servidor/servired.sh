@@ -16,6 +16,8 @@ set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$RAIZ"
 export COMPOSE_FILE="compose.yaml:infra/servidor/compose.servidor.yaml"
+# Construir de a pocas imágenes a la vez: evita quedarse sin memoria en VM pequeñas.
+export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-2}"
 PERFILES=()
 if [[ "${OBSERVABILIDAD:-0}" == "1" ]]; then
   PERFILES=(--profile observabilidad)
