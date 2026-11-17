@@ -141,7 +141,8 @@ prohibidas = {"ip", "id_ciudadano", "id_cuenta", "correo", "dispositivo", "user_
 comprobar(not prohibidas & set(columnas.split(",")), f"la tabla no tiene campos de identidad ({columnas})")
 
 print("6) Límite de abuso en denuncias (RNF-SEG5)")
-estados = [http("POST", "/api/v1/denuncias", denuncia, reintentar_429=False)[0] for _ in range(6)]
+# La ventana es fija (5 por minuto): con 11 intentos alguna ventana recibe 6 aunque se cruce un minuto.
+estados = [http("POST", "/api/v1/denuncias", denuncia, reintentar_429=False)[0] for _ in range(11)]
 comprobar(429 in estados, f"429 al superar el límite ({estados})")
 
 terminar()

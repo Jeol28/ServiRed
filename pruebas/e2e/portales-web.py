@@ -116,12 +116,13 @@ comprobar('"ruta":"/api/v1/indicadores/resumen"' in registros, "los registros de
 
 print("4) Límite de abuso detrás del proxy")
 # Directo al gateway: X-Forwarded-For distinto en cada intento no evade el límite (5/min).
+# Ventana fija: 11 intentos garantizan que alguna ventana reciba más de 5.
 directos = [pedir(GATEWAY, "/api/v1/denuncias", "POST", denuncia(f"Prueba de límite {i} {marca}"),
-                  {"X-Forwarded-For": f"203.0.113.{i}"})[0] for i in range(7)]
+                  {"X-Forwarded-For": f"203.0.113.{i}"})[0] for i in range(11)]
 comprobar(429 in directos, f"X-Forwarded-For falsificado no evade el límite ({directos})")
 # Por el portal: el límite se sigue aplicando por cliente.
 por_portal = [pedir(PUBLICO, "/api/v1/denuncias", "POST", denuncia(f"Prueba de límite {i} {marca}"))[0]
-              for i in range(7)]
+              for i in range(11)]
 comprobar(429 in por_portal, f"por el portal también hay límite ({por_portal})")
 
 terminar()

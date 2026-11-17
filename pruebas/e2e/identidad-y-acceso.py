@@ -128,8 +128,9 @@ comprobar("$2a$" not in logs, "ningún hash de clave")
 comprobar(sesion["tokenRefresco"] not in logs and token not in logs, "ningún token")
 
 print("10) Límite de abuso en /auth (RNF-SEG5)")
+# Ventana fija de 20 por minuto: 41 intentos garantizan que alguna ventana reciba más de 20.
 estados = [http("POST", "/api/v1/auth/login", {"correo": "x@ejemplo.co", "clave": "abcdefghij"},
-                reintentar_429=False) for _ in range(25)]
+                reintentar_429=False) for _ in range(41)]
 limitados = [e for e in estados if e[0] == 429]
 comprobar(bool(limitados) and "Retry-After" in limitados[0][1], "429 con Retry-After tras el límite")
 
