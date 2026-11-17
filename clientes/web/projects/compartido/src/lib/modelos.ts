@@ -231,21 +231,6 @@ export interface VerificacionAuditoria {
   ultimoHash?: string;
 }
 
-// ---------------------------------------------------------------- denuncias
-export interface NuevaDenuncia {
-  tipoServicio: TipoServicio;
-  ubicacion: { latitud: number; longitud: number };
-  descripcion: string;
-}
-
-export interface DenunciaRecibida {
-  idDenuncia: string;
-  estado: string;
-  fechaRecepcion: string;
-  tieneEvidencia: boolean;
-  mensaje?: string;
-}
-
 /** RFC 9457 Problem Details, como lo devuelven el gateway y los servicios. */
 export interface Problema {
   title?: string;

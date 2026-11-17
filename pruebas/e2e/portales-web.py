@@ -7,7 +7,7 @@ el entorno de Docker Compose.
      línea, sin marcos, sin referrer) y responde index.html en sus rutas.
   2. El proxy /api/ llega al gateway: consultas públicas sin token en el portal
      público e ingreso y bandeja de casos del personal en el de operación.
-  3. Denuncia anónima por el portal: se acepta sin credenciales, nginx no la
+  3. Denuncia anónima por la API (como las apps): se acepta sin credenciales, nginx no la
      registra y ningún registro del portal contiene IP de clientes.
   4. El límite de abuso es por cliente detrás del proxy, y X-Forwarded-For
      enviado directamente al gateway no permite evadirlo.
@@ -43,7 +43,7 @@ def denuncia(texto):
 
 
 print("1) SPA y cabeceras de seguridad")
-for nombre, base, ruta in [("público", PUBLICO, "/denunciar"), ("operación", OPERADOR, "/casos/123")]:
+for nombre, base, ruta in [("público", PUBLICO, "/indicadores"), ("operación", OPERADOR, "/casos/123")]:
     estado, h, html = pedir(base, "/")
     csp = h.get("Content-Security-Policy", "")
     comprobar(estado == 200 and "<app-root" in html, f"portal {nombre}: sirve la SPA")
@@ -54,10 +54,8 @@ for nombre, base, ruta in [("público", PUBLICO, "/denunciar"), ("operación", O
     comprobar(h.get("Server", "").lower() == "nginx", f"portal {nombre}: sin versión del servidor")
     estado, _, html = pedir(base, ruta)
     comprobar(estado == 200 and "<app-root" in html, f"portal {nombre}: {ruta} devuelve la SPA")
-comprobar("geolocation=(self)" in pedir(PUBLICO, "/")[1].get("Permissions-Policy", ""),
-          "el portal público puede pedir la ubicación (denuncias)")
-comprobar("geolocation=()" in pedir(OPERADOR, "/")[1].get("Permissions-Policy", ""),
-          "el portal de operación no")
+comprobar(all("geolocation=()" in pedir(b, "/")[1].get("Permissions-Policy", "") for b in (PUBLICO, OPERADOR)),
+          "ningún portal pide la ubicación (reportes y denuncias solo en las apps)")
 
 print("1b) Una sola dirección: el portal de operación en /operacion/ del público")
 estado, _, html = pedir(PUBLICO, "/operacion/casos/123")
@@ -99,7 +97,7 @@ estado, h, cuerpo = pedir(OPERADOR, "/api/v1/casos?tamano=5", cabeceras={"Author
 comprobar(estado == 200 and "elementos" in json.loads(cuerpo), "bandeja de casos por el portal de operación")
 comprobar(h.get("X-Correlation-Id") == correlacion, "el X-Correlation-Id del portal llega y vuelve")
 
-print("3) Denuncia anónima por el portal público")
+print("3) Denuncia anónima por la API de la dirección pública (como las apps)")
 marca = f"denuncia-portal-{int(time.time())}"
 estado, h, cuerpo = pedir(PUBLICO, "/api/v1/denuncias", "POST", denuncia(f"Conexión ilegal {marca}"),
                           {"Authorization": f"Bearer {token}", "Cookie": "sesion=abc"})
@@ -108,7 +106,7 @@ for _ in range(6):
         break
     time.sleep(int(h.get("Retry-After", "10")) + 1)
     estado, h, cuerpo = pedir(PUBLICO, "/api/v1/denuncias", "POST", denuncia(f"Conexión ilegal {marca}"))
-comprobar(estado == 202, f"denuncia aceptada por el portal ({estado})")
+comprobar(estado == 202, f"denuncia aceptada ({estado})")
 registros = compose("logs", "--no-log-prefix", "portal-publico").stdout
 comprobar("/api/v1/denuncias" not in registros, "nginx no registra las denuncias")
 comprobar(not re.search(r"\b\d{1,3}(\.\d{1,3}){3}\b", registros + compose("logs", "--no-log-prefix",

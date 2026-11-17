@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import {
   ApiIndicadores, MapaPublico, MarcaMapa, Mapa, ResumenIndicadores, filtroDePeriodo, formularioPeriodo, mensajeDeError,
 } from 'compartido';
@@ -13,12 +12,12 @@ import { MetadatosPublicacion } from './metadatos';
  */
 @Component({
   selector: 'app-inicio',
-  imports: [RouterLink, Mapa, Conjunto, FormularioFiltros, MetadatosPublicacion],
+  imports: [Mapa, Conjunto, FormularioFiltros, MetadatosPublicacion],
   template: `
     <h1>Interrupciones de servicios públicos</h1>
     <p class="sr-suave">
-      Reportes ciudadanos agregados por zona. ¿Sabe de una conexión ilegal o un fraude?
-      <a routerLink="/denunciar">Denúncielo de forma anónima</a>.
+      Reportes ciudadanos agregados por zona. Para reportar un corte o hacer una denuncia anónima,
+      use la app de SERVI-RED en su teléfono.
     </p>
     <app-formulario-filtros [f]="f" (aplicar)="cargar()" />
     @if (error()) { <p class="sr-aviso error" role="alert">{{ error() }}</p> }

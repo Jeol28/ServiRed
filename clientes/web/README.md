@@ -6,7 +6,7 @@ con el **gateway** a través de `/api/` en su mismo origen (ver
 
 | Proyecto | Para quién | Pantallas |
 |---|---|---|
-| `portal-publico` | Ciudadanía (sin cuenta) | Mapa de zonas con reportes (celdas de ~1 km, k ≥ 3), indicadores por servicio y territorio, datos abiertos (CSV/JSON) y **denuncia anónima** con ubicación en el mapa y foto opcional |
+| `portal-publico` | Ciudadanía (sin cuenta) | Mapa de zonas con reportes (celdas de ~1 km, k ≥ 3), indicadores por servicio y territorio y datos abiertos (CSV/JSON). Reportes y denuncias se hacen solo desde las apps móviles |
 | `portal-operador` | Operador, regulador, administrador | Ingreso, bandeja de casos con filtros, detalle (atender, asignar, prioridad, resolver, cerrar, enrutar), mapa operativo, moderación de denuncias, exportación regulatoria, auditoría y alertas (verificación de integridad), cuentas |
 | `compartido` | Ambos | Modelos del contrato, sesión y guardias, interceptores (JWT, `X-Correlation-Id`), servicios de API, mapa Leaflet, estilos |
 
@@ -39,9 +39,9 @@ npx ng serve portal-operador --port 4200 --proxy-config proxy.conf.json
 ## Pruebas
 
 ```bash
-npx ng test compartido --watch=false        # sesión, interceptores, denuncias, errores, filtros
+npx ng test compartido --watch=false        # sesión, interceptores, errores, filtros
 npx ng test portal-operador --watch=false   # ingreso, menú por rol, acciones del caso
-npx ng test portal-publico --watch=false    # denuncia anónima, supresión de indicadores
+npx ng test portal-publico --watch=false    # navegación, supresión de indicadores
 npx ng build portal-publico && npx ng build portal-operador
 python3 ../../pruebas/e2e/portales-web.py   # e2e: cabeceras, proxy, anonimato, límite
 ```
@@ -52,10 +52,10 @@ Vitest + jsdom con `HttpTestingController`; no hace falta navegador.
 
 - JWT de acceso solo en memoria; refresco en `sessionStorage` y de un solo uso
   (renovación compartida). Nada en `localStorage` ni cookies.
-- La denuncia anónima no envía JWT, correlationId, cookies ni el nombre del
-  archivo; nginx no la registra y sus logs no tienen IP.
+- Las denuncias anónimas solo se hacen desde las apps. El portal de operación las modera,
+  y los interceptores nunca envían JWT ni correlationId a `/api/v1/denuncias`.
 - CSP sin scripts en línea, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`;
-  solo el portal público puede pedir la ubicación del navegador.
+  ningún portal pide la ubicación del navegador.
 - Textos de usuario en el mapa con `textContent` (nunca HTML).
 
 ## Imagen

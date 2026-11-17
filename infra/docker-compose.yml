@@ -223,8 +223,6 @@ services:
       context: ../clientes/web
       args:
         PROYECTO: portal-publico
-        # La denuncia anónima puede usar la ubicación del navegador.
-        PERMISOS: "camera=(), microphone=(), geolocation=(self)"
     restart: unless-stopped
     networks: [borde]
     ports:

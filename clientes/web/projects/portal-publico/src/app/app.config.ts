@@ -4,7 +4,10 @@ import { provideRouter } from '@angular/router';
 import { interceptorCorrelacion } from 'compartido';
 import { routes } from './app.routes';
 
-/** Portal público: no hay sesión ni JWT; solo consultas abiertas y denuncias anónimas. */
+/**
+ * Portal público: no hay sesión ni JWT, solo consultas abiertas. Reportes y
+ * denuncias se hacen únicamente desde las apps móviles.
+ */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
