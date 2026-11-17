@@ -40,7 +40,9 @@ public class ClientePersistenciaPruebas
     {
         var respuesta = $$"""
             {"idCaso":"{{Caso.IdCaso}}","idReporte":"{{Caso.IdReporte}}","tipoServicio":"ENERGIA",
-             "codigoMunicipio":"11001","magnitud":"CUADRA","estado":"RECIBIDO","abiertoEn":"2026-11-14T15:00:00Z"}
+             "codigoMunicipio":"11001","magnitud":"CUADRA","estado":"RECIBIDO","abiertoEn":"2026-11-14T15:00:00Z",
+             "prioridad":"MEDIA","prioridadManual":false,"corteValidado":false,"version":0,
+             "historia":[{"estado":"RECIBIDO","fecha":"2026-11-14T15:00:00Z","detalle":"Caso abierto"}],"evidencias":[]}
             """;
         var (cliente, manejador) = Cliente(HttpStatusCode.Created, respuesta);
         var correlacion = IdCorrelacion.Nuevo();
@@ -56,13 +58,23 @@ public class ClientePersistenciaPruebas
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.Conflict)]
     [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.BadRequest)]
     public async Task UnRechazoEsUnaFallaPermanente(HttpStatusCode codigo)
     {
         var (cliente, _) = Cliente(codigo);
 
         await Assert.ThrowsAsync<FallaPermanente>(() => cliente.AbrirAsync(Caso, IdCorrelacion.Nuevo(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task UnConflictoDeVersionSeDistingue()
+    {
+        var (cliente, _) = Cliente(HttpStatusCode.Conflict, "{\"motivo\":\"VERSION\"}");
+        var cambios = new CambiosCaso(0, "x", null, DateTimeOffset.UtcNow, Estado: EstadoCaso.EN_ATENCION);
+
+        await Assert.ThrowsAsync<ServiRed.Atencion.Aplicacion.Puertos.ConflictoDeVersion>(() =>
+            cliente.ActualizarAsync(Caso.IdCaso, cambios, [], IdCorrelacion.Nuevo(), CancellationToken.None));
     }
 
     [Fact]

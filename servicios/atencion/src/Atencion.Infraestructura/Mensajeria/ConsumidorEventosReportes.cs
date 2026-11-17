@@ -126,29 +126,49 @@ public sealed class ConsumidorEventosReportes(
         }
     }
 
+    /// <summary>Tipos y versiones que Atención maneja; los demás se confirman y se ignoran.</summary>
     private async Task<bool> DespacharAsync(SobreEvento sobre, IdCorrelacion correlacion, CancellationToken ct)
     {
-        if (sobre is not { Tipo: "reporte.creado", Version: 1 })
+        if (sobre.Version != 1 || sobre.Tipo is not ("reporte.creado" or "restablecimiento.registrado"
+                or "validacion.registrada" or "denuncia.recibida"))
         {
             log.LogDebug("evento no manejado por Atención");
             return false;
         }
-        DatosReporteCreado? datos;
+        await using var alcance = alcances.CreateAsyncScope();
+        var reacciones = alcance.ServiceProvider.GetRequiredService<ReaccionesAEventos>();
+        switch (sobre.Tipo)
+        {
+            case "reporte.creado":
+                var caso = await reacciones.AbrirCasoAsync(Datos<DatosReporteCreado>(sobre), correlacion, ct);
+                log.LogInformation("caso {IdCaso} abierto para el reporte {IdReporte} con prioridad {Prioridad}",
+                    caso.IdCaso, caso.IdReporte, caso.Prioridad);
+                break;
+            case "restablecimiento.registrado":
+                await reacciones.RegistrarRestablecimientoAsync(Datos<DatosRestablecimiento>(sobre), correlacion, ct);
+                break;
+            case "validacion.registrada":
+                await reacciones.RegistrarValidacionAsync(Datos<DatosValidacion>(sobre), correlacion, ct);
+                break;
+            default:
+                var m = await reacciones.AbrirModeracionAsync(Datos<DatosDenuncia>(sobre), correlacion, ct);
+                log.LogInformation("denuncia {IdDenuncia} en moderación", m.IdDenuncia);
+                break;
+        }
+        return true;
+    }
+
+    private static T Datos<T>(SobreEvento sobre)
+    {
         try
         {
-            datos = sobre.Datos.Deserialize<DatosReporteCreado>(ClientePersistencia.Json);
+            return sobre.Datos.Deserialize<T>(ClientePersistencia.Json)
+                   ?? throw new FallaPermanente($"{sobre.Tipo} sin datos");
         }
         catch (JsonException e)
         {
-            throw new FallaPermanente("datos de reporte.creado ilegibles", e);
+            throw new FallaPermanente($"datos de {sobre.Tipo} ilegibles", e);
         }
-        if (datos is null) throw new FallaPermanente("reporte.creado sin datos");
-
-        await using var alcance = alcances.CreateAsyncScope();
-        var casoDeUso = alcance.ServiceProvider.GetRequiredService<AbrirCasoDesdeReporte>();
-        var caso = await casoDeUso.ManejarAsync(datos, correlacion, ct);
-        log.LogInformation("caso {IdCaso} abierto para el reporte {IdReporte}", caso.IdCaso, caso.IdReporte);
-        return true;
     }
 
     private async Task ReintentarOEnviarADlqAsync(IChannel canal, BasicDeliverEventArgs entrega, SobreEvento sobre,

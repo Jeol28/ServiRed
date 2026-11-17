@@ -22,7 +22,7 @@ public class ArquitecturaPruebas
     [Fact]
     public void LaAplicacionNoDependeDeInfraestructura()
     {
-        var resultado = Types.InAssembly(typeof(AbrirCasoDesdeReporte).Assembly)
+        var resultado = Types.InAssembly(typeof(GestionCasos).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny("Microsoft.AspNetCore", "RabbitMQ",
                 "ServiRed.Atencion.Infraestructura", "ServiRed.Atencion.Api")

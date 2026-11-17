@@ -21,13 +21,18 @@ public static class ServiciosInfraestructura
         servicios.AddSingleton(sp => new ConexionRabbitMq(sp.GetRequiredService<OpcionesRabbitMq>(), nombreServicio));
 
         var persistencia = OpcionesPersistencia.DesdeConfiguracion(configuracion);
-        servicios.AddHttpClient<IRepositorioCasos, ClientePersistencia>(http =>
+        servicios.AddHttpClient<ClientePersistencia>(http =>
         {
             http.BaseAddress = persistencia.Url;
             http.Timeout = persistencia.Timeout;
             http.DefaultRequestHeaders.Add(ClientePersistencia.CabeceraClave, persistencia.Clave);
         });
-        servicios.AddScoped<AbrirCasoDesdeReporte>();
+        servicios.AddTransient<IRepositorioCasos>(sp => sp.GetRequiredService<ClientePersistencia>());
+        servicios.AddTransient<ICatalogoAtencion>(sp => sp.GetRequiredService<ClientePersistencia>());
+        servicios.AddTransient<IRepositorioModeracion>(sp => sp.GetRequiredService<ClientePersistencia>());
+        servicios.AddScoped<ReaccionesAEventos>();
+        servicios.AddScoped<GestionCasos>();
+        servicios.AddScoped<GestionModeracion>();
 
         servicios.AddSingleton(OpcionesConsumidor.DesdeConfiguracion(configuracion));
         servicios.AddSingleton<EstadoConsumidor>();

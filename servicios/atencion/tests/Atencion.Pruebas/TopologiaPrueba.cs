@@ -36,7 +36,9 @@ public static class TopologiaPrueba
         await canal.QueueDeclareAsync(Cola + ".dlq", true, false, false,
             new Dictionary<string, object?> { ["x-queue-type"] = "quorum" });
 
-        await canal.QueueBindAsync(Cola, "servired.eventos", "reporte.creado.v1");
+        foreach (var clave in new[] { "reporte.creado.v1", "restablecimiento.registrado.v1", "validacion.registrada.v1",
+                     "denuncia.recibida.v1" })
+            await canal.QueueBindAsync(Cola, "servired.eventos", clave);
         await canal.QueueBindAsync(Cola + ".dlq", "servired.dlx", Cola);
         await canal.QueueBindAsync(Cola, "servired.reintentos", Cola);
     }

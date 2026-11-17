@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
 using ServiRed.Atencion.Aplicacion.Puertos;
+using ServiRed.Atencion.Dominio;
 using Testcontainers.RabbitMq;
 
 namespace ServiRed.Atencion.Pruebas;
@@ -16,7 +17,7 @@ namespace ServiRed.Atencion.Pruebas;
 public class ConsumidorIntegracionPruebas : IAsyncLifetime
 {
     private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("rabbitmq:4.1-management-alpine").Build();
-    private readonly RepositorioCasosFalso _repositorio = new();
+    private readonly PersistenciaFalsa _repositorio = new();
     private WebApplicationFactory<Program> _fabrica = null!;
     private IConnection _conexion = null!;
     private IChannel _canal = null!;
@@ -34,7 +35,12 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
             .UseSetting("RABBITMQ_USUARIO", credenciales[0])
             .UseSetting("RABBITMQ_CLAVE", credenciales[1])
             .UseSetting("CONSUMIDOR_MAX_INTENTOS", "3")
-            .ConfigureTestServices(s => s.AddSingleton<IRepositorioCasos>(_repositorio)));
+            .ConfigureTestServices(s =>
+            {
+                s.AddSingleton<IRepositorioCasos>(_repositorio);
+                s.AddSingleton<ICatalogoAtencion>(_repositorio);
+                s.AddSingleton<IRepositorioModeracion>(_repositorio);
+            }));
         _fabrica.CreateClient(); // arranca el host y el consumidor
 
         _conexion = await new ConnectionFactory { Uri = uri }.CreateConnectionAsync();
@@ -58,8 +64,8 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
                   "fechaRegistro":"2026-11-14T15:00:00Z","tieneEvidencia":false} }
         """;
 
-    private async Task PublicarAsync(string cuerpo) =>
-        await _canal.BasicPublishAsync("servired.eventos", "reporte.creado.v1", mandatory: false,
+    private async Task PublicarAsync(string cuerpo, string clave = "reporte.creado.v1") =>
+        await _canal.BasicPublishAsync("servired.eventos", clave, mandatory: false,
             new BasicProperties { Persistent = true, ContentType = "application/json" }, Encoding.UTF8.GetBytes(cuerpo));
 
     private static async Task EsperarAsync(Func<bool> condicion, int segundos = 15)
@@ -92,7 +98,7 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
 
         await PublicarAsync(Sobre(idReporte, correlacion));
 
-        await EsperarAsync(() => _repositorio.Casos.ContainsKey(idReporte));
+        await EsperarAsync(() => _repositorio.Casos.Values.Any(c => c.IdReporte == idReporte));
         Assert.Contains(correlacion.ToString(), _repositorio.Correlaciones);
     }
 
@@ -104,7 +110,7 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
 
         await PublicarAsync(Sobre(idReporte, Guid.NewGuid()));
 
-        await EsperarAsync(() => _repositorio.Casos.ContainsKey(idReporte));
+        await EsperarAsync(() => _repositorio.Casos.Values.Any(c => c.IdReporte == idReporte));
     }
 
     [Fact]
@@ -118,7 +124,7 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
         var enDlq = await TomarDeDlqAsync();
         Assert.NotNull(enDlq);
         Assert.Contains(idReporte.ToString(), enDlq);
-        Assert.False(_repositorio.Casos.ContainsKey(idReporte));
+        Assert.DoesNotContain(_repositorio.Casos.Values, c => c.IdReporte == idReporte);
     }
 
     [Fact]
@@ -130,6 +136,23 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
         await PublicarAsync(Sobre(idReporte, Guid.NewGuid()));
 
         Assert.Contains(idReporte.ToString(), await TomarDeDlqAsync());
+    }
+
+    [Fact]
+    public async Task UnRestablecimientoResuelveElCasoAbierto()
+    {
+        var idReporte = Guid.NewGuid();
+        await PublicarAsync(Sobre(idReporte, Guid.NewGuid()));
+        await EsperarAsync(() => _repositorio.Casos.Values.Any(c => c.IdReporte == idReporte));
+
+        await PublicarAsync($$"""
+            {"idEvento":"{{Guid.NewGuid()}}","tipo":"restablecimiento.registrado","version":1,
+             "fechaOcurrencia":"2026-11-17T15:00:00Z","correlationId":"{{Guid.NewGuid()}}","origen":"reportes",
+             "datos":{"idReporte":"{{idReporte}}","fechaRestablecimiento":"2026-11-17T15:00:00Z","duracionMinutos":45} }
+            """, "restablecimiento.registrado.v1");
+
+        await EsperarAsync(() => _repositorio.Casos.Values.Any(c => c.IdReporte == idReporte && c.Estado == EstadoCaso.RESUELTO));
+        Assert.Contains(_repositorio.Eventos, e => e.Tipo == "caso.actualizado");
     }
 
     [Fact]
