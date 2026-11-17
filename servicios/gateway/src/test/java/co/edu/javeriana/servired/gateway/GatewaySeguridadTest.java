@@ -171,6 +171,13 @@ class GatewaySeguridadTest {
         get("/api/v1/datos-abiertos/x", null).expectStatus().isOk();
         cliente.post().uri("/api/v1/auth/login").exchange().expectStatus().isOk();
         cliente.post().uri("/api/v1/indicadores/x").exchange().expectStatus().isUnauthorized();
+        get("/api/v1/mapas/publico", null).expectStatus().isOk();
+        get("/api/v1/mapas/operativo", null).expectStatus().isUnauthorized();
+        get("/api/v1/mapas/operativo", token("CIUDADANO")).expectStatus().isForbidden();
+        get("/api/v1/mapas/operativo", token("OPERADOR")).expectStatus().isOk();
+        get("/api/v1/indicadores/exportaciones/reportes", null).expectStatus().isUnauthorized();
+        get("/api/v1/indicadores/exportaciones/reportes", token("OPERADOR")).expectStatus().isForbidden();
+        get("/api/v1/indicadores/exportaciones/reportes", token("REGULADOR")).expectStatus().isOk();
     }
 
     @Test

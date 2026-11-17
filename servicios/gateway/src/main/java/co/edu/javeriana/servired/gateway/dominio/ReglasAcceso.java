@@ -42,7 +42,10 @@ public final class ReglasAcceso {
                     "/api/v1/auth/cerrar-sesion"),
             // Denuncias anónimas (RF-5): sin token; el gateway descarta Authorization (ADR-09)
             Regla.publica("POST", "/api/v1/denuncias", "/api/v1/denuncias/**"),
-            // Portal público: mapas, indicadores y datos abiertos (solo lectura)
+            // Indicadores restringidos (van antes de las reglas públicas: gana la primera que coincide)
+            Regla.roles("GET", Set.of(REGULADOR, ADMINISTRADOR), "/api/v1/indicadores/exportaciones/**"),
+            Regla.roles("GET", Set.of(OPERADOR, REGULADOR, ADMINISTRADOR), "/api/v1/mapas/operativo", "/api/v1/mapas/operativo/**"),
+            // Portal público: mapas, indicadores y datos abiertos (solo lectura y solo agregados)
             Regla.publica("GET", "/api/v1/indicadores/**", "/api/v1/mapas/**", "/api/v1/datos-abiertos/**"),
             // Reportes ciudadanos (RF-1 a RF-4)
             Regla.roles(null, Set.of(CIUDADANO), "/api/v1/reportes", "/api/v1/reportes/**"),
