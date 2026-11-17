@@ -48,8 +48,10 @@ Internet ──HTTPS──▶ Tailscale Funnel ──▶ 127.0.0.1:4300 portal p
    ```
 
    Abra el enlace de Tailscale que aparece. El script instala Docker y Tailscale, clona el
-   repositorio, genera `.env` con secretos nuevos (imprime la clave del administrador),
-   levanta todo y muestra las direcciones. Si el repositorio es privado, clónelo antes con
+   repositorio y genera `.env` con secretos nuevos (imprime la clave del administrador).
+   Luego **pregunta si usar Supabase**: responda `s` y pegue los mismos datos de su
+   proyecto, para que la VM use la misma base y las mismas fotos que ya tiene (ver «Base de
+   datos y fotos en Supabase»). Al final levanta todo y muestra las direcciones. Si el repositorio es privado, clónelo antes con
    un token (`git clone https://<token>@github.com/...`) y ejecute el script desde ahí.
 5. Cambie el nombre de la máquina en Tailscale a `servired` para tener una dirección
    corta.

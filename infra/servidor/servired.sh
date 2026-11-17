@@ -76,6 +76,8 @@ ENV
 supabase() {
   [[ -f .env ]] || preparar
   command -v python3 >/dev/null || { echo "Falta python3" >&2; exit 1; }
+  # Si se ejecuta dentro de "curl ... | bash", las respuestas se leen del teclado.
+  if [[ ! -t 0 ]] && { true </dev/tty; } 2>/dev/null; then exec </dev/tty; fi
   cat <<'AYUDA'
 
 Datos de su proyecto de Supabase (las claves no se muestran ni salen de esta máquina):
@@ -136,6 +138,10 @@ arrancar() {
   [[ -f .env ]] || preparar
   aviso "Construyendo y levantando (la primera vez tarda varios minutos)"
   docker compose ${PERFILES[@]+"${PERFILES[@]}"} up -d --build --wait
+  if [[ "$COMPOSE_FILE" == *compose.supabase.yaml ]]; then
+    # Con Supabase sobran el PostgreSQL y el almacén locales (sus volúmenes se conservan).
+    docker compose --profile local rm -sf postgres-local almacen >/dev/null 2>&1 || true
+  fi
   docker image prune -f >/dev/null
   aviso "Listo: $(curl -fsS http://127.0.0.1:8080/readyz >/dev/null && echo 'gateway sano' || echo 'gateway SIN responder')"
 }

@@ -41,6 +41,10 @@ sudo tailscale up --operator="$USER" --hostname="$NOMBRE"
 echo "==> Código"
 if [[ -d "$DESTINO/.git" ]]; then git -C "$DESTINO" pull --ff-only; else git clone "$REPO" "$DESTINO"; fi
 
+"$DESTINO/infra/servidor/servired.sh" preparar
+# Supabase antes del primer arranque: así nunca se crea una base local que no se usará.
+read -r -p "¿Usar Supabase para la base de datos y las fotos? [s/N] " usar </dev/tty || usar=n
+if [[ "$usar" =~ ^[sS] ]]; then "$DESTINO/infra/servidor/servired.sh" supabase; fi
 # 'sg docker' aplica el grupo docker sin cerrar la sesión.
-sg docker -c "'$DESTINO/infra/servidor/servired.sh' preparar && '$DESTINO/infra/servidor/servired.sh' arrancar"
+sg docker -c "'$DESTINO/infra/servidor/servired.sh' arrancar"
 "$DESTINO/infra/servidor/servired.sh" publicar
