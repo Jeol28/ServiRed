@@ -101,7 +101,26 @@ channels:
     messages:
       caso_cerrado_v1:
         $ref: '#/components/messages/caso_cerrado_v1'
+  accion_auditada:
+    address: accion.auditada.v1
+    description: "Acción auditable: accesos, administración, exportaciones, moderación y seguridad (RF-12). Consumidor: auditoria."
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: servired.eventos
+          type: topic
+          durable: true
+          autoDelete: false
+    messages:
+      accion_auditada_v1:
+        $ref: '#/components/messages/accion_auditada_v1'
 operations:
+  publicar_accion_auditada:
+    action: send
+    summary: "Publicado por identidad, reportes, atencion e indicadores"
+    channel:
+      $ref: '#/channels/accion_auditada'
   publicar_reporte_creado:
     action: send
     summary: "Publicado por reportes"
@@ -242,3 +261,18 @@ components:
       bindings:
         amqp:
           deliveryMode: 2
+    accion_auditada_v1:
+      name: accion.auditada
+      title: accion.auditada v1
+      summary: "Acción auditable (RF-12)"
+      payload:
+        allOf:
+          - $ref: './esquemas/sobre-evento.v1.json'
+          - type: object
+            properties:
+              tipo:
+                const: accion.auditada
+              version:
+                const: 1
+              datos:
+                $ref: './esquemas/accion.auditada.v1.json'

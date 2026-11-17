@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://servired.co/contratos/eventos/accion.auditada.v1.json",
+  "title": "Datos del evento accion.auditada v1",
+  "description": "Acción relevante para auditoría que no tiene otro evento de dominio (RF-12): accesos, acciones administrativas, exportaciones, moderación y seguridad. Nunca contiene correos, nombres, IP ni contraseñas: solo identificadores seudónimos de cuenta.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "categoria",
+    "accion",
+    "resultado"
+  ],
+  "properties": {
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "ACCESO",
+        "ADMINISTRACION",
+        "EXPORTACION",
+        "MODERACION",
+        "SEGURIDAD"
+      ]
+    },
+    "accion": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "p. ej. INICIO_SESION, INICIO_SESION_FALLIDO, REFRESCO_REUTILIZADO, CUENTA_CREADA, CUENTA_ACTUALIZADA, CUENTA_ELIMINADA, CUENTA_SUPRIMIDA, EXPORTACION_REGULATORIA, DENUNCIA_MODERADA"
+    },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "EXITO",
+        "FALLO"
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Quién actuó (ausente si es anónimo o desconocido)",
+      "properties": {
+        "idCuenta": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "rol": {
+          "type": "string",
+          "enum": [
+            "CIUDADANO",
+            "OPERADOR",
+            "REGULADOR",
+            "ADMINISTRADOR"
+          ]
+        }
+      }
+    },
+    "recurso": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "type": "string",
+          "enum": [
+            "CUENTA",
+            "SESION",
+            "EXPORTACION",
+            "DENUNCIA",
+            "CASO",
+            "REPORTE"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 100
+        }
+      }
+    },
+    "detalle": {
+      "type": "object",
+      "description": "Datos complementarios sin información personal"
+    }
+  }
+}

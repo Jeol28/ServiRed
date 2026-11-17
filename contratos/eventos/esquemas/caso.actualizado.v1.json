@@ -54,6 +54,11 @@
     "fechaActualizacion": {
       "type": "string",
       "format": "date-time"
+    },
+    "idActor": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Cuenta del personal que hizo el cambio; ausente si fue automático (fase 7, campo opcional compatible)"
     }
   }
 }

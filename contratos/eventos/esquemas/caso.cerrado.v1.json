@@ -26,6 +26,11 @@
     "resolucion": {
       "type": "string",
       "maxLength": 1000
+    },
+    "idActor": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Cuenta del personal que hizo el cambio; ausente si fue automático (fase 7, campo opcional compatible)"
     }
   }
 }
