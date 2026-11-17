@@ -10,6 +10,8 @@ spring:
     port: ${RABBITMQ_PUERTO:5672}
     username: ${RABBITMQ_USUARIO:guest}
     password: ${RABBITMQ_CLAVE:guest}
+    template:
+      observation-enabled: true
     # Confirmación del broker al reprogramar un reintento.
     publisher-confirm-type: simple
     listener:
@@ -18,6 +20,7 @@ spring:
         # Si la cola aún no existe, el consumidor reintenta sin tumbar el servicio.
         missing-queues-fatal: false
         default-requeue-rejected: false
+        observation-enabled: true
   jackson:
     default-property-inclusion: non_null
     deserialization:
@@ -52,6 +55,14 @@ servired:
     audiencia: servired-api
 
 management:
+  # Trazas: desactivadas salvo TRAZAS_ACTIVAS=true (perfil observabilidad, Jaeger).
+  tracing:
+    enabled: ${TRAZAS_ACTIVAS:false}
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRAZAS_URL:http://jaeger:4318/v1/traces}
   endpoints:
     web:
       exposure:
@@ -64,6 +75,9 @@ management:
         readiness:
           include: readinessState,rabbit
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
     tags:
       servicio: ${spring.application.name}
 

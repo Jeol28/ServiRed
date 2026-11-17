@@ -29,6 +29,14 @@ servired:
     clave: ${IDENTIDAD_ADMIN_CLAVE:}
 
 management:
+  # Trazas: desactivadas salvo TRAZAS_ACTIVAS=true (perfil observabilidad, Jaeger).
+  tracing:
+    enabled: ${TRAZAS_ACTIVAS:false}
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRAZAS_URL:http://jaeger:4318/v1/traces}
   endpoints:
     web:
       exposure:
@@ -41,6 +49,9 @@ management:
         readiness:
           include: readinessState
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
     tags:
       servicio: ${spring.application.name}
 

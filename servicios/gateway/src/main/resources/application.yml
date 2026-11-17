@@ -54,6 +54,14 @@ servired:
     denuncias-por-minuto: 5
 
 management:
+  # Trazas: desactivadas salvo TRAZAS_ACTIVAS=true (perfil observabilidad, Jaeger).
+  tracing:
+    enabled: ${TRAZAS_ACTIVAS:false}
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRAZAS_URL:http://jaeger:4318/v1/traces}
   # Actuator (métricas incluidas) solo en el puerto de gestión, que no se
   # publica fuera de la red interna. Hacia fuera solo /livez y /readyz.
   server:
@@ -68,6 +76,9 @@ management:
         enabled: true
         add-additional-paths: true
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
     tags:
       servicio: ${spring.application.name}
 

@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json.Serialization;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Prometheus;
 using ServiRed.Indicadores.Api.Endpoints;
 using ServiRed.Indicadores.Api.Seguridad;
@@ -19,6 +22,25 @@ builder.Logging.AddJsonConsole(o =>
     o.UseUtcTimestamp = true;
     o.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
 });
+// TraceId y SpanId en los scopes del log: correlación entre logs y trazas.
+builder.Logging.Configure(o => o.ActivityTrackingOptions = ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId);
+
+// Trazas distribuidas (perfil observabilidad): solo si TRAZAS_ACTIVAS=true.
+if (string.Equals(builder.Configuration["TRAZAS_ACTIVAS"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r.AddService(NombreServicio))
+        .WithTracing(t => t
+            .AddAspNetCoreInstrumentation(o => o.Filter = c =>
+                !c.Request.Path.StartsWithSegments("/health") && !c.Request.Path.StartsWithSegments("/metrics"))
+            .AddHttpClientInstrumentation()
+            .AddSource("RabbitMQ.Client.*")
+            .AddOtlpExporter(o =>
+            {
+                o.Endpoint = new Uri(builder.Configuration["OTLP_TRAZAS_URL"] ?? "http://jaeger:4318/v1/traces");
+                o.Protocol = OtlpExportProtocol.HttpProtobuf;
+            }));
+}
 
 builder.Services.AgregarInfraestructura(builder.Configuration, NombreServicio);
 builder.Services.AgregarSeguridad(builder.Configuration);
