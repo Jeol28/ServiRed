@@ -1,6 +1,9 @@
 # Secretos: nunca se versionan
 .env
 *.env.local
+# Cualquier variante con secretos (p. ej. .env.antes-supabase); la plantilla sí se versiona.
+.env.*
+!.env.ejemplo
 
 # Sistema operativo / editores
 .DS_Store
