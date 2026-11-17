@@ -41,7 +41,7 @@ def terminar():
 def http(metodo, ruta, cuerpo=None, correlacion=None, token=None, cabeceras_extra=None, reintentar_429=True):
     """Petición JSON al gateway. Ante un 429 espera Retry-After y reintenta (salvo que se pida lo contrario),
     para que el límite de abuso compartido entre suites no altere los resultados."""
-    for _ in range(3):
+    for _ in range(6):
         resultado = _http(metodo, ruta, cuerpo, correlacion, token, cabeceras_extra)
         if resultado[0] != 429 or not reintentar_429:
             return resultado
