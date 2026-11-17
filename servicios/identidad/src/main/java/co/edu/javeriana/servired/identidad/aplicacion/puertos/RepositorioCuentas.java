@@ -26,7 +26,8 @@ public interface RepositorioCuentas {
 
     Optional<Cuenta> consultar(UUID idCuenta, IdCorrelacion correlacion);
 
-    PaginaCuentas listar(Rol rol, int pagina, int tamano, IdCorrelacion correlacion);
+    /** Las más recientes primero; `correo` es un fragmento (sin distinguir mayúsculas) o null. */
+    PaginaCuentas listar(Rol rol, String correo, int pagina, int tamano, IdCorrelacion correlacion);
 
     Optional<Cuenta> actualizar(UUID idCuenta, Cambios cambios, IdCorrelacion correlacion);
 

@@ -80,9 +80,10 @@ public class ControladorIdentidad {
     @GetMapping("/cuentas")
     public Pagina listar(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
                          @RequestParam(required = false) @Pattern(regexp = ROLES) String rol,
+                         @RequestParam(required = false) @Size(max = 254) String correo,
                          @RequestParam(defaultValue = "0") int pagina,
                          @RequestParam(defaultValue = "20") int tamano) {
-        return cuentas.listar(s, rol, pagina, tamano);
+        return cuentas.listar(s, rol, correo, pagina, tamano);
     }
 
     @PostMapping("/cuentas/{idCuenta}/actualizar")

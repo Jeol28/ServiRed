@@ -75,11 +75,15 @@ public class RepositorioCuentasJdbc implements RepositorioCuentas {
     }
 
     @Override
-    public Pagina listar(String rol, int pagina, int tamano) {
-        String filtro = " FROM identidad.cuentas WHERE eliminada_en IS NULL AND (CAST(:rol AS text) IS NULL OR rol = :rol)";
-        long total = jdbc.sql("SELECT count(*)" + filtro).param("rol", rol).query(Long.class).single();
-        var elementos = jdbc.sql("SELECT " + COLUMNAS + filtro + " ORDER BY creada_en, id LIMIT :limite OFFSET :desde")
+    public Pagina listar(String rol, String correo, int pagina, int tamano) {
+        String filtro = " FROM identidad.cuentas WHERE eliminada_en IS NULL AND (CAST(:rol AS text) IS NULL OR rol = :rol)"
+                + " AND (CAST(:patron AS text) IS NULL OR correo ILIKE :patron ESCAPE '\\')";
+        // El fragmento se busca literal: %, _ y \ del usuario no son comodines.
+        String patron = correo == null ? null : "%" + correo.replaceAll("([\\\\%_])", "\\\\$1") + "%";
+        long total = jdbc.sql("SELECT count(*)" + filtro).param("rol", rol).param("patron", patron).query(Long.class).single();
+        var elementos = jdbc.sql("SELECT " + COLUMNAS + filtro + " ORDER BY creada_en DESC, id DESC LIMIT :limite OFFSET :desde")
                 .param("rol", rol)
+                .param("patron", patron)
                 .param("limite", tamano)
                 .param("desde", (long) pagina * tamano)
                 .query((rs, n) -> cuenta(rs))

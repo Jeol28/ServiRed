@@ -104,9 +104,10 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
     }
 
     @Override
-    public PaginaCuentas listar(Rol rol, int pagina, int tamano, IdCorrelacion correlacion) {
+    public PaginaCuentas listar(Rol rol, String correo, int pagina, int tamano, IdCorrelacion correlacion) {
         var p = conReintentos("listarCuentas", () -> http.get()
                 .uri(b -> b.path("/interno/v1/cuentas").queryParamIfPresent("rol", Optional.ofNullable(rol))
+                        .queryParamIfPresent("correo", Optional.ofNullable(correo))
                         .queryParam("pagina", pagina).queryParam("tamano", tamano).build())
                 .header(IdCorrelacion.CABECERA, correlacion.valor())
                 .retrieve().body(PaginaDto.class));

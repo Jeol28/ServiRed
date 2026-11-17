@@ -175,6 +175,32 @@ class IdentidadIntegracionTest {
     }
 
     @Test
+    void listaLasMasRecientesPrimeroYBuscaPorFragmentoDelCorreo() throws Exception {
+        String marca = "busca" + UUID.randomUUID().toString().substring(0, 6);
+        UUID vieja = UUID.randomUUID();
+        UUID nueva = UUID.randomUUID();
+        llamar("/interno/v1/cuentas/registrar", cuenta(vieja, marca + "ab@ejemplo.co", "CIUDADANO", null)
+                .replace("2026-11-16T10:00:00Z", "2026-11-01T10:00:00Z")).andExpect(status().isCreated());
+        llamar("/interno/v1/cuentas/registrar", cuenta(nueva, marca + "cd@ejemplo.co", "CIUDADANO", null)
+                .replace("2026-11-16T10:00:00Z", "2026-11-17T10:00:00Z")).andExpect(status().isCreated());
+
+        mvc.perform(get("/interno/v1/cuentas").param("correo", " " + marca.toUpperCase() + " ")
+                        .header("X-Clave-Servicio", CLAVE).header("X-Correlation-Id", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.elementos[0].idCuenta").value(nueva.toString()))
+                .andExpect(jsonPath("$.elementos[1].idCuenta").value(vieja.toString()));
+
+        // "_" y "%" del usuario se buscan literalmente, no como comodines de SQL.
+        for (String literal : new String[]{marca + "_b", marca + "%"}) {
+            mvc.perform(get("/interno/v1/cuentas").param("correo", literal)
+                            .header("X-Clave-Servicio", CLAVE).header("X-Correlation-Id", UUID.randomUUID().toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(0));
+        }
+    }
+
+    @Test
     void rotaLaSesionUnaSolaVezYDetectaLaReutilizacion() throws Exception {
         UUID id = registrar("CIUDADANO", null);
         String primero = abrirSesion(id);

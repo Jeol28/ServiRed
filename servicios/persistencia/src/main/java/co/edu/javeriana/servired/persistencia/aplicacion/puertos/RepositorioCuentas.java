@@ -18,7 +18,11 @@ public interface RepositorioCuentas {
 
     Optional<Cuenta> buscar(UUID idCuenta);
 
-    Pagina listar(String rol, int pagina, int tamano);
+    /**
+     * Cuentas vigentes, las más recientes primero.
+     * @param correo fragmento del correo (sin distinguir mayúsculas) o null
+     */
+    Pagina listar(String rol, String correo, int pagina, int tamano);
 
     /** @return false si la cuenta no existe o está eliminada */
     boolean actualizar(UUID idCuenta, CambiosCuenta cambios);

@@ -80,8 +80,9 @@ public class PersistenciaEnMemoria implements RepositorioCuentas, RepositorioSes
     }
 
     @Override
-    public PaginaCuentas listar(Rol rol, int pagina, int tamano, IdCorrelacion correlacion) {
-        var lista = cuentas.values().stream().map(Fila::cuenta).filter(c -> rol == null || c.rol() == rol).toList();
+    public PaginaCuentas listar(Rol rol, String correo, int pagina, int tamano, IdCorrelacion correlacion) {
+        var lista = cuentas.values().stream().map(Fila::cuenta).filter(c -> rol == null || c.rol() == rol)
+                .filter(c -> correo == null || c.correo().valor().toLowerCase().contains(correo.toLowerCase())).toList();
         return new PaginaCuentas(lista, lista.size(), pagina, tamano);
     }
 

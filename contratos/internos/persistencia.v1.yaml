@@ -324,9 +324,11 @@ paths:
   /interno/v1/cuentas:
     get:
       operationId: listarCuentas
+      description: Cuentas vigentes, las más recientes primero.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
         - { name: rol, in: query, schema: { type: string } }
+        - { name: correo, in: query, description: "Fragmento del correo (ILIKE literal)", schema: { type: string, maxLength: 254 } }
         - { name: pagina, in: query, schema: { type: integer } }
         - { name: tamano, in: query, schema: { type: integer, maximum: 100 } }
       responses:

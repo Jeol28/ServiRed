@@ -75,9 +75,10 @@ public class GestionCuentas {
         return cuentas.buscar(idCuenta);
     }
 
-    public Pagina listar(ServicioCliente servicio, String rol, int pagina, int tamano) {
+    public Pagina listar(ServicioCliente servicio, String rol, String correo, int pagina, int tamano) {
         OperacionNegocio.LISTAR_CUENTAS.autorizar(servicio);
-        return cuentas.listar(rol, Math.max(pagina, 0), Math.clamp(tamano, 1, 100));
+        String buscado = correo == null || correo.isBlank() ? null : correo.strip();
+        return cuentas.listar(rol, buscado, Math.max(pagina, 0), Math.clamp(tamano, 1, 100));
     }
 
     /** Desactivar la cuenta o cambiar su clave revoca todas sus sesiones. */

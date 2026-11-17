@@ -1020,9 +1020,13 @@ paths:
       tags: [cuentas]
       operationId: listarCuentas
       summary: Listar cuentas
-      description: Solo ADMINISTRADOR.
+      description: Solo ADMINISTRADOR. Las más recientes primero.
       parameters:
         - { name: rol, in: query, schema: { $ref: "#/components/schemas/Rol" } }
+        - name: correo
+          in: query
+          description: Fragmento del correo, sin distinguir mayúsculas (búsqueda literal).
+          schema: { type: string, maxLength: 254 }
         - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
         - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:

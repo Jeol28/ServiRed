@@ -49,9 +49,11 @@ public class AdministracionCuentas {
                 List.of(AccionAuditada.administracion("CUENTA_CREADA", admin, nueva.idCuenta(), detalle)), correlacion);
     }
 
-    public PaginaCuentas listar(Solicitante admin, Rol rol, int pagina, int tamano, IdCorrelacion correlacion) {
+    public PaginaCuentas listar(Solicitante admin, Rol rol, String correo, int pagina, int tamano, IdCorrelacion correlacion) {
         exigirAdministrador(admin);
-        return cuentas.listar(rol, pagina, tamano, correlacion);
+        String buscado = correo == null || correo.isBlank() ? null : correo.strip();
+        if (buscado != null && buscado.length() > 254) buscado = buscado.substring(0, 254);
+        return cuentas.listar(rol, buscado, pagina, tamano, correlacion);
     }
 
     public Cuenta consultar(Solicitante admin, UUID idCuenta, IdCorrelacion correlacion) {

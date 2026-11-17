@@ -68,9 +68,10 @@ public class ControladorCuentas {
 
     @GetMapping
     public PaginaDto listar(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) Rol rol,
+                            @RequestParam(required = false) String correo,
                             @RequestParam(defaultValue = "0") int pagina,
                             @RequestParam(defaultValue = "20") int tamano) {
-        var p = cuentas.listar(Contexto.solicitante(jwt), rol, pagina, tamano, Contexto.correlacion());
+        var p = cuentas.listar(Contexto.solicitante(jwt), rol, correo, pagina, tamano, Contexto.correlacion());
         return new PaginaDto(p.elementos().stream().map(CuentaDto::de).toList(), p.total(), p.pagina(), p.tamano());
     }
 
