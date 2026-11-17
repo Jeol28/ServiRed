@@ -51,6 +51,10 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
                                MeterRegistry metricas) {
         this.propiedades = propiedades;
         this.metricas = metricas;
+        // Series en 0 desde el arranque: increase() de Prometheus no ve el salto de "no existe" a 1.
+        for (String accion : new String[]{"INICIO_SESION_FALLIDO", "REFRESCO_REUTILIZADO"}) {
+            metricas.counter("servired.acciones.auditadas", "accion", accion, "resultado", "FALLO");
+        }
         this.http = constructor.clone()
                 .baseUrl(propiedades.url())
                 .defaultHeader("X-Clave-Servicio", propiedades.clave())

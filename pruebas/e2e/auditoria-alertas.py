@@ -48,6 +48,21 @@ def hay(token, **filtros):
     return lambda: bool(registros(token, **filtros))
 
 
+def prometheus(ruta):
+    with urllib.request.urlopen("http://127.0.0.1:9090" + ruta, timeout=10) as r:
+        return json.loads(r.read())
+
+
+try:
+    urllib.request.urlopen("http://127.0.0.1:9090/-/ready", timeout=5).read()
+    con_observabilidad = True
+except Exception:  # noqa: BLE001 - el perfil es opcional
+    con_observabilidad = False
+
+if con_observabilidad:
+    # Prometheus debe haber visto las series de alertas en 0 antes de que suban (increase()).
+    esperar(lambda: bool(prometheus("/api/v1/query?query=servired_alertas_seguridad_total")["data"]["result"]), 60)
+
 sesion_admin = entrar_como_admin()
 admin, id_admin = sesion_admin["tokenAcceso"], sesion_admin["cuenta"]["idCuenta"]
 
@@ -112,17 +127,6 @@ comprobar("solo inserción" in intento.stderr and intento.returncode != 0,
           "un UPDATE directo en la base de datos es rechazado (solo inserción)")
 comprobar(http("POST", "/api/v1/auditoria/registros", {}, token=admin)[0] in (401, 403, 405), "no se escribe por el gateway")
 
-
-def prometheus(ruta):
-    with urllib.request.urlopen("http://127.0.0.1:9090" + ruta, timeout=10) as r:
-        return json.loads(r.read())
-
-
-try:
-    urllib.request.urlopen("http://127.0.0.1:9090/-/ready", timeout=5).read()
-    con_observabilidad = True
-except Exception:  # noqa: BLE001 - el perfil es opcional
-    con_observabilidad = False
 
 if not con_observabilidad:
     print("5) Observabilidad: perfil no activo, se omite")

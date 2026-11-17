@@ -51,6 +51,8 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 });
 
 var app = builder.Build();
+// Crea las series de alertas en 0 desde el arranque (ver MetricasAlertas).
+app.Services.GetRequiredService<ServiRed.Auditoria.Aplicacion.IMetricasAlertas>();
 
 app.UseMiddleware<MiddlewareCorrelacion>();
 app.UseMiddleware<ManejoErrores>();
