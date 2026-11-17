@@ -42,6 +42,19 @@ Android 17 bloquea por defecto el acceso a la red local (incluido `10.0.2.2`), p
 se usa `adb reverse`. Para otro gateway: `./gradlew installDebug -PapiBase=https://api.ejemplo.co/`.
 La versión release solo admite HTTPS.
 
+### En su teléfono, contra el servidor de pruebas
+
+Sin tiendas: conecte el teléfono por USB con la depuración USB activa y ejecute
+
+```bash
+./gradlew installDebug -PapiBase=https://servired.<su-red>.ts.net/
+```
+
+Para no repetir la dirección, póngala en `~/.gradle/gradle.properties` (fuera del
+repositorio): `apiBase=https://servired.<su-red>.ts.net/`. También puede generar el APK
+(`./gradlew assembleDebug`, queda en `app/build/outputs/apk/debug/`) y abrirlo en el
+teléfono. Ver [infra/servidor](../../infra/servidor/README.md).
+
 ## Pruebas
 
 ```bash

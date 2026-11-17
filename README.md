@@ -91,6 +91,12 @@ docker compose down                                  # detener (agregue -v para 
   y péguela en `.env` (si se deja vacía se usa una clave efímera).
 - Ningún microservicio, ni la base de datos, publica puertos: solo el gateway y los portales.
 
+### Probar fuera de local (gratis)
+Para usar la plataforma desde cualquier lugar, incluidas las apps en sus teléfonos, sin
+pagar hosting ni dominio: una VM gratuita de Oracle Cloud (o su propio computador)
+publicada con Tailscale. Ver [infra/servidor](infra/servidor/README.md) y
+[ADR-19](docs/adr/ADR-19-servidor-de-pruebas.md).
+
 ### Observabilidad (opcional)
 `TRAZAS_ACTIVAS=true docker compose --profile observabilidad up -d --build --wait` agrega
 Prometheus (127.0.0.1:9090), Alertmanager (:9093), Grafana (:3000, usuario `admin` y
@@ -178,3 +184,4 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | 8 | Portales Angular | ✅ |
 | 9 | App Android | ✅ |
 | 10 | App iOS | ✅ |
+| 11 | Servidor de pruebas fuera de local (Oracle Cloud gratuito + Tailscale) | ✅ |
