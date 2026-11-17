@@ -125,6 +125,9 @@ python3 pruebas/e2e/portales-web.py
 
 # Portales web (Vitest), desde clientes/web
 npx ng test compartido --watch=false
+
+# App Android, desde clientes/android (instrumentadas: emulador y adb reverse tcp:8080 tcp:8080)
+./gradlew testDebugUnitTest connectedDebugAndroidTest
 ```
 
 La prueba e2e crea, repite (idempotencia) y consulta un reporte por el gateway,
@@ -167,5 +170,5 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | ✅ |
 | 7 | Auditoría y alertas | ✅ |
 | 8 | Portales Angular | ✅ |
-| 9 | App Android | |
+| 9 | App Android | ✅ |
 | 10 | App iOS | |
