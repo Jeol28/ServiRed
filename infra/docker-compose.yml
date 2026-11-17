@@ -169,6 +169,14 @@ services:
   indicadores:
     <<: *servicio-base
     build: ../servicios/indicadores
+    environment:
+      <<: *entorno-rabbit
+      PERSISTENCIA_URL: http://persistencia:8080
+      PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_INDICADORES:?definir en .env}
+    depends_on:
+      <<: *depende-rabbit
+      persistencia:
+        condition: service_healthy
 
   auditoria:
     <<: *servicio-base
