@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: servired
+    folder: SERVI-RED
+    type: file
+    options:
+      path: /var/lib/grafana/tableros

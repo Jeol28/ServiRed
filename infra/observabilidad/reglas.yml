@@ -1,0 +1,91 @@
+# Alertas de SERVI-RED (RF-13, ADR-16). Alertmanager las envía a Auditoría,
+# que las deja en el registro de auditoría (categoría ALERTA).
+groups:
+  - name: servired-operacion
+    rules:
+      - alert: ServicioCaido
+        expr: up == 0
+        for: 1m
+        labels: { severity: critica }
+        annotations:
+          summary: "{{ $labels.job }} no responde a Prometheus desde hace 1 minuto"
+
+      - alert: MensajesEnColaDeFallidos
+        expr: rabbitmq_queue_messages_ready{queue=~".+\\.dlq"} > 0
+        for: 1m
+        labels: { severity: alta }
+        annotations:
+          summary: "{{ $value }} mensaje(s) en {{ $labels.queue }}: un consumidor no pudo procesarlos"
+
+      - alert: ColaDeEventosAcumulada
+        expr: rabbitmq_queue_messages_ready{queue=~"[a-z]+\\.eventos(-[a-z]+)?"} > 500
+        for: 5m
+        labels: { severity: media }
+        annotations:
+          summary: "{{ $labels.queue }} acumula {{ $value }} eventos: el consumidor no da abasto o está caído"
+
+      - alert: OutboxAtascado
+        expr: servired_outbox_pendientes > 20
+        for: 2m
+        labels: { severity: alta, servicio: persistencia }
+        annotations:
+          summary: "{{ $value }} eventos guardados sin publicar: revisar RabbitMQ y el relay del outbox"
+
+      - alert: FallosPublicandoEventos
+        expr: increase(servired_outbox_fallos_total[5m]) > 0
+        labels: { severity: media, servicio: persistencia }
+        annotations:
+          summary: "El relay del outbox no pudo publicar eventos en los últimos 5 minutos"
+
+      - alert: TasaDeErrores5xx
+        expr: |
+          sum by (job) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            / sum by (job) (rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: { severity: alta }
+        annotations:
+          summary: "Más del 5 % de las peticiones de {{ $labels.job }} terminan en error 5xx"
+
+      - alert: TasaDeErrores5xxDotnet
+        expr: |
+          sum by (job) (rate(http_requests_received_total{code=~"5.."}[5m]))
+            / sum by (job) (rate(http_requests_received_total[5m])) > 0.05
+        for: 5m
+        labels: { severity: alta }
+        annotations:
+          summary: "Más del 5 % de las peticiones de {{ $labels.job }} terminan en error 5xx"
+
+      - alert: LatenciaAlta
+        # RNF de rendimiento: el 95 % de las operaciones en máximo 2 segundos.
+        expr: |
+          histogram_quantile(0.95, sum by (le, job) (rate(http_server_requests_seconds_bucket{uri!~"/actuator.*"}[5m]))) > 2
+        for: 5m
+        labels: { severity: media }
+        annotations:
+          summary: "El percentil 95 de {{ $labels.job }} supera 2 s ({{ $value }} s)"
+
+  - name: servired-seguridad
+    rules:
+      - alert: AlertaDeSeguridadDetectada
+        expr: increase(servired_alertas_seguridad_total[5m]) > 0
+        labels: { severity: alta, servicio: auditoria }
+        annotations:
+          summary: "Auditoría detectó {{ $labels.tipo }} (severidad {{ $labels.severidad }})"
+
+      - alert: IniciosDeSesionFallidosFrecuentes
+        expr: sum(increase(servired_acciones_auditadas_total{accion="INICIO_SESION_FALLIDO"}[5m])) > 20
+        labels: { severity: alta, servicio: identidad }
+        annotations:
+          summary: "{{ $value }} inicios de sesión fallidos en 5 minutos"
+
+      - alert: AccesosDenegadosEnGateway
+        expr: sum(increase(http_server_requests_seconds_count{job="gateway",status=~"401|403"}[5m])) > 50
+        labels: { severity: media, servicio: gateway }
+        annotations:
+          summary: "{{ $value }} peticiones rechazadas por autenticación o permisos en 5 minutos"
+
+      - alert: LimiteDeAbusoActivado
+        expr: sum(increase(http_server_requests_seconds_count{job="gateway",status="429"}[5m])) > 10
+        labels: { severity: media, servicio: gateway }
+        annotations:
+          summary: "El límite de abuso rechazó {{ $value }} peticiones en 5 minutos"

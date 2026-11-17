@@ -19,6 +19,9 @@ x-servicio-base: &servicio-base
     RABBITMQ_PUERTO: "5672"
     RABBITMQ_USUARIO: ${RABBITMQ_USUARIO:?definir en .env}
     RABBITMQ_CLAVE: ${RABBITMQ_CLAVE:?definir en .env}
+    # Trazas (perfil observabilidad): activar con TRAZAS_ACTIVAS=true en .env.
+    TRAZAS_ACTIVAS: ${TRAZAS_ACTIVAS:-false}
+    OTLP_TRAZAS_URL: http://jaeger:4318/v1/traces
   depends_on: &depende-rabbit
     rabbitmq-init:
       condition: service_completed_successfully
@@ -135,6 +138,8 @@ services:
     environment:
       PERSISTENCIA_URL: http://persistencia:8080
       PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_IDENTIDAD:?definir en .env}
+      TRAZAS_ACTIVAS: ${TRAZAS_ACTIVAS:-false}
+      OTLP_TRAZAS_URL: http://jaeger:4318/v1/traces
       IDENTIDAD_JWT_CLAVE_PRIVADA: ${IDENTIDAD_JWT_CLAVE_PRIVADA:-}
       IDENTIDAD_ADMIN_CORREO: ${IDENTIDAD_ADMIN_CORREO:-}
       IDENTIDAD_ADMIN_CLAVE: ${IDENTIDAD_ADMIN_CLAVE:-}
@@ -181,11 +186,24 @@ services:
   auditoria:
     <<: *servicio-base
     build: ../servicios/auditoria
+    environment:
+      <<: *entorno-rabbit
+      PERSISTENCIA_URL: http://persistencia:8080
+      PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_AUDITORIA:?definir en .env}
+      # Token del webhook interno de Alertmanager (RF-13).
+      ALERTAS_TOKEN: ${ALERTAS_TOKEN:?definir en .env}
+    depends_on:
+      <<: *depende-rabbit
+      persistencia:
+        condition: service_healthy
 
   gateway:
     build: ../servicios/gateway
     restart: unless-stopped
     networks: [borde, interna]
+    environment:
+      TRAZAS_ACTIVAS: ${TRAZAS_ACTIVAS:-false}
+      OTLP_TRAZAS_URL: http://jaeger:4318/v1/traces
     ports:
       - "8080:8080"
     depends_on:
@@ -194,12 +212,64 @@ services:
       atencion:    { condition: service_healthy }
       indicadores: { condition: service_healthy }
 
+  # ------------------------------------------------------------------
+  # Observabilidad (opcional):  docker compose --profile observabilidad up -d
+  # Consolas solo en 127.0.0.1. Ver ADR-16.
+  # ------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [observabilidad]
+    restart: unless-stopped
+    networks: [interna, borde]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./observabilidad/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observabilidad/reglas.yml:/etc/prometheus/reglas.yml:ro
+      - datos-prometheus:/prometheus
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    profiles: [observabilidad]
+    restart: unless-stopped
+    networks: [interna, borde]
+    environment:
+      ALERTAS_TOKEN: ${ALERTAS_TOKEN:?definir en .env}
+    entrypoint: ["/bin/sh", "/iniciar-alertmanager.sh"]
+    ports: ["127.0.0.1:9093:9093"]
+    volumes:
+      - ./observabilidad/iniciar-alertmanager.sh:/iniciar-alertmanager.sh:ro
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    profiles: [observabilidad]
+    restart: unless-stopped
+    networks: [interna, borde]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_CLAVE:?definir en .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    ports: ["127.0.0.1:3000:3000"]
+    volumes:
+      - ./observabilidad/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observabilidad/grafana/tableros:/var/lib/grafana/tableros:ro
+
+  jaeger:
+    # Recibe trazas por OTLP (4317/4318, solo red interna); UI en 127.0.0.1:16686.
+    image: jaegertracing/jaeger:2.9.0
+    profiles: [observabilidad]
+    restart: unless-stopped
+    networks: [interna, borde]
+    ports: ["127.0.0.1:16686:16686"]
+
 networks:
   borde:
   interna:
     internal: true   # sin salida a Internet ni puertos publicados
 
 volumes:
+  datos-prometheus:
   datos-almacen:
   datos-postgres:
   datos-rabbitmq:
