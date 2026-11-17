@@ -37,7 +37,9 @@ public record Reporte(UUID idReporte, UUID idCiudadano, TipoServicio tipoServici
         if (!perteneceA(solicitante)) {
             throw new ReporteNoEncontrado(idReporte);
         }
-        if (estado != EstadoReporte.RECIBIDO && estado != EstadoReporte.EN_ATENCION) {
+        // Si el operador ya resolvió el caso (RESTABLECIDO sin fecha), el ciudadano aún registra la hora real.
+        boolean resueltoSinHora = estado == EstadoReporte.RESTABLECIDO && fechaRestablecimiento == null;
+        if (estado != EstadoReporte.RECIBIDO && estado != EstadoReporte.EN_ATENCION && !resueltoSinHora) {
             throw new ReglaIncumplida("YA_RESTABLECIDO", "El reporte ya fue restablecido o cerrado");
         }
         if (fecha == null) {

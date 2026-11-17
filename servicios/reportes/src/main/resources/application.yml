@@ -10,6 +10,14 @@ spring:
     port: ${RABBITMQ_PUERTO:5672}
     username: ${RABBITMQ_USUARIO:guest}
     password: ${RABBITMQ_CLAVE:guest}
+    # Confirmación del broker al reprogramar un reintento.
+    publisher-confirm-type: simple
+    listener:
+      simple:
+        prefetch: 10
+        # Si la cola aún no existe, el consumidor reintenta sin tumbar el servicio.
+        missing-queues-fatal: false
+        default-requeue-rejected: false
   jackson:
     default-property-inclusion: non_null
     deserialization:

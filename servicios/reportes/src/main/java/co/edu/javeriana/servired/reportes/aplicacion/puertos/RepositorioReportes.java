@@ -41,6 +41,11 @@ public interface RepositorioReportes {
      */
     Reporte registrarValidacion(UUID idReporte, Voto voto, SobreEvento evento, IdCorrelacion correlacion);
 
+    /** Idempotente por idEvento; si el reporte ya está más adelante no cambia. */
+    Reporte aplicarEstadoDeCaso(UUID idReporte, UUID idEvento,
+                                co.edu.javeriana.servired.reportes.dominio.EstadoPorCaso cambio,
+                                java.time.Instant fecha, IdCorrelacion correlacion);
+
     Reporte guardarEvidencia(UUID idReporte, UUID idEvidencia, ImagenSaneada imagen, IdCorrelacion correlacion);
 
     Optional<Archivo> obtenerEvidencia(UUID idReporte, UUID idEvidencia, IdCorrelacion correlacion);

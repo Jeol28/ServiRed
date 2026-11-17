@@ -155,6 +155,19 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
         }
     }
 
+    @Override
+    public Reporte aplicarEstadoDeCaso(UUID idReporte, UUID idEvento,
+                                       co.edu.javeriana.servired.reportes.dominio.EstadoPorCaso c, Instant fecha,
+                                       IdCorrelacion correlacion) {
+        return conReintentos("aplicarEstadoDeCaso", () -> http.post()
+                .uri("/interno/v1/reportes/{id}/estado-por-caso", idReporte)
+                .header(CABECERA_CORRELACION, correlacion.valor())
+                .body(Map.of("idEvento", idEvento, "estadoNuevo", c.estadoNuevo().name(),
+                        "desde", c.desde().stream().map(Enum::name).toList(), "detalle", c.detalle(), "fecha", fecha))
+                .retrieve()
+                .body(ReporteGuardadoDto.class)).aDominio();
+    }
+
     // --------------------------------------------------------------- evidencias
     @Override
     public Reporte guardarEvidencia(UUID idReporte, UUID idEvidencia, ImagenSaneada imagen, IdCorrelacion correlacion) {

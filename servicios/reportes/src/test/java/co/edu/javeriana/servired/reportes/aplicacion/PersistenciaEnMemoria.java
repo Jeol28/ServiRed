@@ -137,6 +137,30 @@ public class PersistenciaEnMemoria implements RepositorioReportes, CatalogoTerri
                 r.evidencias());
     }
 
+    public final Set<UUID> eventosAplicados = new HashSet<>();
+
+    @Override
+    public synchronized Reporte aplicarEstadoDeCaso(UUID id, UUID idEvento,
+                                                    co.edu.javeriana.servired.reportes.dominio.EstadoPorCaso c,
+                                                    java.time.Instant fecha, IdCorrelacion correlacion) {
+        Reporte r = reportes.get(id);
+        if (r == null) {
+            throw org.springframework.web.client.HttpClientErrorException.create(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "no existe", null, null, null);
+        }
+        if (!eventosAplicados.add(idEvento) || !c.desde().contains(r.estado())) {
+            return r;
+        }
+        var historia = new ArrayList<>(r.historia());
+        historia.add(new Reporte.EntradaHistoria(c.estadoNuevo(), fecha, c.detalle()));
+        var nuevo = new Reporte(r.idReporte(), r.idCiudadano(), r.tipoServicio(), r.ubicacion(), r.municipio(),
+                r.inicioEstimado(), r.magnitud(), r.descripcion(), c.estadoNuevo(), r.fechaRegistro(),
+                r.fechaRestablecimiento(), r.duracionMinutos(), r.versionValidaciones(), r.validacionCorte(),
+                r.validacionRestablecimiento(), historia, r.evidencias());
+        reportes.put(id, nuevo);
+        return nuevo;
+    }
+
     @Override
     public Reporte guardarEvidencia(UUID id, UUID idEvidencia, ImagenSaneada imagen, IdCorrelacion correlacion) {
         Reporte r = reportes.get(id);

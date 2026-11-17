@@ -5,6 +5,7 @@ import co.edu.javeriana.servired.reportes.aplicacion.CrearReporte;
 import co.edu.javeriana.servired.reportes.aplicacion.GestionEvidencias;
 import co.edu.javeriana.servired.reportes.aplicacion.ParticipacionCiudadana;
 import co.edu.javeriana.servired.reportes.aplicacion.RecibirDenuncia;
+import co.edu.javeriana.servired.reportes.aplicacion.SeguimientoDeCasos;
 import co.edu.javeriana.servired.reportes.aplicacion.puertos.CatalogoTerritorial;
 import co.edu.javeriana.servired.reportes.aplicacion.puertos.RepositorioReportes;
 import co.edu.javeriana.servired.reportes.aplicacion.puertos.SaneadorImagenes;
@@ -71,6 +72,11 @@ public class ConfiguracionReportes {
     @Bean
     GestionEvidencias gestionEvidencias(RepositorioReportes repositorio, SaneadorImagenes saneador) {
         return new GestionEvidencias(repositorio, saneador);
+    }
+
+    @Bean
+    SeguimientoDeCasos seguimientoDeCasos(RepositorioReportes repositorio) {
+        return new SeguimientoDeCasos(repositorio);
     }
 
     @Bean

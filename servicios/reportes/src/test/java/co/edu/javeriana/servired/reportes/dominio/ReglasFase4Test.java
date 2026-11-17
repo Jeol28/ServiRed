@@ -50,7 +50,7 @@ class ReglasFase4Test {
     void soloElAutorRestableceYUnaSolaVez() {
         assertThatThrownBy(() -> reporte(EstadoReporte.RECIBIDO, null).restablecer(UUID.randomUUID(), AHORA, null, AHORA))
                 .isInstanceOf(ReporteNoEncontrado.class);
-        assertThatThrownBy(() -> reporte(EstadoReporte.RESTABLECIDO, null).restablecer(autor, AHORA, null, AHORA))
+        assertThatThrownBy(() -> reporte(EstadoReporte.CERRADO, null).restablecer(autor, AHORA, null, AHORA))
                 .isInstanceOfSatisfying(ReglaIncumplida.class, e -> assertThat(e.motivo()).isEqualTo("YA_RESTABLECIDO"));
     }
 
