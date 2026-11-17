@@ -14,6 +14,10 @@ public sealed record IdCorrelacion
 
     public static IdCorrelacion Nuevo() => new(Guid.NewGuid());
 
+    /// <summary>Correlación que viaja en el sobre de un evento (ya es un UUID).</summary>
+    public static IdCorrelacion DeEvento(Guid correlationId) =>
+        correlationId == Guid.Empty ? throw new ArgumentException("correlationId vacío") : new(correlationId);
+
     public static IdCorrelacion DesdeCabecera(string? valorRecibido) =>
         valorRecibido is { Length: 36 } && Guid.TryParseExact(valorRecibido, "D", out var guid)
             ? new IdCorrelacion(guid)
