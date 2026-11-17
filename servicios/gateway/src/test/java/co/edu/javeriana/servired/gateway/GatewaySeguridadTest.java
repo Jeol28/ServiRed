@@ -154,6 +154,12 @@ class GatewaySeguridadTest {
                 .expectStatus().isForbidden();
         cliente.patch().uri("/api/v1/casos/x").header("Authorization", token("OPERADOR")).exchange()
                 .expectStatus().isOk();
+        get("/api/v1/moderacion/denuncias", token("REGULADOR")).expectStatus().isOk();
+        cliente.post().uri("/api/v1/moderacion/denuncias/x/decision").header("Authorization", token("REGULADOR"))
+                .exchange().expectStatus().isForbidden();
+        cliente.post().uri("/api/v1/moderacion/denuncias/x/decision").header("Authorization", token("OPERADOR"))
+                .exchange().expectStatus().isOk();
+        get("/api/v1/moderacion/denuncias", token("CIUDADANO")).expectStatus().isForbidden();
         get("/api/v1/cuentas", token("REGULADOR")).expectStatus().isForbidden();
         get("/api/v1/cuentas", token("ADMINISTRADOR")).expectStatus().isOk();
         get("/api/v1/cuentas/yo", token("OPERADOR")).expectStatus().isOk();

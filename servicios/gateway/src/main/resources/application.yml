@@ -32,7 +32,7 @@ spring:
             - id: atencion
               uri: ${SERVICIO_ATENCION_URL:http://atencion:8080}
               predicates:
-                - Path=/api/v1/casos,/api/v1/casos/**
+                - Path=/api/v1/casos,/api/v1/casos/**,/api/v1/moderacion/**
             - id: indicadores
               uri: ${SERVICIO_INDICADORES_URL:http://indicadores:8080}
               predicates:

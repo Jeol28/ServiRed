@@ -49,6 +49,9 @@ public final class ReglasAcceso {
             // Casos (RF-6, RF-7): el regulador solo consulta
             Regla.roles("GET", Set.of(OPERADOR, REGULADOR, ADMINISTRADOR), "/api/v1/casos", "/api/v1/casos/**"),
             Regla.roles(null, Set.of(OPERADOR, ADMINISTRADOR), "/api/v1/casos", "/api/v1/casos/**"),
+            // Moderación de denuncias anónimas (RF-5): el regulador solo consulta
+            Regla.roles("GET", Set.of(OPERADOR, REGULADOR, ADMINISTRADOR), "/api/v1/moderacion/**"),
+            Regla.roles(null, Set.of(OPERADOR, ADMINISTRADOR), "/api/v1/moderacion/**"),
             // Cuentas (RF-11)
             Regla.autenticada(null, "/api/v1/cuentas/yo"),
             Regla.roles(null, Set.of(ADMINISTRADOR), "/api/v1/cuentas", "/api/v1/cuentas/**"));
