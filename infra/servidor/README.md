@@ -28,9 +28,13 @@ Sus dispositivos ──Tailscale──▶ Serve ──▶ 127.0.0.1:4200 portal 
    y su llave SSH. No abra puertos en la *security list*: no hacen falta.
    - Con 8 GB el uso de memoria queda cerca del 35 %. Oracle recupera las VM gratuitas que
      pasan 7 días con CPU, red **y** memoria por debajo del 20 %.
-3. Cree una cuenta gratuita de Tailscale e instálelo en su computador y su teléfono.
-   En la [consola](https://login.tailscale.com/admin/dns) active **MagicDNS** y
+3. Cree una cuenta gratuita de Tailscale. En la
+   [consola](https://login.tailscale.com/admin/dns) active **MagicDNS** y
    **HTTPS Certificates**. Funnel se autoriza la primera vez que se usa.
+   - Las apps y el portal público **no** necesitan Tailscale en el teléfono: Funnel los
+     deja en internet abierto.
+   - Instálelo solo en los dispositivos desde los que quiera abrir lo privado (el portal
+     de operación y Grafana), por ejemplo su computador.
 4. Entre por SSH y ejecute:
 
    ```bash
