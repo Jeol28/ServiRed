@@ -5,6 +5,8 @@ import co.edu.javeriana.servired.persistencia.aplicacion.ConsultarReporte;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionCuentas;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionEvidencias;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAtencion;
+import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesIndicadores;
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioIndicadores;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesReporte;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAtencion;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.AlmacenEvidencias;
@@ -81,6 +83,11 @@ public class ConfiguracionCasosDeUso {
     OperacionesAtencion operacionesAtencion(UnidadDeTrabajo t, RegistroIdempotencia i, RepositorioAtencion r,
                                             AlmacenEvidencias a, Outbox o) {
         return new OperacionesAtencion(t, i, r, a, o);
+    }
+
+    @Bean
+    OperacionesIndicadores operacionesIndicadores(UnidadDeTrabajo t, RepositorioIndicadores r) {
+        return new OperacionesIndicadores(t, r);
     }
 
     @Bean

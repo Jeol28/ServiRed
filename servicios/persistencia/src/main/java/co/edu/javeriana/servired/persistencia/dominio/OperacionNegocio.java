@@ -38,6 +38,10 @@ public enum OperacionNegocio {
     ABRIR_SESION("abrirSesion", EnumSet.of(ServicioCliente.IDENTIDAD)),
     ROTAR_SESION("rotarSesion", EnumSet.of(ServicioCliente.IDENTIDAD)),
     CERRAR_SESION("cerrarSesion", EnumSet.of(ServicioCliente.IDENTIDAD)),
+    ACTUALIZAR_VISTA("actualizarVistaReporte", EnumSet.of(ServicioCliente.INDICADORES)),
+    CALCULAR_AGREGADOS("calcularAgregados", EnumSet.of(ServicioCliente.INDICADORES)),
+    LISTAR_HECHOS("listarHechos", EnumSet.of(ServicioCliente.INDICADORES)),
+    CONSULTAR_ESTADO_VISTA("consultarEstadoVista", EnumSet.of(ServicioCliente.INDICADORES)),
     RESOLVER_MUNICIPIO("resolverMunicipio",
             EnumSet.of(ServicioCliente.REPORTES, ServicioCliente.ATENCION, ServicioCliente.INDICADORES));
 
