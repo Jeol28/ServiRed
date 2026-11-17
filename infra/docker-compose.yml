@@ -5,7 +5,8 @@
 #
 # Redes:
 #   interna -> red aislada (internal: true): microservicios, RabbitMQ y BD
-#   borde   -> red con salida: gateway (puerto 8080), consola de RabbitMQ
+#   borde   -> red con salida: gateway (puerto 8080), portales web (4300
+#              público, 127.0.0.1:4200 operación), consola de RabbitMQ
 #              (solo 127.0.0.1) y persistencia (salida hacia Supabase)
 # =====================================================================
 
@@ -204,6 +205,8 @@ services:
     environment:
       TRAZAS_ACTIVAS: ${TRAZAS_ACTIVAS:-false}
       OTLP_TRAZAS_URL: http://jaeger:4318/v1/traces
+      # Solo de estos proxies se acepta X-Forwarded-For (límite de abuso por cliente).
+      PROXIES_CONFIABLES: portal-publico,portal-operador
     ports:
       - "8080:8080"
     depends_on:
@@ -211,6 +214,36 @@ services:
       reportes:    { condition: service_healthy }
       atencion:    { condition: service_healthy }
       indicadores: { condition: service_healthy }
+
+  # ------------------------------------------------------------------
+  # Portales web (Angular + nginx). Solo hablan con el gateway (ADR-17).
+  # ------------------------------------------------------------------
+  portal-publico:
+    build:
+      context: ../clientes/web
+      args:
+        PROYECTO: portal-publico
+        # La denuncia anónima puede usar la ubicación del navegador.
+        PERMISOS: "camera=(), microphone=(), geolocation=(self)"
+    restart: unless-stopped
+    networks: [borde]
+    ports:
+      - "4300:8080"
+    depends_on:
+      gateway: { condition: service_healthy }
+
+  portal-operador:
+    build:
+      context: ../clientes/web
+      args:
+        PROYECTO: portal-operador
+    restart: unless-stopped
+    networks: [borde]
+    # Portal del personal: solo en la máquina local.
+    ports:
+      - "127.0.0.1:4200:8080"
+    depends_on:
+      gateway: { condition: service_healthy }
 
   # ------------------------------------------------------------------
   # Observabilidad (opcional):  docker compose --profile observabilidad up -d

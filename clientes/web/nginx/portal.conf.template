@@ -1,0 +1,75 @@
+# Portal SERVI-RED servido por nginx (sin privilegios, puerto 8080).
+# - Sirve la SPA y hace de proxy de /api/ hacia el gateway (mismo origen: sin CORS).
+# - Los registros NO incluyen la IP del cliente (RNF-SEG4: en las denuncias
+#   anónimas ningún componente puede guardar un identificador del denunciante).
+
+log_format servired_json escape=json
+  '{"time":"$time_iso8601","metodo":"$request_method","ruta":"$uri","estado":$status,'
+  '"bytes":$body_bytes_sent,"duracion":$request_time,"correlationId":"$upstream_http_x_correlation_id"}';
+
+# DNS de Docker: se resuelve el gateway en cada petición (sobrevive a que se recree).
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+server {
+  listen 8080;
+  server_name _;
+  root /usr/share/nginx/html;
+  server_tokens off;
+
+  access_log /dev/stdout servired_json;
+
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "DENY" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header Permissions-Policy "${PERMISOS}" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+
+  location = /salud {
+    access_log off;
+    default_type text/plain;
+    return 200 "ok\n";
+  }
+
+  # Denuncias anónimas: ni registro de acceso ni de errores (que incluiría la IP).
+  location /api/v1/denuncias {
+    access_log off;
+    error_log /dev/null;
+    client_max_body_size 6m;
+    set $gateway ${GATEWAY_URL};
+    proxy_pass $gateway;
+    proxy_set_header Host $host;
+    proxy_set_header Cookie "";
+    proxy_set_header Authorization "";
+    # Solo para el límite de abuso del gateway, que la convierte en un hash en memoria.
+    proxy_set_header X-Forwarded-For $remote_addr;
+  }
+
+  location /api/ {
+    client_max_body_size 6m;
+    set $gateway ${GATEWAY_URL};
+    proxy_pass $gateway;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_read_timeout 60s;
+  }
+
+  # Archivos con hash en el nombre: caché larga.
+  location ~* \.(?:js|css|woff2?|png|svg|ico)$ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    add_header X-Content-Type-Options "nosniff" always;
+  }
+
+  # SPA: cualquier otra ruta devuelve index.html, que nunca se cachea.
+  location / {
+    try_files $uri /index.html;
+    add_header Cache-Control "no-cache" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "${PERMISOS}" always;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+  }
+}
