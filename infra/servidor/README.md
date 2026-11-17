@@ -16,7 +16,8 @@ Internet ──HTTPS──▶ Tailscale Funnel ──▶ 127.0.0.1:4300 portal p
   conexión saliente.
 - **Una sola dirección pública (Funnel):** `https://<máquina>.<su-red>.ts.net/`, con
   certificado automático.
-  - En la raíz está el portal público: mapa, indicadores, datos abiertos y denuncia anónima.
+  - En la raíz está el portal público: mapa, indicadores y datos abiertos. Reportes y
+    denuncias se hacen solo desde las apps.
   - En `/operacion/` está el portal de operación, que pide inicio de sesión. El portal
     público tiene el botón «Acceso del personal».
   - En `/api` está el gateway: las apps usan esta misma dirección como base.

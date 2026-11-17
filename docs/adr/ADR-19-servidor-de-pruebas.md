@@ -27,8 +27,8 @@ de unos 350 MB, tres servicios .NET, RabbitMQ y PostgreSQL.
     equipo.
   - Se probó antes un modelo "solo app" (como Waze), con el portal público privado. Se
     descartó a favor de una sola dirección para todos: el ciudadano ve el portal público
-    sin cuenta y el personal entra a sus funciones con su sesión. Los reportes siguen
-    exigiendo la app, porque la web pública no los ofrece.
+    sin cuenta y el personal entra a sus funciones con su sesión. Los reportes y las
+    denuncias se hacen solo desde las apps: la web pública no ofrece ninguno de los dos.
 - **`infra/servidor/compose.servidor.yaml`** se aplica encima del compose normal:
   - Todo escucha solo en `127.0.0.1`. El gateway queda ahí para diagnóstico y para las
     pruebas e2e.

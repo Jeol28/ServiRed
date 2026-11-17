@@ -4,8 +4,7 @@
 
 ## Contexto
 La fase 8 agrega dos portales Angular: el de **operación** (operador, regulador y
-administrador) y el **público** (mapa, indicadores, datos abiertos y denuncia
-anónima). Ambos solo usan el gateway y el contrato `servired-api.v1.yaml`. Había
+administrador) y el **público** (mapa, indicadores y datos abiertos). Ambos solo usan el gateway y el contrato `servired-api.v1.yaml`. Había
 que decidir dónde guardar los tokens, cómo llegar al gateway sin CORS, cómo
 mantener el anonimato de las denuncias en el navegador y cómo conservar el
 límite de abuso por cliente detrás de un proxy.
@@ -28,10 +27,11 @@ límite de abuso por cliente detrás de un proxy.
   la SPA y hace de proxy de `/api/` al gateway. No hay CORS ni otro servicio
   expuesto. CSP estricta (`script-src 'self'`, sin marcos; imágenes solo de
   `tile.openstreetmap.org`), por eso se desactiva el CSS crítico en línea.
-- **Denuncias anónimas (RNF-SEG4):** el portal usa un `HttpClient` **sin
-  interceptores** (ni JWT ni correlationId, aunque haya sesión), envía la foto
-  con el nombre neutro `foto` y no muestra el identificador interno. nginx no
-  registra esa ruta (ni acceso ni errores) y su log JSON nunca incluye la IP.
+- **Denuncias anónimas (RNF-SEG4): solo en las apps móviles** (ADR-18), igual que los
+  reportes. El portal público no tiene formulario de denuncia ni pide la ubicación del
+  navegador. En el portal de operación, la moderación se hace por la API autenticada.
+  - nginx no registra la ruta `/api/v1/denuncias` (ni acceso ni errores), porque por ella
+    entran las denuncias de las apps. Su log JSON nunca incluye la IP.
 - **Límite por cliente detrás del proxy (RNF-SEG5):** nginx fija
   `X-Forwarded-For` con la IP del cliente. El gateway solo acepta esa cabecera
   si la conexión viene de un proxy listado en `PROXIES_CONFIABLES`
