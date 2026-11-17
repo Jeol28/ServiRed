@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <title>SERVI-RED</title>
+  <rect width="108" height="108" rx="22" fill="#0B5394"/>
+  <circle cx="54" cy="44" r="26" fill="#FFFFFF"/>
+  <polygon points="32.55,58.7 75.45,58.7 54,90" fill="#FFFFFF"/>
+  <path fill="#F59E0B" d="M58,27l-14,21h9l-5,16l14,-22h-9z"/>
+</svg>
