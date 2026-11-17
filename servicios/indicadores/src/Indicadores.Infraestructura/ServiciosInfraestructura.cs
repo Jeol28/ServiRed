@@ -19,12 +19,14 @@ public static class ServiciosInfraestructura
         servicios.AddSingleton(sp => new ConexionRabbitMq(sp.GetRequiredService<OpcionesRabbitMq>(), nombreServicio));
 
         var persistencia = OpcionesPersistencia.DesdeConfiguracion(configuracion);
-        servicios.AddHttpClient<IVistaLectura, ClienteVistaLectura>(http =>
+        servicios.AddHttpClient<ClienteVistaLectura>(http =>
         {
             http.BaseAddress = persistencia.Url;
             http.Timeout = persistencia.Timeout;
             http.DefaultRequestHeaders.Add(ClienteVistaLectura.CabeceraClave, persistencia.Clave);
         });
+        servicios.AddTransient<IVistaLectura>(sp => sp.GetRequiredService<ClienteVistaLectura>());
+        servicios.AddTransient<IRegistroAcciones>(sp => sp.GetRequiredService<ClienteVistaLectura>());
         servicios.AddScoped<ProyeccionEventos>();
         servicios.AddScoped<ConsultasIndicadores>();
 

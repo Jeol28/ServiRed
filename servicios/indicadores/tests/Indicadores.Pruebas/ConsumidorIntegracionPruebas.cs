@@ -28,7 +28,11 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
             .UseSetting("RABBITMQ_PUERTO", uri.Port.ToString())
             .UseSetting("RABBITMQ_USUARIO", credenciales[0])
             .UseSetting("RABBITMQ_CLAVE", credenciales[1])
-            .ConfigureTestServices(s => s.AddSingleton<IVistaLectura>(_vista)));
+            .ConfigureTestServices(s =>
+            {
+                s.AddSingleton<IVistaLectura>(_vista);
+                s.AddSingleton<IRegistroAcciones>(_vista);
+            }));
         _fabrica.CreateClient();
         _conexion = await new ConnectionFactory { Uri = uri }.CreateConnectionAsync();
         _canal = await _conexion.CreateChannelAsync();

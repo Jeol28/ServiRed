@@ -11,7 +11,7 @@ public class ConsultasPruebas
     private readonly IdCorrelacion _c = IdCorrelacion.Nuevo();
     private static readonly Guid Empresa = Guid.NewGuid();
 
-    public ConsultasPruebas() => _consultas = new ConsultasIndicadores(_vista);
+    public ConsultasPruebas() => _consultas = new ConsultasIndicadores(_vista, _vista);
 
     [Fact]
     public async Task ElMapaPublicoNoMuestraCeldasPequenas()
@@ -89,5 +89,25 @@ public class ConsultasPruebas
         Assert.Equal(10, r.Metadatos.Cobertura.ReportesEnVista);
         Assert.Equal(5, r.Metadatos.Indicadores.Count);
         Assert.NotNull(r.Metadatos.ActualizadoEn);
+    }
+
+    [Fact]
+    public async Task LaExportacionSeAuditaAntesYSinAuditoriaNoSeExporta()
+    {
+        _vista.Hechos = [VistaFalsa.Hecho()];
+        var admin = new Actor(Guid.NewGuid(), Rol.ADMINISTRADOR, null);
+
+        await foreach (var _ in _consultas.ExportarAsync(admin, _filtro with { CodigoMunicipio = "11001" }, _c, CancellationToken.None)) { }
+        var accion = Assert.Single(_vista.Acciones);
+        Assert.Equal("EXPORTACION_REGULATORIA", accion.Accion);
+        Assert.Equal("11001", accion.Detalle["codigoMunicipio"]);
+
+        _vista.AuditoriaDisponible = false;
+        var entregadas = 0;
+        await Assert.ThrowsAsync<HttpRequestException>(async () =>
+        {
+            await foreach (var _ in _consultas.ExportarAsync(admin, _filtro, _c, CancellationToken.None)) entregadas++;
+        });
+        Assert.Equal(0, entregadas);
     }
 }

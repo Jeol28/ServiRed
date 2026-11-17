@@ -5,8 +5,18 @@ using ServiRed.Indicadores.Dominio;
 namespace ServiRed.Indicadores.Pruebas;
 
 /// <summary>Doble de la vista de lectura: registra las actualizaciones y devuelve agregados y hechos programados.</summary>
-public sealed class VistaFalsa : IVistaLectura
+public sealed class VistaFalsa : IVistaLectura, IRegistroAcciones
 {
+    public readonly ConcurrentQueue<AccionAuditada> Acciones = new();
+    public bool AuditoriaDisponible = true;
+
+    public Task PublicarAsync(AccionAuditada accion, IdCorrelacion correlacion, CancellationToken ct)
+    {
+        if (!AuditoriaDisponible) throw new HttpRequestException("auditoría caída");
+        Acciones.Enqueue(accion);
+        return Task.CompletedTask;
+    }
+
     public readonly ConcurrentQueue<ActualizacionVista> Actualizaciones = new();
     public readonly ConcurrentQueue<(Agrupacion, FiltroVista)> Consultas = new();
     public Dictionary<Agrupacion, List<Agregado>> Agregados = new();
