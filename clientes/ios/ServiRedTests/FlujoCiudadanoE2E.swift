@@ -1,0 +1,88 @@
+import Foundation
+import Testing
+@testable import ServiRed
+
+/// ¿Está arriba el entorno de Docker Compose? (el simulador comparte la red de la Mac).
+private let gatewayArriba: Bool = {
+    let semaforo = DispatchSemaphore(value: 0)
+    nonisolated(unsafe) var listo = false
+    URLSession.shared.dataTask(with: URL(string: "http://localhost:8080/readyz")!) { _, r, _ in
+        listo = (r as? HTTPURLResponse)?.statusCode == 200
+        semaforo.signal()
+    }.resume()
+    _ = semaforo.wait(timeout: .now() + 5)
+    return listo
+}()
+
+/**
+ De punta a punta contra el gateway real (localhost:8080). Usa las mismas
+ piezas que la app, con un cofre y SwiftData en memoria. Se omite si el
+ compose no está arriba.
+ */
+@Suite("Flujo del ciudadano contra el gateway", .serialized, .enabled(if: gatewayArriba, "requiere el compose arriba"))
+@MainActor
+struct FlujoCiudadanoE2E {
+    let base = URL(string: "http://localhost:8080/")!
+
+    final class Ciudadano {
+        let sesion: SesionServiRed
+        let reportes: RepositorioReportesImpl
+        let cuenta: RepositorioCuentaImpl
+        let correo = "ios-\(UUID().uuidString.prefix(8).lowercased())@prueba.servired.co"
+
+        @MainActor
+        init(base: URL) throws {
+            let transporte = TransporteURLSession()
+            let almacen = AlmacenLocal(modelContainer: try AlmacenLocal.contenedor(enMemoria: true))
+            let sesion = SesionServiRed(base: base, transporte: transporte, cofre: CofreMemoria()) { await almacen.borrarTodo() }
+            let api = ClienteAPI(base: base, transporte: transporte, gestor: sesion.gestor)
+            self.sesion = sesion
+            reportes = RepositorioReportesImpl(api: api, almacen: almacen, fotos: CarpetaFotos(url: FileManager.default.temporaryDirectory),
+                                               programador: ProgramadorFalso())
+            cuenta = RepositorioCuentaImpl(api: api) { [weak sesion] in await sesion?.cerrar() }
+        }
+    }
+
+    @Test func registroReporteValidacionRestablecimientoDenunciaYSupresion() async throws {
+        let ana = try Ciudadano(base: base)
+        try await ana.sesion.registrar(correo: ana.correo, clave: "una clave larga de prueba", nombre: "Ana")
+        guard case .autenticada = ana.sesion.estado else { Issue.record("sin sesión"); return }
+
+        let aqui = Ubicacion(latitud: 4.6287, longitud: -74.0648)
+        let nuevo = NuevoReporte(tipoServicio: .ENERGIA, ubicacion: aqui, inicioEstimado: Date().addingTimeInterval(-7200),
+                                 magnitud: .CUADRA, descripcion: "Sin luz (prueba iOS)")
+        #expect(try await ana.reportes.crear(nuevo, fotos: []))
+        try await ana.reportes.actualizar()
+        let reporte = try #require(await ana.reportes.misReportes().first)
+        #expect(reporte.codigoMunicipio == "11001")
+        #expect(reporte.estado == .RECIBIDO)
+
+        // Otro ciudadano cercano lo ve y confirma el corte.
+        let beto = try Ciudadano(base: base)
+        try await beto.sesion.registrar(correo: beto.correo, clave: "otra clave larga de prueba", nombre: nil)
+        let cerca = Ubicacion(latitud: 4.6290, longitud: -74.0650)
+        #expect(try await beto.reportes.cercanos(desde: cerca).contains { $0.id == reporte.id })
+        let voto = try await beto.reportes.validar(reporte.id, objeto: .CORTE, sentido: .CONFIRMA, desde: cerca)
+        #expect(voto.nueva && voto.conteo.confirmaciones >= 1)
+        let repetido = try await beto.reportes.validar(reporte.id, objeto: .CORTE, sentido: .CONFIRMA, desde: cerca)
+        #expect(!repetido.nueva, "repetir el voto no lo cuenta dos veces")
+        await #expect(throws: ErrorApp.self) {
+            try await ana.reportes.validar(reporte.id, objeto: .CORTE, sentido: .CONFIRMA, desde: aqui)
+        }
+
+        let restablecido = try await ana.reportes.restablecer(reporte.id, fecha: Date().addingTimeInterval(-600), comentario: "Volvió la luz")
+        #expect(restablecido.estado == .RESTABLECIDO)
+        #expect((105...115).contains(restablecido.duracionMinutos ?? 0))
+
+        // Denuncia anónima por el cliente público.
+        let denuncias = RepositorioDenunciasImpl(publica: ClienteAPI(base: base, transporte: TransporteURLSession(), gestor: nil),
+                                                 fotos: CarpetaFotos(url: FileManager.default.temporaryDirectory))
+        try await denuncias.enviar(NuevaDenuncia(tipoServicio: .GAS, ubicacion: aqui, descripcion: "Conexión ilegal de gas (prueba iOS)"), foto: nil)
+
+        // Derecho de supresión: la sesión termina y los datos locales se borran.
+        try await ana.cuenta.eliminar()
+        #expect(ana.sesion.estado == .anonima)
+        #expect(await ana.reportes.misReportes().isEmpty)
+        try await beto.cuenta.eliminar()
+    }
+}
