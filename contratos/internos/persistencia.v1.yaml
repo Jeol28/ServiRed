@@ -11,11 +11,11 @@
 #  - Las operaciones que generan un evento reciben el evento ya construido por
 #    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
 #    transacción y lo publica después (decisión B).
-# Estado: fase 6 (reportes, denuncias, evidencias, casos, moderación, indicadores, catálogo, cuentas y sesiones).
+# Estado: fase 7 (todos los dominios, incluida la auditoría).
 openapi: 3.1.0
 info:
   title: SERVI-RED · Persistencia (API interna)
-  version: 1.0.0-fase6
+  version: 1.0.0-fase7
 servers:
   - url: http://persistencia:8080
     description: Red interna de Docker Compose
@@ -740,6 +740,72 @@ paths:
       parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
       responses:
         "200": { description: "{reportes, municipios, primerReporte, ultimoReporte, actualizadoEn}" }
+
+  # ------------------------------------------------- auditoría (`auditoria`)
+  /interno/v1/auditoria/registros:
+    post:
+      operationId: registrarAuditoria
+      description: |
+        Solo `auditoria`. Inserta el registro encadenado (huella SHA-256 con el anterior)
+        bajo bloqueo; idempotente por idEvento (200 con nuevo=false si ya existía).
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idEvento, tipo, version, origen, categoria, accion, ocurridoEn]
+              properties:
+                idEvento: { type: string, format: uuid }
+                tipo: { type: string }
+                version: { type: integer }
+                origen: { type: string }
+                correlationId: { type: string, format: uuid }
+                categoria: { type: string }
+                accion: { type: string }
+                resultado: { type: string, enum: [EXITO, FALLO] }
+                actorId: { type: string, format: uuid }
+                actorRol: { type: string }
+                recursoTipo: { type: string }
+                recursoId: { type: string }
+                detalle: { type: object }
+                ocurridoEn: { type: string, format: date-time }
+      responses:
+        "201": { description: Registrado }
+        "200": { description: Ya existía }
+    get:
+      operationId: consultarAuditoria
+      description: Solo `auditoria`. Filtros categoria, tipo, accion, actorId, recursoId, desde, hasta, pagina, tamano.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      responses:
+        "200": { description: Página de registros }
+
+  /interno/v1/auditoria/integridad:
+    get:
+      operationId: verificarIntegridadAuditoria
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      responses:
+        "200": { description: "{registros, integra, primeraRota, ultimoHash}" }
+
+  /interno/v1/acciones-auditadas:
+    post:
+      operationId: publicarAccionAuditada
+      description: |
+        identidad, reportes, atencion o indicadores. Deja un evento accion.auditada en
+        el outbox (para acciones sin otra escritura, p. ej. un inicio de sesión fallido).
+        Las operaciones registrarCuenta, actualizarCuenta, eliminarCuenta y
+        decidirModeracion aceptan además un arreglo `eventos` con accion.auditada que
+        se guarda en su misma transacción.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EventoSaliente" }
+      responses:
+        "202": { description: En el outbox }
+        "403": { description: El servicio no puede emitir ese evento }
 
   /interno/v1/catalogo/municipio-cercano:
     get:

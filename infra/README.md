@@ -9,6 +9,22 @@
 | [`generar-clave-jwt.sh`](generar-clave-jwt.sh) | Genera la clave RSA de firma de los JWT para `IDENTIDAD_JWT_CLAVE_PRIVADA`. |
 | [`rabbitmq/verificar-topologia.py`](rabbitmq/verificar-topologia.py) | Prueba de humo: compara el broker con `definiciones.json` y prueba enrutamiento, DLQ y reintento con TTL en colas temporales (no toca las colas reales). |
 
+## Observabilidad (perfil opcional)
+
+```bash
+TRAZAS_ACTIVAS=true docker compose --profile observabilidad up -d --build --wait
+```
+
+| Herramienta | URL (solo localhost) | Para qué |
+|---|---|---|
+| Prometheus | http://127.0.0.1:9090 | Métricas de los 7 servicios y de RabbitMQ; [reglas](observabilidad/reglas.yml) |
+| Alertmanager | http://127.0.0.1:9093 | Envía las alertas al webhook interno de Auditoría |
+| Grafana | http://127.0.0.1:3000 (admin / `GRAFANA_CLAVE`) | Tablero "SERVI-RED · Operación" |
+| Jaeger | http://127.0.0.1:16686 | Trazas distribuidas (OTLP) |
+
+Sin el perfil, las alertas de seguridad siguen activas dentro de Auditoría
+([ADR-16](../docs/adr/ADR-16-auditoria-y-alertas.md)).
+
 ## Servicios del compose
 
 | Servicio | Imagen / origen | Red | Puerto en el host |
@@ -19,6 +35,7 @@
 | rabbitmq-init | curlimages/curl | interna | — (termina al aplicar la topología) |
 | persistencia | `servicios/persistencia` | interna, borde (salida a Supabase) | — |
 | identidad, reportes, atencion, indicadores, auditoria | `servicios/*` | interna | — |
+| prometheus, alertmanager, grafana, jaeger | perfil `observabilidad` | interna, borde | 9090, 9093, 3000, 16686 (127.0.0.1) |
 | gateway | `servicios/gateway` | borde, interna | **8080** (actuator en 8081, solo interno) |
 
 La red `interna` es `internal: true`: sin salida a Internet ni puertos publicados.

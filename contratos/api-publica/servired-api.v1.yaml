@@ -1,11 +1,11 @@
 # API pública de SERVI-RED expuesta por el API Gateway.
 # Es el ÚNICO contrato que consumen los portales web y las apps Android/iOS.
 # Versionado en la ruta (/api/v1); cambios incompatibles => /api/v2 (RNF-DAT3).
-# Estado: fase 6 (reportes, denuncias, casos, moderación e indicadores). Cada fase agrega sus operaciones.
+# Estado: fase 7 (reportes, denuncias, casos, moderación, indicadores y auditoría). Cada fase agrega sus operaciones.
 openapi: 3.1.0
 info:
   title: SERVI-RED · API pública
-  version: 1.0.0-fase6
+  version: 1.0.0-fase7
   description: |
     Plataforma de reporte ciudadano y monitoreo de servicios públicos domiciliarios.
 
@@ -47,6 +47,8 @@ tags:
     description: Moderación de denuncias anónimas (RF-5)
   - name: indicadores
     description: Indicadores, mapas, datos abiertos y exportación (RF-8 a RF-10)
+  - name: auditoria
+    description: Registro de auditoría y alertas (RF-12, RF-13); solo lectura
   - name: salud
     description: Estado del gateway
 
@@ -793,6 +795,74 @@ paths:
                 example: "codigo_municipio,municipio,departamento,tipo_servicio,mes,reportes,duracion_mediana_minutos,indice_severidad,porcentaje_resueltos,suprimido"
             application/json: { schema: { type: object } }
 
+  # ---------------------------------------------------------------- auditoría
+  /api/v1/auditoria/registros:
+    get:
+      tags: [auditoria]
+      operationId: consultarAuditoria
+      summary: Registro de auditoría (RF-12)
+      description: REGULADOR y ADMINISTRADOR. Del más reciente al más antiguo; sin datos personales.
+      parameters:
+        - { name: categoria, in: query, schema: { $ref: "#/components/schemas/CategoriaAuditoria" } }
+        - { name: accion, in: query, schema: { type: string } }
+        - { name: actorId, in: query, schema: { type: string, format: uuid } }
+        - { name: recursoId, in: query, schema: { type: string } }
+        - { name: desde, in: query, schema: { type: string, format: date-time } }
+        - { name: hasta, in: query, schema: { type: string, format: date-time } }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200":
+          description: Página de registros
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginaAuditoria" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/auditoria/alertas:
+    get:
+      tags: [auditoria]
+      operationId: consultarAlertas
+      summary: Alertas de seguridad y operativas (RF-13)
+      description: REGULADOR y ADMINISTRADOR. Registros de categoría ALERTA (mismos filtros salvo categoria).
+      parameters:
+        - { name: accion, in: query, schema: { type: string }, description: Tipo de alerta, p. ej. FUERZA_BRUTA_CUENTA }
+        - { name: desde, in: query, schema: { type: string, format: date-time } }
+        - { name: hasta, in: query, schema: { type: string, format: date-time } }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200":
+          description: Página de alertas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginaAuditoria" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/auditoria/integridad:
+    get:
+      tags: [auditoria]
+      operationId: verificarIntegridadAuditoria
+      summary: Verifica la cadena de hashes del registro
+      description: Solo ADMINISTRADOR. `primeraRota` indica el primer registro alterado.
+      responses:
+        "200":
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registros: { type: integer }
+                  integra: { type: boolean }
+                  primeraRota: { type: integer }
+                  ultimoHash: { type: string }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
   # ------------------------------------------------------------ autenticación
   /api/v1/auth/registro:
     post:
@@ -1204,6 +1274,38 @@ components:
         moderadaEn: { type: string, format: date-time }
         version: { type: integer }
         evidencias: { type: array, items: { type: string, format: uuid } }
+
+    CategoriaAuditoria:
+      type: string
+      enum: [ACCESO, ADMINISTRACION, EXPORTACION, MODERACION, SEGURIDAD, CAMBIO_ESTADO, VALIDACION, REPORTE, ALERTA]
+
+    RegistroAuditoria:
+      type: object
+      properties:
+        secuencia: { type: integer }
+        idEvento: { type: string, format: uuid }
+        tipo: { type: string }
+        origen: { type: string }
+        correlationId: { type: string, format: uuid }
+        categoria: { $ref: "#/components/schemas/CategoriaAuditoria" }
+        accion: { type: string }
+        resultado: { type: string, enum: [EXITO, FALLO] }
+        actorId: { type: string, format: uuid, description: Ausente si es anónimo o automático }
+        actorRol: { type: string }
+        recursoTipo: { type: string }
+        recursoId: { type: string }
+        detalle: { type: object, description: Saneado; sin datos personales }
+        ocurridoEn: { type: string, format: date-time }
+        registradoEn: { type: string, format: date-time }
+        hash: { type: string, description: SHA-256 encadenado con el registro anterior }
+
+    PaginaAuditoria:
+      type: object
+      properties:
+        elementos: { type: array, items: { $ref: "#/components/schemas/RegistroAuditoria" } }
+        total: { type: integer }
+        pagina: { type: integer }
+        tamano: { type: integer }
 
     Metadatos:
       type: object
