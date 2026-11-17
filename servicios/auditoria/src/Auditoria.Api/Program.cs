@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Text.Json.Serialization;
 using Prometheus;
+using ServiRed.Auditoria.Api.Endpoints;
+using ServiRed.Auditoria.Api.Seguridad;
 using ServiRed.Auditoria.Api.Correlacion;
 using ServiRed.Auditoria.Infraestructura;
 
@@ -18,11 +21,20 @@ builder.Logging.AddJsonConsole(o =>
 });
 
 builder.Services.AgregarInfraestructura(builder.Configuration, NombreServicio);
+builder.Services.AgregarSeguridad(builder.Configuration);
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    o.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 
 var app = builder.Build();
 
 app.UseMiddleware<MiddlewareCorrelacion>();
+app.UseMiddleware<ManejoErrores>();
 app.UseHttpMetrics();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Liveness: el proceso responde. Readiness: sus dependencias están disponibles.
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
@@ -31,6 +43,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = c => c.Tags.Contains(ServiciosInfraestructura.EtiquetaReadiness),
 });
 app.MapMetrics("/metrics");
+app.MapearAuditoria();
 
 app.Run();
 

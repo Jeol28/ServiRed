@@ -6,6 +6,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
+    <PackageReference Include="prometheus-net" Version="8.2.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Auditoria.Aplicacion/Auditoria.Aplicacion.csproj" />
