@@ -6,7 +6,10 @@ import co.edu.javeriana.servired.app.datos.remoto.SesionDto
 interface CofreTokens {
     fun leer(): String?
     fun guardar(refresco: String)
-    fun borrar()
+    /** Retira solo el refresco (antes de usarlo); el resumen de la cuenta se conserva. */
+    fun borrarRefresco()
+    /** Termina la sesión local: refresco y resumen de la cuenta. */
+    fun borrarTodo()
     fun leerCuenta(): String?
     fun guardarCuenta(cuenta: String)
 }
@@ -60,7 +63,7 @@ class GestorTokens(
     fun renovar(fallido: String?, refrescar: (String) -> Renovacion): String? = synchronized(candado) {
         acceso?.let { if (it != fallido) return it }
         val refresco = cofre.leer() ?: return null
-        cofre.borrar()
+        cofre.borrarRefresco()
         when (val r = refrescar(refresco)) {
             is Renovacion.Lista -> {
                 acceso = r.sesion.tokenAcceso
@@ -74,6 +77,7 @@ class GestorTokens(
             }
             Renovacion.Rechazada, Renovacion.Incierta -> {
                 acceso = null
+                cofre.borrarTodo()
                 alTerminar()
                 null
             }
@@ -84,7 +88,7 @@ class GestorTokens(
     fun limpiar(): String? = synchronized(candado) {
         val refresco = cofre.leer()
         acceso = null
-        cofre.borrar()
+        cofre.borrarTodo()
         refresco
     }
 }

@@ -21,7 +21,8 @@ class CofreKeystore(contexto: Context) : CofreTokens {
 
     override fun leer(): String? = descifrar(preferencias.getString(REFRESCO, null))
     override fun guardar(refresco: String) = preferencias.edit { putString(REFRESCO, cifrar(refresco)) }
-    override fun borrar() = preferencias.edit { clear() }
+    override fun borrarRefresco() = preferencias.edit { remove(REFRESCO) }
+    override fun borrarTodo() = preferencias.edit { clear() }
     override fun leerCuenta(): String? = descifrar(preferencias.getString(CUENTA, null))
     override fun guardarCuenta(cuenta: String) = preferencias.edit { putString(CUENTA, cifrar(cuenta)) }
 

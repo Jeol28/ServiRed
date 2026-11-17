@@ -53,11 +53,12 @@ class GestorTokensTest {
     }
 
     @Test fun `si la peticion no salio, el refresco vuelve al cofre`() {
-        val cofre = CofreMemoria("R1")
+        val cofre = CofreMemoria("R1", cuenta = "{\"idCuenta\":\"c\"}")
         var termino = false
         val gestor = GestorTokens(cofre, alTerminar = { termino = true })
         assertNull(gestor.renovar(null) { Renovacion.SinEnviar })
         assertEquals("R1", cofre.refresco)
+        assertEquals("se conserva la cuenta para abrir la app sin red", "{\"idCuenta\":\"c\"}", cofre.cuenta)
         assertFalse(termino)
     }
 

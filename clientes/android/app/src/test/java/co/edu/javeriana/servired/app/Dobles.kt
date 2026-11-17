@@ -16,7 +16,8 @@ class CofreMemoria(var refresco: String? = null, var cuenta: String? = null) : C
     val historial = mutableListOf<String>()
     override fun leer() = refresco
     override fun guardar(refresco: String) { this.refresco = refresco; historial += "guardar:$refresco" }
-    override fun borrar() { refresco = null; cuenta = null; historial += "borrar" }
+    override fun borrarRefresco() { refresco = null; historial += "borrarRefresco" }
+    override fun borrarTodo() { refresco = null; cuenta = null; historial += "borrarTodo" }
     override fun leerCuenta() = cuenta
     override fun guardarCuenta(cuenta: String) { this.cuenta = cuenta }
 }
