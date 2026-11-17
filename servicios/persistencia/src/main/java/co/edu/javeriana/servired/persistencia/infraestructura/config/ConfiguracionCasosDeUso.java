@@ -5,6 +5,8 @@ import co.edu.javeriana.servired.persistencia.aplicacion.ConsultarReporte;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionCuentas;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionEvidencias;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAtencion;
+import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAuditoria;
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAuditoria;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesIndicadores;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioIndicadores;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesReporte;
@@ -57,8 +59,8 @@ public class ConfiguracionCasosDeUso {
 
     @Bean
     GestionCuentas gestionCuentas(UnidadDeTrabajo t, RegistroIdempotencia i, RepositorioCuentas c,
-                                  RepositorioSesiones s) {
-        return new GestionCuentas(t, i, c, s);
+                                  RepositorioSesiones s, Outbox o) {
+        return new GestionCuentas(t, i, c, s, o);
     }
 
     @Bean
@@ -88,6 +90,11 @@ public class ConfiguracionCasosDeUso {
     @Bean
     OperacionesIndicadores operacionesIndicadores(UnidadDeTrabajo t, RepositorioIndicadores r) {
         return new OperacionesIndicadores(t, r);
+    }
+
+    @Bean
+    OperacionesAuditoria operacionesAuditoria(UnidadDeTrabajo t, RepositorioAuditoria r, Outbox o) {
+        return new OperacionesAuditoria(t, r, o);
     }
 
     @Bean

@@ -15,14 +15,20 @@ import java.util.UUID;
 public record EventoSaliente(UUID idEvento, String tipo, int version, UUID correlationId,
                              String origen, String sobre) {
 
-    /** Dueño de cada tipo de evento: solo él puede emitirlo. */
-    private static final Map<String, ServicioCliente> DUENOS = Map.of(
-            "reporte.creado", ServicioCliente.REPORTES,
-            "restablecimiento.registrado", ServicioCliente.REPORTES,
-            "validacion.registrada", ServicioCliente.REPORTES,
-            "denuncia.recibida", ServicioCliente.REPORTES,
-            "caso.actualizado", ServicioCliente.ATENCION,
-            "caso.cerrado", ServicioCliente.ATENCION);
+    /**
+     * Quién puede emitir cada tipo de evento. accion.auditada (fase 7) la emite
+     * cualquier servicio que registre accesos, acciones administrativas,
+     * exportaciones o moderación (RF-12).
+     */
+    private static final Map<String, Set<ServicioCliente>> DUENOS = Map.of(
+            "reporte.creado", Set.of(ServicioCliente.REPORTES),
+            "restablecimiento.registrado", Set.of(ServicioCliente.REPORTES),
+            "validacion.registrada", Set.of(ServicioCliente.REPORTES),
+            "denuncia.recibida", Set.of(ServicioCliente.REPORTES),
+            "caso.actualizado", Set.of(ServicioCliente.ATENCION),
+            "caso.cerrado", Set.of(ServicioCliente.ATENCION),
+            "accion.auditada", Set.of(ServicioCliente.IDENTIDAD, ServicioCliente.REPORTES, ServicioCliente.ATENCION,
+                    ServicioCliente.INDICADORES));
 
     public EventoSaliente {
         Objects.requireNonNull(idEvento, "idEvento");
@@ -45,7 +51,7 @@ public record EventoSaliente(UUID idEvento, String tipo, int version, UUID corre
      * y que lo emite su servicio dueño.
      */
     public void validarPara(ServicioCliente emisor, IdCorrelacion correlacion, Set<String> tiposPermitidos) {
-        if (DUENOS.get(tipo) != emisor || !emisor.nombre().equals(origen)) {
+        if (!DUENOS.get(tipo).contains(emisor) || !emisor.nombre().equals(origen)) {
             throw new AccesoDenegado("El servicio " + emisor.nombre() + " no es dueño del evento " + tipo);
         }
         if (!tiposPermitidos.contains(tipo)) {

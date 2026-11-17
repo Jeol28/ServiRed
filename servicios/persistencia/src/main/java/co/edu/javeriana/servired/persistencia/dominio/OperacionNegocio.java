@@ -42,6 +42,11 @@ public enum OperacionNegocio {
     CALCULAR_AGREGADOS("calcularAgregados", EnumSet.of(ServicioCliente.INDICADORES)),
     LISTAR_HECHOS("listarHechos", EnumSet.of(ServicioCliente.INDICADORES)),
     CONSULTAR_ESTADO_VISTA("consultarEstadoVista", EnumSet.of(ServicioCliente.INDICADORES)),
+    REGISTRAR_AUDITORIA("registrarAuditoria", EnumSet.of(ServicioCliente.AUDITORIA)),
+    CONSULTAR_AUDITORIA("consultarAuditoria", EnumSet.of(ServicioCliente.AUDITORIA)),
+    VERIFICAR_AUDITORIA("verificarIntegridadAuditoria", EnumSet.of(ServicioCliente.AUDITORIA)),
+    PUBLICAR_ACCION_AUDITADA("publicarAccionAuditada", EnumSet.of(ServicioCliente.IDENTIDAD, ServicioCliente.REPORTES,
+            ServicioCliente.ATENCION, ServicioCliente.INDICADORES)),
     RESOLVER_MUNICIPIO("resolverMunicipio",
             EnumSet.of(ServicioCliente.REPORTES, ServicioCliente.ATENCION, ServicioCliente.INDICADORES));
 
