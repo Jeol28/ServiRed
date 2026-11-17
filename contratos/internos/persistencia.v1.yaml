@@ -11,11 +11,11 @@
 #  - Las operaciones que generan un evento reciben el evento ya construido por
 #    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
 #    transacción y lo publica después (decisión B).
-# Estado: fase 5 (reportes, denuncias, evidencias, casos, moderación, catálogo, cuentas y sesiones).
+# Estado: fase 6 (reportes, denuncias, evidencias, casos, moderación, indicadores, catálogo, cuentas y sesiones).
 openapi: 3.1.0
 info:
   title: SERVI-RED · Persistencia (API interna)
-  version: 1.0.0-fase5
+  version: 1.0.0-fase6
 servers:
   - url: http://persistencia:8080
     description: Red interna de Docker Compose
@@ -654,6 +654,93 @@ paths:
         "200": { description: Reporte (cambiado o no) }
         "404": { description: No existe }
 
+  # --------------------------------------- indicadores (solo `indicadores`)
+  /interno/v1/indicadores/vista:
+    post:
+      operationId: actualizarVistaReporte
+      description: |
+        Upsert de la fila del reporte con lo que aporta un evento (null = no lo trae).
+        Datos de creación y restablecimiento se completan una vez; validación y caso
+        solo si `fechaEvento` es más reciente. Idempotente.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idReporte, fechaEvento]
+              properties:
+                idReporte: { type: string, format: uuid }
+                fechaEvento: { type: string, format: date-time }
+                tipoServicio: { type: string }
+                codigoMunicipio: { type: string }
+                latitud: { type: number }
+                longitud: { type: number }
+                magnitud: { type: string }
+                inicioEstimado: { type: string, format: date-time }
+                fechaRegistro: { type: string, format: date-time }
+                fechaRestablecimiento: { type: string, format: date-time }
+                duracionMinutos: { type: integer }
+                validado: { type: boolean }
+                confirmacionesNetas: { type: integer }
+                estadoCaso: { type: string }
+                prioridad: { type: string }
+                idEmpresa: { type: string, format: uuid }
+                resueltoEn: { type: string, format: date-time }
+                cerradoEn: { type: string, format: date-time }
+      responses:
+        "204": { description: Aplicado }
+
+  /interno/v1/indicadores/agregados:
+    post:
+      operationId: calcularAgregados
+      description: |
+        Conteos y estadísticas (mediana y p90 de duración) por la agrupación pedida.
+        Sin anonimizar: la supresión la aplica Indicadores. Periodo máximo 400 días (409).
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filtro, agrupacion]
+              properties:
+                filtro: { $ref: "#/components/schemas/FiltroVista" }
+                agrupacion: { type: string, enum: [NINGUNA, SERVICIO, DEPARTAMENTO, MUNICIPIO, MUNICIPIO_SERVICIO_MES, CELDA] }
+                celdaGrados: { type: number, minimum: 0.001, maximum: 1 }
+      responses:
+        "200": { description: Lista de agregados }
+        "409": { description: Periodo o celda inválidos }
+
+  /interno/v1/indicadores/hechos:
+    post:
+      operationId: listarHechos
+      description: Filas de la vista (sin ciudadano) paginadas; máximo 10.000 por página.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filtro]
+              properties:
+                filtro: { $ref: "#/components/schemas/FiltroVista" }
+                desde: { type: integer }
+                limite: { type: integer, maximum: 10000 }
+      responses:
+        "200": { description: "{elementos, hayMas}" }
+
+  /interno/v1/indicadores/estado:
+    get:
+      operationId: consultarEstadoVista
+      description: Cobertura y fecha de la última actualización de la vista (RNF-DAT4).
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      responses:
+        "200": { description: "{reportes, municipios, primerReporte, ultimoReporte, actualizadoEn}" }
+
   /interno/v1/catalogo/municipio-cercano:
     get:
       operationId: resolverMunicipio
@@ -764,6 +851,18 @@ components:
       properties:
         confirmaciones: { type: integer }
         controversias: { type: integer }
+
+    FiltroVista:
+      type: object
+      required: [desde, hasta]
+      properties:
+        desde: { type: string, format: date-time }
+        hasta: { type: string, format: date-time }
+        tipoServicio: { type: string }
+        codigoDepartamento: { type: string, pattern: "^[0-9]{2}$" }
+        codigoMunicipio: { type: string, pattern: "^[0-9]{5}$" }
+        idEmpresa: { type: string, format: uuid }
+        situacion: { type: string, enum: [ACTIVO, RESUELTO] }
 
     CuentaAGuardar:
       type: object

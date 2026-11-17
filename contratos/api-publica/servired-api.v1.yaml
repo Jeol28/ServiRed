@@ -1,11 +1,11 @@
 # API pública de SERVI-RED expuesta por el API Gateway.
 # Es el ÚNICO contrato que consumen los portales web y las apps Android/iOS.
 # Versionado en la ruta (/api/v1); cambios incompatibles => /api/v2 (RNF-DAT3).
-# Estado: fase 5 (reportes, denuncias, casos y moderación). Cada fase agrega sus operaciones.
+# Estado: fase 6 (reportes, denuncias, casos, moderación e indicadores). Cada fase agrega sus operaciones.
 openapi: 3.1.0
 info:
   title: SERVI-RED · API pública
-  version: 1.0.0-fase5
+  version: 1.0.0-fase6
   description: |
     Plataforma de reporte ciudadano y monitoreo de servicios públicos domiciliarios.
 
@@ -45,6 +45,8 @@ tags:
     description: Atención operacional de casos (RF-6, RF-7)
   - name: moderacion
     description: Moderación de denuncias anónimas (RF-5)
+  - name: indicadores
+    description: Indicadores, mapas, datos abiertos y exportación (RF-8 a RF-10)
   - name: salud
     description: Estado del gateway
 
@@ -584,6 +586,213 @@ paths:
             image/png: { schema: { type: string, format: binary } }
         "404": { $ref: "#/components/responses/NoEncontrado" }
 
+  # -------------------------------------------------------------- indicadores
+  /api/v1/indicadores/catalogo:
+    get:
+      tags: [indicadores]
+      operationId: catalogoIndicadores
+      summary: Definiciones, fuente y política de anonimización (RNF-DAT4)
+      security: []
+      responses:
+        "200": { description: Catálogo }
+
+  /api/v1/indicadores/resumen:
+    get:
+      tags: [indicadores]
+      operationId: resumenIndicadores
+      summary: Frecuencia, duración, severidad y atención (RF-9)
+      description: Público y cacheable 60 s. Solo agregados; un grupo con menos de 3 reportes sale suprimido.
+      security: []
+      parameters:
+        - { name: desde, in: query, schema: { type: string, format: date-time }, description: Por defecto hasta − 30 días }
+        - { name: hasta, in: query, schema: { type: string, format: date-time }, description: Por defecto ahora; periodo máximo 366 días }
+        - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
+        - { name: codigoDepartamento, in: query, schema: { type: string, pattern: "^[0-9]{2}$" } }
+        - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: situacion, in: query, schema: { type: string, enum: [ACTIVO, RESUELTO] } }
+      responses:
+        "200":
+          description: Resumen total y por servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metadatos: { $ref: "#/components/schemas/Metadatos" }
+                  indicadores: { $ref: "#/components/schemas/ConjuntoIndicadores" }
+                  porServicio:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+                        indicadores: { $ref: "#/components/schemas/ConjuntoIndicadores" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+
+  /api/v1/indicadores/territorial:
+    get:
+      tags: [indicadores]
+      operationId: indicadoresTerritoriales
+      summary: Distribución por departamento o municipio (RF-8, RF-9)
+      security: []
+      parameters:
+        - { name: nivel, in: query, schema: { type: string, enum: [DEPARTAMENTO, MUNICIPIO], default: DEPARTAMENTO } }
+        - { name: desde, in: query, schema: { type: string, format: date-time }, description: Por defecto hasta − 30 días }
+        - { name: hasta, in: query, schema: { type: string, format: date-time }, description: Por defecto ahora; periodo máximo 366 días }
+        - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
+        - { name: codigoDepartamento, in: query, schema: { type: string, pattern: "^[0-9]{2}$" } }
+        - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: situacion, in: query, schema: { type: string, enum: [ACTIVO, RESUELTO] } }
+      responses:
+        "200":
+          description: Indicadores por territorio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metadatos: { $ref: "#/components/schemas/Metadatos" }
+                  nivel: { type: string }
+                  territorios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        codigo: { type: string }
+                        nombre: { type: string }
+                        departamento: { type: string }
+                        indicadores: { $ref: "#/components/schemas/ConjuntoIndicadores" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+
+  /api/v1/mapas/publico:
+    get:
+      tags: [indicadores]
+      operationId: mapaPublico
+      summary: Mapa agregado en celdas de ~1,1 km (RF-8)
+      description: Solo celdas con 3 o más reportes; sin identificadores ni puntos exactos.
+      security: []
+      parameters:
+        - { name: desde, in: query, schema: { type: string, format: date-time }, description: Por defecto hasta − 30 días }
+        - { name: hasta, in: query, schema: { type: string, format: date-time }, description: Por defecto ahora; periodo máximo 366 días }
+        - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
+        - { name: codigoDepartamento, in: query, schema: { type: string, pattern: "^[0-9]{2}$" } }
+        - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: situacion, in: query, schema: { type: string, enum: [ACTIVO, RESUELTO] } }
+      responses:
+        "200":
+          description: Celdas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metadatos: { $ref: "#/components/schemas/Metadatos" }
+                  celdaGrados: { type: number, example: 0.01 }
+                  celdas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        latitud: { type: number, description: Centro de la celda }
+                        longitud: { type: number }
+                        reportes: { type: integer, minimum: 3 }
+
+  /api/v1/mapas/operativo:
+    get:
+      tags: [indicadores]
+      operationId: mapaOperativo
+      summary: Puntos de los reportes para el personal (RF-8)
+      description: OPERADOR (solo su empresa), REGULADOR, ADMINISTRADOR. Máximo 5000 puntos.
+      parameters:
+        - { name: desde, in: query, schema: { type: string, format: date-time }, description: Por defecto hasta − 30 días }
+        - { name: hasta, in: query, schema: { type: string, format: date-time }, description: Por defecto ahora; periodo máximo 366 días }
+        - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
+        - { name: codigoDepartamento, in: query, schema: { type: string, pattern: "^[0-9]{2}$" } }
+        - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: situacion, in: query, schema: { type: string, enum: [ACTIVO, RESUELTO] } }
+        - { name: idEmpresa, in: query, schema: { type: string, format: uuid }, description: Ignorado para un operador }
+      responses:
+        "200":
+          description: Puntos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    idReporte: { type: string, format: uuid }
+                    tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+                    latitud: { type: number }
+                    longitud: { type: number }
+                    magnitud: { $ref: "#/components/schemas/Magnitud" }
+                    estadoCaso: { $ref: "#/components/schemas/EstadoCaso" }
+                    prioridad: { $ref: "#/components/schemas/Prioridad" }
+                    validado: { type: boolean }
+                    fechaRegistro: { type: string, format: date-time }
+                    idEmpresa: { type: string, format: uuid }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/indicadores/exportaciones/reportes:
+    get:
+      tags: [indicadores]
+      operationId: exportacionRegulatoria
+      summary: Exportación regulatoria de reportes (RF-10)
+      description: |
+        REGULADOR y ADMINISTRADOR. Todos los reportes del periodo, sin datos del
+        ciudadano ni descripción y con coordenadas a 3 decimales (~110 m).
+      parameters:
+        - { name: desde, in: query, schema: { type: string, format: date-time }, description: Por defecto hasta − 30 días }
+        - { name: hasta, in: query, schema: { type: string, format: date-time }, description: Por defecto ahora; periodo máximo 366 días }
+        - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
+        - { name: codigoDepartamento, in: query, schema: { type: string, pattern: "^[0-9]{2}$" } }
+        - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: situacion, in: query, schema: { type: string, enum: [ACTIVO, RESUELTO] } }
+        - { name: formato, in: query, schema: { type: string, enum: [csv, json], default: json } }
+      responses:
+        "200":
+          description: Reportes
+          content:
+            text/csv: { schema: { type: string } }
+            application/json: { schema: { type: object } }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/datos-abiertos/catalogo:
+    get:
+      tags: [indicadores]
+      operationId: catalogoDatosAbiertos
+      summary: Conjuntos de datos abiertos y sus metadatos (RF-10)
+      security: []
+      responses:
+        "200": { description: Catálogo }
+
+  /api/v1/datos-abiertos/indicadores-municipales:
+    get:
+      tags: [indicadores]
+      operationId: datosAbiertosMunicipales
+      summary: Indicadores mensuales por municipio y servicio (RF-10, RNF-DAT2)
+      description: Solo agregados; las filas con menos de 3 reportes van con `suprimido=true` y sin valores.
+      security: []
+      parameters:
+        - { name: desde, in: query, schema: { type: string, format: date-time }, description: Por defecto hasta − 30 días }
+        - { name: hasta, in: query, schema: { type: string, format: date-time }, description: Por defecto ahora; periodo máximo 366 días }
+        - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
+        - { name: codigoDepartamento, in: query, schema: { type: string, pattern: "^[0-9]{2}$" } }
+        - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: situacion, in: query, schema: { type: string, enum: [ACTIVO, RESUELTO] } }
+        - { name: formato, in: query, schema: { type: string, enum: [csv, json], default: json } }
+      responses:
+        "200":
+          description: Conjunto
+          content:
+            text/csv:
+              schema:
+                type: string
+                example: "codigo_municipio,municipio,departamento,tipo_servicio,mes,reportes,duracion_mediana_minutos,indice_severidad,porcentaje_resueltos,suprimido"
+            application/json: { schema: { type: object } }
+
   # ------------------------------------------------------------ autenticación
   /api/v1/auth/registro:
     post:
@@ -995,6 +1204,62 @@ components:
         moderadaEn: { type: string, format: date-time }
         version: { type: integer }
         evidencias: { type: array, items: { type: string, format: uuid } }
+
+    Metadatos:
+      type: object
+      description: RNF-DAT4
+      properties:
+        indicadores:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              nombre: { type: string }
+              definicion: { type: string }
+              unidad: { type: string }
+              fuente: { type: string }
+        fuente: { type: string }
+        periodo:
+          type: object
+          properties:
+            desde: { type: string, format: date-time }
+            hasta: { type: string, format: date-time }
+        filtros: { type: object }
+        cobertura:
+          type: object
+          properties:
+            reportesEnVista: { type: integer }
+            municipiosConReportes: { type: integer }
+            primerReporte: { type: string, format: date-time }
+            ultimoReporte: { type: string, format: date-time }
+        actualizadoEn: { type: string, format: date-time }
+        anonimizacion: { type: string }
+
+    ConjuntoIndicadores:
+      type: object
+      description: Si `suprimido` es true (menos de 3 reportes) no se publica ningún valor.
+      properties:
+        suprimido: { type: boolean }
+        reportes: { type: integer }
+        duracion:
+          type: object
+          properties:
+            promedio: { type: number }
+            mediana: { type: number }
+            p90: { type: number }
+            reportesConDuracion: { type: integer }
+        severidad:
+          type: object
+          properties:
+            indice: { type: number, minimum: 1, maximum: 4 }
+            porMagnitud: { type: object, additionalProperties: { type: integer } }
+            porcentajeValidados: { type: number }
+        atencion:
+          type: object
+          properties:
+            porcentajeResueltos: { type: number }
+            tiempoPromedioResolucionMinutos: { type: number }
 
     ConteoValidacion:
       type: object

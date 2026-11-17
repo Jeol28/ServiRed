@@ -16,3 +16,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-12](ADR-12-identidad-y-control-de-acceso.md) | Identidad, tokens y control de acceso | Aceptada |
 | [ADR-13](ADR-13-evidencias-y-almacenamiento.md) | Evidencias fotográficas y almacenamiento de objetos | Aceptada |
 | [ADR-14](ADR-14-atencion-de-casos.md) | Atención de casos: enrutamiento, prioridad, ciclo de vida y acceso | Aceptada |
+| [ADR-15](ADR-15-indicadores-y-datos-abiertos.md) | Indicadores, mapas y datos abiertos anonimizados | Aceptada |
