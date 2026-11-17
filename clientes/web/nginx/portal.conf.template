@@ -10,6 +10,13 @@ log_format servired_json escape=json
 # DNS de Docker: se resuelve el gateway en cada petición (sobrevive a que se recree).
 resolver 127.0.0.11 valid=10s ipv6=off;
 
+# IP real del cliente cuando hay un proxy propio delante (Tailscale en el servidor
+# de pruebas, ADR-19). Solo se confía en X-Forwarded-For si la conexión viene de
+# IP_REAL_DESDE; por defecto (127.0.0.1) nadie la cumple y se usa la IP directa.
+set_real_ip_from ${IP_REAL_DESDE};
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+
 server {
   listen 8080;
   server_name _;

@@ -17,7 +17,8 @@ ARG PROYECTO
 ARG PERMISOS="camera=(), microphone=(), geolocation=()"
 ENV PERMISOS=${PERMISOS} \
     GATEWAY_URL=http://gateway:8080 \
-    NGINX_ENVSUBST_FILTER="^(PERMISOS|GATEWAY_URL)$"
+    IP_REAL_DESDE=127.0.0.1 \
+    NGINX_ENVSUBST_FILTER="^(PERMISOS|GATEWAY_URL|IP_REAL_DESDE)$"
 COPY nginx/portal.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=construccion /web/dist/${PROYECTO}/browser /usr/share/nginx/html
 EXPOSE 8080

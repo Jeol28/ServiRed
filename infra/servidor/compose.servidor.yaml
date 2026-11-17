@@ -1,0 +1,35 @@
+# =====================================================================
+# SERVI-RED · servidor de pruebas fuera de local (ADR-19)
+# Se aplica encima del compose normal (lo hace infra/servidor/servired.sh):
+#   COMPOSE_FILE=compose.yaml:infra/servidor/compose.servidor.yaml
+#
+# - Nada escucha fuera de 127.0.0.1: la única entrada desde internet es
+#   Tailscale (Funnel para el portal público y la API, Serve para lo privado).
+# - La red "borde" tiene una subred fija para saber desde qué IP llega el
+#   proxy local y confiar en su X-Forwarded-For (límite de abuso por cliente).
+# =====================================================================
+services:
+  gateway:
+    # Solo para diagnóstico y pruebas e2e desde la propia máquina.
+    ports: !override
+      - "127.0.0.1:8080:8080"
+
+  portal-publico:
+    # Tailscale Funnel lo publica en https://<máquina>.<red>.ts.net
+    # (las apps móviles usan su /api, que es un proxy al gateway).
+    ports: !override
+      - "127.0.0.1:4300:8080"
+    environment:
+      IP_REAL_DESDE: 172.30.0.1
+
+  portal-operador:
+    # Tailscale Serve: solo visible desde los dispositivos de su red Tailscale.
+    environment:
+      IP_REAL_DESDE: 172.30.0.1
+
+networks:
+  borde:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
