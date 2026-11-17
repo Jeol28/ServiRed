@@ -65,7 +65,8 @@ docker compose up -d --build --wait
 ```
 
 Con eso quedan arriba PostgreSQL local, el almacén de evidencias (SeaweedFS), RabbitMQ (con su topología), los siete
-microservicios y el gateway en **http://localhost:8080**.
+microservicios, el gateway en **http://localhost:8080** y los portales web: público en
+**http://localhost:4300** y de operación en **http://127.0.0.1:4200**.
 
 ```bash
 curl -i http://localhost:8080/readyz                 # gateway
@@ -76,6 +77,7 @@ python3 pruebas/e2e/atencion-casos.py                # e2e: casos, operador, mod
 python3 pruebas/e2e/indicadores.py                   # e2e: indicadores, mapas, datos abiertos y exportación
 python3 pruebas/e2e/auditoria-alertas.py             # e2e: auditoría, alertas y (con el perfil) observabilidad
 python3 pruebas/e2e/identidad-y-acceso.py            # e2e: cuentas, tokens y RBAC
+python3 pruebas/e2e/portales-web.py                  # e2e: portales (cabeceras, proxy, anonimato)
 docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
 ```
@@ -84,7 +86,7 @@ docker compose down                                  # detener (agregue -v para 
 - Primer administrador: `IDENTIDAD_ADMIN_CORREO` / `IDENTIDAD_ADMIN_CLAVE` de `.env`.
 - Clave de firma de los JWT: `echo "IDENTIDAD_JWT_CLAVE_PRIVADA=$(sh infra/generar-clave-jwt.sh)"`
   y péguela en `.env` (si se deja vacía se usa una clave efímera).
-- Ningún microservicio, ni la base de datos, publica puertos: solo el gateway.
+- Ningún microservicio, ni la base de datos, publica puertos: solo el gateway y los portales.
 
 ### Observabilidad (opcional)
 `TRAZAS_ACTIVAS=true docker compose --profile observabilidad up -d --build --wait` agrega
@@ -119,6 +121,10 @@ python3 pruebas/e2e/atencion-casos.py
 python3 pruebas/e2e/indicadores.py
 python3 pruebas/e2e/auditoria-alertas.py
 python3 pruebas/e2e/identidad-y-acceso.py
+python3 pruebas/e2e/portales-web.py
+
+# Portales web (Vitest), desde clientes/web
+npx ng test compartido --watch=false
 ```
 
 La prueba e2e crea, repite (idempotencia) y consulta un reporte por el gateway,
@@ -160,6 +166,6 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | 5 | Atención: casos, estados, asignación | ✅ |
 | 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | ✅ |
 | 7 | Auditoría y alertas | ✅ |
-| 8 | Portales Angular | ⏳ |
+| 8 | Portales Angular | ✅ |
 | 9 | App Android | |
 | 10 | App iOS | |

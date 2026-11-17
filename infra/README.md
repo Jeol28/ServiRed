@@ -37,6 +37,8 @@ Sin el perfil, las alertas de seguridad siguen activas dentro de Auditoría
 | identidad, reportes, atencion, indicadores, auditoria | `servicios/*` | interna | — |
 | prometheus, alertmanager, grafana, jaeger | perfil `observabilidad` | interna, borde | 9090, 9093, 3000, 16686 (127.0.0.1) |
 | gateway | `servicios/gateway` | borde, interna | **8080** (actuator en 8081, solo interno) |
+| portal-publico | `clientes/web` (nginx) | borde | **4300** |
+| portal-operador | `clientes/web` (nginx) | borde | **127.0.0.1:4200** |
 
 La red `interna` es `internal: true`: sin salida a Internet ni puertos publicados.
 

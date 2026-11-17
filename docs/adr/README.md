@@ -18,3 +18,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-14](ADR-14-atencion-de-casos.md) | Atención de casos: enrutamiento, prioridad, ciclo de vida y acceso | Aceptada |
 | [ADR-15](ADR-15-indicadores-y-datos-abiertos.md) | Indicadores, mapas y datos abiertos anonimizados | Aceptada |
 | [ADR-16](ADR-16-auditoria-y-alertas.md) | Auditoría a prueba de manipulación y alertas | Aceptada |
+| [ADR-17](ADR-17-portales-web.md) | Portales web: sesión en el navegador, proxy y anonimato | Aceptada |
