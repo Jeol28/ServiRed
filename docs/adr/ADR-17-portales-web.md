@@ -42,8 +42,11 @@ límite de abuso por cliente detrás de un proxy.
 - **Empresas:** la API v1 no publica el catálogo de empresas; el portal de
   operación muestra los nombres de la semilla y, para un identificador
   desconocido, el UUID.
-- **Puertos:** portal público en `:4300`; portal de operación solo en
-  `127.0.0.1:4200`.
+- **Una sola dirección:** el portal de operación se compila con base `/operacion/` y el
+  nginx del portal público lo sirve en esa ruta (con `^~`, para que la regla de caché de
+  los archivos con hash no se adelante). Un ciudadano ve el portal público sin cuenta y el
+  personal entra por «Acceso del personal». En local, el portal público está en `:4300`
+  (y `/operacion/` dentro de él); `127.0.0.1:4200` queda para diagnóstico.
 
 ## Consecuencias
 - Recargar la pestaña conserva la sesión; abrir otra pestaña pide ingresar de
@@ -52,3 +55,6 @@ límite de abuso por cliente detrás de un proxy.
   `innerHTML` (el mapa inserta texto con `textContent`) reducen ese riesgo. Una
   cookie `HttpOnly` exigiría cambiar Identidad y el contrato; queda como mejora.
 - Con varios gateways o proxies, `PROXIES_CONFIABLES` debe listarlos todos.
+- Al compartir origen, los dos portales comparten `sessionStorage` en una misma pestaña. El
+  portal público no guarda nada ahí, y la CSP sin scripts en línea limita el riesgo de que
+  un fallo en uno afecte la sesión del otro.

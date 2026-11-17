@@ -68,8 +68,8 @@ docker compose up -d --build --wait
 ```
 
 Con eso quedan arriba PostgreSQL local, el almacén de evidencias (SeaweedFS), RabbitMQ (con su topología), los siete
-microservicios, el gateway en **http://localhost:8080** y los portales web: público en
-**http://localhost:4300** y de operación en **http://127.0.0.1:4200**.
+microservicios, el gateway en **http://localhost:8080** y los portales web en
+**http://localhost:4300** (el de operación en **/operacion/**, con inicio de sesión).
 
 ```bash
 curl -i http://localhost:8080/readyz                 # gateway

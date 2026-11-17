@@ -18,20 +18,17 @@ de unos 350 MB, tres servicios .NET, RabbitMQ y PostgreSQL.
   - La alternativa sin tarjeta es el propio computador del equipo, encendido mientras se
     prueba.
 - **Publicación con Tailscale (plan personal gratuito):**
-  - *Funnel* expone a internet el **portal de operación** por HTTPS, con nombre `*.ts.net` y
-    certificado automático. Su `/api` es el proxy al gateway, así que las apps usan esa
-    misma dirección.
-  - *Serve* deja el **portal público** y Grafana visibles **solo** para los dispositivos de
-    la red Tailscale del equipo.
-  - **Modelo "solo app" (como Waze):** el ciudadano reporta, valida y denuncia únicamente
-    desde las apps; no hay una página web pública para hacerlo. El personal sí trabaja en
-    la web, que es el portal de operación. Los indicadores y datos abiertos siguen siendo
-    públicos por la API.
-    - Esto oculta la interfaz web, pero la API sigue siendo pública: cualquier cliente con
-      una cuenta de ciudadano puede usarla. Para exigir que las llamadas vengan de la app
-      oficial haría falta atestación (Play Integrity, App Attest), que requiere publicar
-      las apps.
-  - La VM no abre puertos de entrada.
+  - *Funnel* expone a internet **una sola dirección** por HTTPS, con nombre `*.ts.net` y
+    certificado automático.
+    - En la raíz está el portal público.
+    - En `/operacion/` está el portal de operación, que pide inicio de sesión.
+    - En `/api` está el gateway, que también usan las apps.
+  - *Serve* deja Grafana visible **solo** para los dispositivos de la red Tailscale del
+    equipo.
+  - Se probó antes un modelo "solo app" (como Waze), con el portal público privado. Se
+    descartó a favor de una sola dirección para todos: el ciudadano ve el portal público
+    sin cuenta y el personal entra a sus funciones con su sesión. Los reportes siguen
+    exigiendo la app, porque la web pública no los ofrece.
 - **`infra/servidor/compose.servidor.yaml`** se aplica encima del compose normal:
   - Todo escucha solo en `127.0.0.1`. El gateway queda ahí para diagnóstico y para las
     pruebas e2e.
@@ -61,7 +58,7 @@ de unos 350 MB, tres servicios .NET, RabbitMQ y PostgreSQL.
   la VM con `git pull` es suficiente y no cuesta nada.
 
 ## Consecuencias
-- El portal de operación queda en internet protegido por el inicio de sesión, el límite de
+- El portal de operación (`/operacion/`) queda en internet protegido por el inicio de sesión, el límite de
   `/auth` (20 por minuto por cliente) y las alertas de fuerza bruta (ADR-16).
 - La dirección pública es la de Tailscale, por ejemplo `https://servired.<red>.ts.net`. Si
   cambia el nombre de la red Tailscale, hay que recompilar las apps.
