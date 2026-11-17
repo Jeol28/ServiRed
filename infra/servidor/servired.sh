@@ -3,6 +3,7 @@
 # SERVI-RED · operación del servidor de pruebas (ADR-19)
 #
 #   infra/servidor/servired.sh preparar     genera .env con secretos nuevos (si no existe)
+#   infra/servidor/servired.sh supabase     usa Supabase para la base de datos y las fotos
 #   infra/servidor/servired.sh arrancar     construye y levanta todo (espera a que esté sano)
 #   infra/servidor/servired.sh publicar     publica con Tailscale y muestra las direcciones
 #   infra/servidor/servired.sh actualizar   git pull + arrancar
@@ -16,6 +17,10 @@ set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$RAIZ"
 export COMPOSE_FILE="compose.yaml:infra/servidor/compose.servidor.yaml"
+# Con Supabase no se levantan el PostgreSQL ni el almacén locales.
+if grep -qE '^PERSISTENCIA_DB_URL=.*supabase' .env 2>/dev/null; then
+  COMPOSE_FILE+=":infra/servidor/compose.supabase.yaml"
+fi
 # Construir de a pocas imágenes a la vez: evita quedarse sin memoria en VM pequeñas.
 export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-2}"
 PERFILES=()
@@ -68,6 +73,65 @@ ENV
   echo "   (guárdela ahora; también queda en .env, solo legible por este usuario)"
 }
 
+supabase() {
+  [[ -f .env ]] || preparar
+  command -v python3 >/dev/null || { echo "Falta python3" >&2; exit 1; }
+  cat <<'AYUDA'
+
+Datos de su proyecto de Supabase (las claves no se muestran ni salen de esta máquina):
+  1. Botón "Connect" > "Session pooler" (no "Direct connection", que solo es IPv6, ni el
+     "Transaction pooler", que no sirve para las migraciones). Copie la URI:
+       postgresql://postgres.<ref>:[YOUR-PASSWORD]@aws-0-<región>.pooler.supabase.com:5432/postgres
+  2. Storage > cree un bucket PRIVADO llamado "evidencias".
+  3. Project Settings > Storage > "S3 Connection": endpoint y región; y "New access key".
+AYUDA
+  local uri clave s3url s3region s3acceso s3secreto
+  read -r -p "URI del Session pooler: " uri
+  read -r -s -p "Clave de la base de datos: " clave; echo
+  read -r -p "Endpoint S3 (https://<ref>.storage.supabase.co/storage/v1/s3): " s3url
+  read -r -p "Región S3 (p. ej. sa-east-1): " s3region
+  read -r -p "Access key ID: " s3acceso
+  read -r -s -p "Secret access key: " s3secreto; echo
+  cp -p .env ".env.antes-supabase"
+  URI="$uri" CLAVE="$clave" S3URL="$s3url" S3REGION="$s3region" S3ACCESO="$s3acceso" S3SECRETO="$s3secreto" python3 - <<'PY'
+import os, re, sys, urllib.parse
+u = urllib.parse.urlparse(os.environ["URI"].strip())
+if u.scheme not in ("postgres", "postgresql") or not (u.hostname or "").endswith("pooler.supabase.com") or (u.port or 5432) != 5432:
+    sys.exit("La URI debe ser la del Session pooler (…pooler.supabase.com:5432).")
+if not os.environ["S3URL"].strip().startswith("https://"):
+    sys.exit("El endpoint S3 debe empezar por https://")
+valores = {
+    "PERSISTENCIA_DB_URL": f"jdbc:postgresql://{u.hostname}:5432{u.path or '/postgres'}?sslmode=require",
+    "PERSISTENCIA_DB_USUARIO": urllib.parse.unquote(u.username or "postgres"),
+    "PERSISTENCIA_DB_CLAVE": os.environ["CLAVE"],
+    "ALMACEN_S3_URL": os.environ["S3URL"].strip().rstrip("/"),
+    "ALMACEN_S3_REGION": os.environ["S3REGION"].strip(),
+    "ALMACEN_S3_ACCESO": os.environ["S3ACCESO"].strip(),
+    "ALMACEN_S3_SECRETO": os.environ["S3SECRETO"].strip(),
+    "ALMACEN_S3_BUCKET": "evidencias",
+    "ALMACEN_S3_CREAR_BUCKET": "false",
+}
+# Comillas simples: Docker Compose las toma literales (un "$" en la clave no se interpreta).
+for k, v in valores.items():
+    if "'" in v:
+        sys.exit(f"{k} contiene una comilla simple; genere otro valor en Supabase.")
+valores = {k: f"'{v}'" for k, v in valores.items()}
+lineas = open(".env").read().splitlines()
+vistas = set()
+for i, l in enumerate(lineas):
+    clave = l.split("=", 1)[0]
+    if clave in valores:
+        lineas[i] = f"{clave}={valores[clave]}"
+        vistas.add(clave)
+lineas += [f"{k}={v}" for k, v in valores.items() if k not in vistas]
+open(".env", "w").write(chr(10).join(lineas) + chr(10))
+print(f"Supabase configurado: {u.hostname} (usuario {valores['PERSISTENCIA_DB_USUARIO'].strip(chr(39))}).")
+PY
+  chmod 600 .env ".env.antes-supabase"
+  aviso "Configuración anterior guardada en .env.antes-supabase. Ahora: servired.sh arrancar"
+  echo "   Persistencia crea las tablas en Supabase al arrancar (migraciones)."
+}
+
 arrancar() {
   [[ -f .env ]] || preparar
   aviso "Construyendo y levantando (la primera vez tarda varios minutos)"
@@ -113,6 +177,6 @@ detener() {
 }
 
 case "${1:-}" in
-  preparar|arrancar|publicar|actualizar|estado|detener) "$1" ;;
-  *) sed -n '3,13p' "$0"; exit 1 ;;
+  preparar|supabase|arrancar|publicar|actualizar|estado|detener) "$1" ;;
+  *) sed -n '3,14p' "$0"; exit 1 ;;
 esac

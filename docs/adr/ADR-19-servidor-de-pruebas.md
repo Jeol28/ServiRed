@@ -46,12 +46,24 @@ de unos 350 MB, tres servicios .NET, RabbitMQ y PostgreSQL.
   - En iOS, `Configuracion/*.xcconfig` más un `Local.xcconfig` no versionado, con la URL,
     el *Personal Team* gratuito y un identificador propio.
 
+## Actualización: datos en Supabase
+Para que los datos sobrevivan aunque la VM desaparezca, la base de datos y las fotos se
+pasan a **Supabase gratuito**, como preveía el planteamiento original del proyecto. Solo
+persistencia lo usa.
+- `servired.sh supabase` pide los datos de conexión y los escribe en `.env` sin mostrarlos.
+  Exige el *Session pooler* y guarda los valores entre comillas simples, porque Compose
+  interpretaría un `$` de la clave.
+- `compose.supabase.yaml` evita levantar el PostgreSQL y el almacén locales.
+- Las tablas están en esquemas propios, que la API REST pública de Supabase no expone (solo
+  expone `public`). El cliente S3 ya usa direcciones de tipo ruta y suma de comprobación
+  solo cuando hace falta, que es lo que requiere Supabase Storage.
+- Se acepta que el proyecto gratuito se pause tras unos 7 días sin uso: los datos se
+  conservan y se reactiva desde el panel.
+
 ## Alternativas descartadas
 - **Render, Railway, Fly.io, Koyeb y la e2-micro de Google:** su capa gratuita (256 MB a
   1 GB, con suspensión o un solo servicio) no alcanza para siete servicios más RabbitMQ y
   PostgreSQL.
-- **Supabase gratuito:** se pausa tras 7 días sin uso. Para pruebas esporádicas estorba más
-  de lo que ayuda; queda como opción documentada en el README raíz.
 - **Dominio propio, Caddy y Let's Encrypt:** implica pagar el dominio y abrir los puertos
   80 y 443. Tailscale da HTTPS y nombre estable sin ninguna de las dos cosas.
 - **Registro de imágenes y CI de despliegue:** con un solo servidor de pruebas, construir en

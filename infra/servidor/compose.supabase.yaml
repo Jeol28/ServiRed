@@ -1,0 +1,17 @@
+# =====================================================================
+# SERVI-RED · base de datos y fotos en Supabase (ADR-19)
+# servired.sh lo agrega solo cuando PERSISTENCIA_DB_URL apunta a Supabase.
+# Persistencia deja de esperar al PostgreSQL y al almacén locales, que no se
+# levantan (quedan en el perfil "local", por si se quieren volver a usar).
+# =====================================================================
+services:
+  persistencia:
+    depends_on: !override
+      rabbitmq-init:
+        condition: service_completed_successfully
+
+  postgres-local:
+    profiles: [local]
+
+  almacen:
+    profiles: [local]

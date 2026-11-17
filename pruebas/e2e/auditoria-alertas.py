@@ -23,7 +23,7 @@ import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from comun import (ENV, RABBIT_API, comprobar, compose, correo_nuevo, entrar_como_admin, esperar, http, http_crudo,
+from comun import (ENV, RABBIT_API, comprobar, compose, psql, correo_nuevo, entrar_como_admin, esperar, http, http_crudo,
                    registrar_y_entrar, sql, terminar)
 
 CLAVE = "una clave larga de prueba"
@@ -121,8 +121,7 @@ comprobar(http("GET", "/api/v1/auditoria/integridad", token=http("POST", "/api/v
           {"correo": correo_reg, "clave": CLAVE})[2]["tokenAcceso"])[0] == 403, "el regulador no verifica la integridad")
 estado, _, v = http("GET", "/api/v1/auditoria/integridad", token=admin)
 comprobar(estado == 200 and v["integra"] is True and v["registros"] > 0, f"cadena íntegra ({v.get('registros')} registros)")
-intento = compose("exec", "-T", "postgres-local", "psql", "-U", ENV["POSTGRES_LOCAL_USUARIO"], "-d", "servired", "-tAc",
-                  "UPDATE auditoria.registros SET accion = 'X' WHERE secuencia = 1")
+intento = psql("UPDATE auditoria.registros SET accion = 'X' WHERE secuencia = 1")
 comprobar("solo inserción" in intento.stderr and intento.returncode != 0,
           "un UPDATE directo en la base de datos es rechazado (solo inserción)")
 comprobar(http("POST", "/api/v1/auditoria/registros", {}, token=admin)[0] in (401, 403, 405), "no se escribe por el gateway")

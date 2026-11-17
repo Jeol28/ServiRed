@@ -1,9 +1,11 @@
 """Utilidades compartidas por las pruebas de punta a punta (sin dependencias externas)."""
 import base64
 import json
+import os
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
@@ -18,7 +20,11 @@ def leer_env():
     for linea in (RAIZ / ".env").read_text(encoding="utf-8").splitlines():
         if "=" in linea and not linea.lstrip().startswith("#"):
             clave, valor = linea.split("=", 1)
-            valores[clave.strip()] = valor.strip()
+            valor = valor.strip()
+            # Valores entre comillas (p. ej. claves de Supabase con "$"): se toman literales.
+            if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in "'\"":
+                valor = valor[1:-1]
+            valores[clave.strip()] = valor
     return valores
 
 
@@ -73,10 +79,23 @@ def compose(*argumentos):
                           stdin=subprocess.DEVNULL, check=False)
 
 
+def psql(consulta):
+    """Ejecuta SQL en la base que usa persistencia: el PostgreSQL local del compose o,
+    si PERSISTENCIA_DB_URL apunta a Supabase, esa base (con un cliente psql efímero)."""
+    url = ENV.get("PERSISTENCIA_DB_URL", "")
+    if "supabase" not in url:
+        return compose("exec", "-T", "postgres-local", "psql", "-U", ENV["POSTGRES_LOCAL_USUARIO"], "-d", "servired",
+                       "-tAc", consulta)
+    destino = urllib.parse.urlparse(url.removeprefix("jdbc:"))
+    conexion = (f"host={destino.hostname} port={destino.port or 5432} dbname={destino.path.lstrip('/')} "
+                f"user={ENV['PERSISTENCIA_DB_USUARIO']} sslmode=require")
+    return subprocess.run(["docker", "run", "--rm", "-e", "PGPASSWORD", "postgres:17-alpine", "psql", conexion,
+                           "-tAc", consulta], capture_output=True, text=True, stdin=subprocess.DEVNULL, check=False,
+                          env={**os.environ, "PGPASSWORD": ENV["PERSISTENCIA_DB_CLAVE"]})
+
+
 def sql(consulta):
-    r = compose("exec", "-T", "postgres-local", "psql", "-U", ENV["POSTGRES_LOCAL_USUARIO"], "-d", "servired",
-                "-tAc", consulta)
-    return r.stdout.strip()
+    return psql(consulta).stdout.strip()
 
 
 def esperar(condicion, segundos=30):

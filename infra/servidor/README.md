@@ -23,7 +23,8 @@ Internet ──HTTPS──▶ Tailscale Funnel ──▶ 127.0.0.1:4300 portal p
   - En `/api` está el gateway: las apps usan esta misma dirección como base.
 - **Privado (Serve):** con observabilidad, Grafana en `:10000`. Solo lo ven sus dispositivos
   con Tailscale.
-- **Todo queda dentro de la máquina**, incluidos PostgreSQL, el almacén de fotos y RabbitMQ.
+- **RabbitMQ queda dentro de la máquina.** PostgreSQL y el almacén de fotos también, salvo
+  que use Supabase (recomendado, ver más abajo).
 
 ## Opción A (recomendada): VM gratuita de Oracle Cloud
 
@@ -67,6 +68,40 @@ infra/servidor/servired.sh publicar
 
 En macOS, si `tailscale` no está en el PATH:
 `alias tailscale=/Applications/Tailscale.app/Contents/MacOS/Tailscale`.
+
+## Base de datos y fotos en Supabase (recomendado)
+
+Por defecto, PostgreSQL y el almacén de fotos corren dentro de la máquina: si la VM se
+borra, los datos se pierden. Con Supabase (plan gratuito) viven fuera de la VM. Solo
+persistencia se conecta a Supabase, así que no se cambia código.
+
+1. En [supabase.com](https://supabase.com) cree un proyecto en la región **South America
+   (São Paulo)** y anote la clave de la base de datos.
+2. **Storage:** cree un bucket **privado** llamado `evidencias`.
+3. **Project Settings > Storage > S3 Connection:** anote el *endpoint* y la región, y cree
+   un *access key* (ID y secreto).
+4. En la máquina (VM o su computador), desde la raíz del repositorio:
+
+   ```bash
+   infra/servidor/servired.sh supabase    # pide la URI del Session pooler, la clave y los datos S3
+   infra/servidor/servired.sh arrancar    # persistencia crea las tablas en Supabase al arrancar
+   ```
+
+- **Sus datos no pasan por ningún otro lugar.** Las claves se escriben solo en `.env`, entre
+  comillas simples para que un `$` no se interprete, con permisos `600`. La configuración
+  anterior queda en `.env.antes-supabase`.
+- **Debe ser el *Session pooler*** (`…pooler.supabase.com:5432`). La conexión directa solo
+  es IPv6 y el *Transaction pooler* no admite las migraciones; el comando rechaza los dos.
+- **Con Supabase no se levantan el PostgreSQL ni el almacén locales**
+  (`compose.supabase.yaml`). Para volver a lo local:
+  `cp .env.antes-supabase .env && servired.sh arrancar`.
+- **Las tablas de SERVI-RED viven en esquemas propios** (`identidad`, `reportes`,
+  `auditoria`…). La API REST pública de Supabase solo expone `public`, así que no quedan
+  accesibles por ella. Si no la va a usar, puede desactivarla en *Project Settings > Data API*.
+- **El proyecto gratuito se pausa** tras unos 7 días sin uso. Los datos se conservan;
+  reactívelo desde el panel antes de volver a probar.
+- **Las pruebas e2e** consultan la base que indique `.env`, local o Supabase (con un `psql`
+  efímero en Docker).
 
 ## Operación
 
