@@ -89,7 +89,7 @@ class GatewaySeguridadTest {
     static void propiedades(DynamicPropertyRegistry r) {
         String base = "http://localhost:" + DESTINO.getAddress().getPort();
         r.add("servired.jwt.jwks-url", () -> base + "/.well-known/jwks.json");
-        for (String s : new String[]{"IDENTIDAD", "REPORTES", "ATENCION", "INDICADORES"}) {
+        for (String s : new String[]{"IDENTIDAD", "REPORTES", "ATENCION", "INDICADORES", "AUDITORIA"}) {
             r.add("SERVICIO_" + s + "_URL", () -> base);
         }
     }
@@ -160,6 +160,12 @@ class GatewaySeguridadTest {
         cliente.post().uri("/api/v1/moderacion/denuncias/x/decision").header("Authorization", token("OPERADOR"))
                 .exchange().expectStatus().isOk();
         get("/api/v1/moderacion/denuncias", token("CIUDADANO")).expectStatus().isForbidden();
+        get("/api/v1/auditoria/registros", token("REGULADOR")).expectStatus().isOk();
+        get("/api/v1/auditoria/registros", token("OPERADOR")).expectStatus().isForbidden();
+        get("/api/v1/auditoria/registros", null).expectStatus().isUnauthorized();
+        cliente.post().uri("/api/v1/auditoria/registros").header("Authorization", token("ADMINISTRADOR")).exchange()
+                .expectStatus().isForbidden();
+        get("/interno/v1/alertas", token("ADMINISTRADOR")).expectStatus().isForbidden();
         get("/api/v1/cuentas", token("REGULADOR")).expectStatus().isForbidden();
         get("/api/v1/cuentas", token("ADMINISTRADOR")).expectStatus().isOk();
         get("/api/v1/cuentas/yo", token("OPERADOR")).expectStatus().isOk();
