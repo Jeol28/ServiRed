@@ -15,6 +15,18 @@ directamente (ADR-03).
 - Estados del **caso** (vista operador): `RECIBIDO → EN_ATENCION → RESUELTO → CERRADO`.
 - `RESTABLECIDO` lo produce el restablecimiento (RF-3); `CERRADO`, el cierre del caso.
 
+## Implementación (fase 5)
+| Evento | Estado del reporte | Aplica desde |
+|---|---|---|
+| `caso.actualizado` con estado `EN_ATENCION` | `EN_ATENCION` | `RECIBIDO` |
+| `caso.actualizado` con estado `RESUELTO` | `RESTABLECIDO` | `RECIBIDO`, `EN_ATENCION` |
+| `caso.actualizado` con estado `CERRADO` o `caso.cerrado` | `CERRADO` | cualquier estado no cerrado |
+
+- El estado **nunca retrocede**: un evento tardío o repetido no lo cambia.
+- Idempotencia por `idEvento` en Persistencia (`aplicarEstadoDeCaso`).
+- Si el operador resolvió primero, el reporte queda `RESTABLECIDO` sin fecha y el
+  ciudadano aún puede registrar la hora real (se calcula la duración).
+
 ## Consecuencias
 - Consistencia eventual: el estado del ciudadano puede tardar segundos en reflejar
   la acción del operador.

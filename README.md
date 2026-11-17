@@ -72,6 +72,7 @@ curl -i http://localhost:8080/readyz                 # gateway
 python3 infra/rabbitmq/verificar-topologia.py        # prueba de humo de RabbitMQ
 python3 pruebas/e2e/flujo-reporte.py                 # e2e: reporte de punta a punta
 python3 pruebas/e2e/reportes-completo.py             # e2e: fotos, validación, restablecimiento, denuncias
+python3 pruebas/e2e/atencion-casos.py                # e2e: casos, operador, moderación y estado del ciudadano
 python3 pruebas/e2e/identidad-y-acceso.py            # e2e: cuentas, tokens y RBAC
 docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
@@ -107,6 +108,7 @@ cd servicios/atencion && dotnet test Atencion.slnx
 # De punta a punta, con el compose arriba (usa el PostgreSQL local)
 python3 pruebas/e2e/flujo-reporte.py
 python3 pruebas/e2e/reportes-completo.py
+python3 pruebas/e2e/atencion-casos.py
 python3 pruebas/e2e/identidad-y-acceso.py
 ```
 
@@ -146,8 +148,8 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | 2 | Corte vertical: crear y consultar reporte + `reporte.creado` consumido por atención | ✅ |
 | 3 | Identidad: registro, login, JWT y RBAC en el gateway | ✅ |
 | 4 | Reportes completo: restablecimiento, validación, evidencias, denuncias | ✅ |
-| 5 | Atención: casos, estados, asignación | ⏳ |
-| 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | |
+| 5 | Atención: casos, estados, asignación | ✅ |
+| 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | ⏳ |
 | 7 | Auditoría y alertas | |
 | 8 | Portales Angular | |
 | 9 | App Android | |

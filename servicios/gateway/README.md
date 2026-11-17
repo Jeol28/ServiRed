@@ -35,7 +35,7 @@ Para correrlo junto al resto: `docker compose up -d --build gateway` desde la ra
 | `/api/v1/auth/**`, `/api/v1/cuentas/**` | identidad |
 | `/api/v1/reportes/**` | reportes |
 | `/api/v1/denuncias/**` | reportes, **sin** `Authorization` ni `Cookie` (ADR-09) |
-| `/api/v1/casos/**` | atencion |
+| `/api/v1/casos/**`, `/api/v1/moderacion/**` | atencion |
 | `/api/v1/indicadores/**`, `/api/v1/mapas/**`, `/api/v1/datos-abiertos/**` | indicadores |
 
 ## Correlación

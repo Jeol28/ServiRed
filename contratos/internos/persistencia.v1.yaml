@@ -11,11 +11,11 @@
 #  - Las operaciones que generan un evento reciben el evento ya construido por
 #    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
 #    transacción y lo publica después (decisión B).
-# Estado: fase 4 (reportes completo, denuncias, evidencias, casos, catálogo, cuentas y sesiones).
+# Estado: fase 5 (reportes, denuncias, evidencias, casos, moderación, catálogo, cuentas y sesiones).
 openapi: 3.1.0
 info:
   title: SERVI-RED · Persistencia (API interna)
-  version: 1.0.0-fase4
+  version: 1.0.0-fase5
 servers:
   - url: http://persistencia:8080
     description: Red interna de Docker Compose
@@ -451,6 +451,209 @@ paths:
       responses:
         "204": { description: Cerrada (idempotente) }
 
+  # ----------------------------------------------- atención (solo `atencion`)
+  /interno/v1/casos:
+    get:
+      operationId: listarCasos
+      description: Bandeja ordenada por prioridad (CRITICA primero) y antigüedad.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: estado, in: query, schema: { type: string } }
+        - { name: tipoServicio, in: query, schema: { type: string } }
+        - { name: codigoMunicipio, in: query, schema: { type: string } }
+        - { name: prioridad, in: query, schema: { type: string } }
+        - { name: idEmpresa, in: query, schema: { type: string, format: uuid } }
+        - { name: sinEmpresa, in: query, schema: { type: boolean } }
+        - { name: asignadoA, in: query, schema: { type: string, format: uuid } }
+        - { name: idReporte, in: query, schema: { type: string, format: uuid } }
+        - { name: pagina, in: query, schema: { type: integer } }
+        - { name: tamano, in: query, schema: { type: integer, maximum: 100 } }
+      responses:
+        "200": { description: "Página {elementos, total, pagina, tamano}" }
+
+  /interno/v1/casos/{idCaso}:
+    get:
+      operationId: consultarCaso
+      description: Caso con historia y las evidencias del reporte.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Caso }
+        "404": { description: No existe }
+
+  /interno/v1/casos/{idCaso}/actualizar:
+    post:
+      operationId: actualizarCaso
+      description: |
+        Cambios parciales con concurrencia optimista (`versionEsperada`, 409 VERSION),
+        entrada de historia y eventos `caso.actualizado`/`caso.cerrado` al outbox, en
+        una transacción. Idempotente por X-Correlation-Id.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [versionEsperada, fecha]
+              properties:
+                versionEsperada: { type: integer }
+                estado: { type: string, enum: [RECIBIDO, EN_ATENCION, RESUELTO, CERRADO] }
+                prioridad: { type: string, enum: [BAJA, MEDIA, ALTA, CRITICA] }
+                prioridadManual: { type: boolean }
+                asignadoA: { type: string, format: uuid }
+                idEmpresa: { type: string, format: uuid }
+                corteValidado: { type: boolean }
+                resolucion: { type: string }
+                resueltoEn: { type: string, format: date-time }
+                cerradoEn: { type: string, format: date-time }
+                detalleHistoria: { type: string }
+                autor: { type: string, format: uuid }
+                fecha: { type: string, format: date-time }
+                eventos: { type: array, items: { $ref: "#/components/schemas/EventoSaliente" } }
+      responses:
+        "200": { description: Caso actualizado }
+        "404": { description: No existe }
+        "409": { $ref: "#/components/responses/Conflicto" }
+
+  /interno/v1/casos/{idCaso}/evidencias/{idEvidencia}:
+    get:
+      operationId: obtenerEvidenciaDeCaso
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: idEvidencia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Bytes de la imagen }
+        "404": { description: No existe }
+
+  /interno/v1/catalogo/cobertura:
+    get:
+      operationId: buscarCobertura
+      description: Empresas que prestan el servicio en el municipio, ordenadas por id.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: codigoMunicipio, in: query, required: true, schema: { type: string } }
+        - { name: tipoServicio, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: "[{idEmpresa, nombre}]" }
+
+  /interno/v1/operadores/{idCuenta}:
+    get:
+      operationId: verificarOperador
+      description: Solo responde si la cuenta es un operador activo de la empresa; no expone ningún dato de la cuenta.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCuenta, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: idEmpresa, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "{operadorDeLaEmpresa: boolean}" }
+
+  /interno/v1/moderaciones/abrir:
+    post:
+      operationId: abrirModeracion
+      description: Idempotente por idDenuncia.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idDenuncia, recibidaEn]
+              properties:
+                idDenuncia: { type: string, format: uuid }
+                idEmpresa: { type: string, format: uuid }
+                recibidaEn: { type: string, format: date-time }
+      responses:
+        "200": { description: Moderación (con descripción, ubicación y evidencias de la denuncia) }
+
+  /interno/v1/moderaciones:
+    get:
+      operationId: listarModeraciones
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: estado, in: query, schema: { type: string } }
+        - { name: idEmpresa, in: query, schema: { type: string, format: uuid } }
+        - { name: pagina, in: query, schema: { type: integer } }
+        - { name: tamano, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Página }
+
+  /interno/v1/moderaciones/{idDenuncia}:
+    get:
+      operationId: consultarModeracion
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idDenuncia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Moderación }
+        "404": { description: No existe }
+
+  /interno/v1/moderaciones/{idDenuncia}/decidir:
+    post:
+      operationId: decidirModeracion
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idDenuncia, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [versionEsperada, estado, nota, moderadaPor, fecha]
+              properties:
+                versionEsperada: { type: integer }
+                estado: { type: string, enum: [VALIDADA, DESCARTADA] }
+                nota: { type: string }
+                moderadaPor: { type: string, format: uuid }
+                fecha: { type: string, format: date-time }
+      responses:
+        "200": { description: Moderada }
+        "409": { $ref: "#/components/responses/Conflicto" }
+
+  /interno/v1/denuncias/{idDenuncia}/evidencias/{idEvidencia}:
+    get:
+      operationId: obtenerEvidenciaDenuncia
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idDenuncia, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: idEvidencia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Bytes de la imagen }
+        "404": { description: No existe }
+
+  # ------------------------------------------- estado por caso (solo `reportes`)
+  /interno/v1/reportes/{idReporte}/estado-por-caso:
+    post:
+      operationId: aplicarEstadoDeCaso
+      description: |
+        Refleja un evento de caso en el estado del reporte (ADR-07). Idempotente por
+        `idEvento`; solo cambia si el estado actual está en `desde` (nunca retrocede).
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idEvento, estadoNuevo, desde, detalle, fecha]
+              properties:
+                idEvento: { type: string, format: uuid }
+                estadoNuevo: { type: string, enum: [EN_ATENCION, RESTABLECIDO, CERRADO] }
+                desde: { type: array, items: { type: string, enum: [RECIBIDO, EN_ATENCION, RESTABLECIDO] } }
+                detalle: { type: string, maxLength: 500 }
+                fecha: { type: string, format: date-time }
+      responses:
+        "200": { description: Reporte (cambiado o no) }
+        "404": { description: No existe }
+
   /interno/v1/catalogo/municipio-cercano:
     get:
       operationId: resolverMunicipio
@@ -591,6 +794,12 @@ components:
       type: object
       required: [idCaso, idReporte, tipoServicio, codigoMunicipio, magnitud, abiertoEn]
       properties:
+        idEmpresa: { type: string, format: uuid, description: Empresa elegida por Atención (ausente sin cobertura) }
+        prioridad: { type: string, enum: [BAJA, MEDIA, ALTA, CRITICA] }
+        latitud: { type: number }
+        longitud: { type: number }
+        descripcion: { type: string, maxLength: 1000 }
+        inicioEstimado: { type: string, format: date-time }
         idCaso: { type: string, format: uuid }
         idReporte: { type: string, format: uuid }
         tipoServicio: { type: string, enum: [ENERGIA, GAS, ACUEDUCTO, ALCANTARILLADO, ASEO] }

@@ -15,7 +15,9 @@ public sealed record FiltroCasos(
     int Pagina = 0,
     int Tamano = 20);
 
-public sealed record Pagina<T>(IReadOnlyList<T> Elementos, long Total, int NumeroPagina, int Tamano);
+/// <summary>Página de resultados; se serializa como {elementos, total, pagina, tamano}, igual que los servicios Java.</summary>
+public sealed record Pagina<T>(IReadOnlyList<T> Elementos, long Total,
+    [property: System.Text.Json.Serialization.JsonPropertyName("pagina")] int NumeroPagina, int Tamano);
 
 public sealed record Archivo(string TipoContenido, byte[] Contenido);
 

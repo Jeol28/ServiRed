@@ -61,6 +61,7 @@ audiencia); solo el rol CIUDADANO accede, y el ciudadano es el claim `sub`
 - Fase 1 ✅ esqueleto, correlación, health (con RabbitMQ) y métricas.
 - Fase 2 ✅ crear y consultar reporte de punta a punta con `reporte.creado`.
 - Fase 3 ✅ JWT revalidado y ciudadano tomado del token.
+- Fase 5 ✅ consume `caso.actualizado` y `caso.cerrado` (cola `reportes.eventos-casos`) y actualiza el estado del ciudadano ([ADR-07](../../docs/adr/ADR-07-estado-del-reporte-por-eventos.md)).
 - Fase 4 ✅ restablecimiento, validación comunitaria, evidencias saneadas y denuncias anónimas
   ([ADR-08](../../docs/adr/ADR-08-reglas-de-dominio.md), [ADR-09](../../docs/adr/ADR-09-denuncias-anonimas.md),
   [ADR-13](../../docs/adr/ADR-13-evidencias-y-almacenamiento.md)).

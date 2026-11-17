@@ -38,7 +38,9 @@ Migraciones en `src/main/resources/db/migracion`.
 |---|---|---|
 | `guardarReporte` | `POST /interno/v1/reportes/guardar` | reportes |
 | `consultarReporte` | `GET /interno/v1/reportes/{id}` | reportes |
-| `abrirCaso` | `POST /interno/v1/casos/abrir` | atencion |
+| `abrirCaso`, `consultarCaso`, `listarCasos`, `actualizarCaso`, `buscarCobertura`, `verificarOperador`, `obtenerEvidenciaDeCaso` | `/interno/v1/casos/**`, `/interno/v1/catalogo/cobertura`, `/interno/v1/operadores/{id}` | atencion |
+| `abrirModeracion`, `consultarModeracion`, `decidirModeracion`, `obtenerEvidenciaDenuncia` | `/interno/v1/moderaciones/**`, `/interno/v1/denuncias/{id}/evidencias/{id}` | atencion |
+| `aplicarEstadoDeCaso` | `POST /interno/v1/reportes/{id}/estado-por-caso` | reportes |
 | `resolverMunicipio` | `GET /interno/v1/catalogo/municipio-cercano` | reportes, atencion, indicadores |
 | `listarReportesDeCiudadano`, `buscarReportesCercanos`, `registrarRestablecimiento`, `registrarValidacion`, `guardarEvidencia`, `obtenerEvidencia`, `guardarDenuncia` | `/interno/v1/reportes/**`, `/interno/v1/denuncias` | reportes |
 | `registrarCuenta`, `buscarCredenciales`, `consultarCuenta`, `listarCuentas`, `actualizarCuenta`, `eliminarCuenta` | `/interno/v1/cuentas/**` | identidad |
@@ -77,4 +79,5 @@ no se puede guardar. Readiness incluye el almacén. Ver
 - Fase 1 ✅ esquemas, tablas de outbox e idempotencia, health y métricas.
 - Fase 2 ✅ reportes, casos, catálogo, relay del outbox y datos semilla.
 - Fase 3 ✅ cuentas y sesiones (esquema `identidad`).
+- Fase 5 ✅ casos con versión optimista, historia, moderación y estado del reporte por caso.
 - Fase 4 ✅ restablecimiento, validaciones (concurrencia optimista), evidencias en S3 y denuncias.

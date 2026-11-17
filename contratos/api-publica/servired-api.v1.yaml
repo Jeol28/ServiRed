@@ -1,11 +1,11 @@
 # API pública de SERVI-RED expuesta por el API Gateway.
 # Es el ÚNICO contrato que consumen los portales web y las apps Android/iOS.
 # Versionado en la ruta (/api/v1); cambios incompatibles => /api/v2 (RNF-DAT3).
-# Estado: fase 4 (reportes completo y denuncias). Cada fase agrega sus operaciones.
+# Estado: fase 5 (reportes, denuncias, casos y moderación). Cada fase agrega sus operaciones.
 openapi: 3.1.0
 info:
   title: SERVI-RED · API pública
-  version: 1.0.0-fase4
+  version: 1.0.0-fase5
   description: |
     Plataforma de reporte ciudadano y monitoreo de servicios públicos domiciliarios.
 
@@ -41,6 +41,10 @@ tags:
     description: Cortes, restablecimientos, evidencias y validación comunitaria (RF-1 a RF-4)
   - name: denuncias
     description: Denuncias anónimas de conexiones fraudulentas (RF-5)
+  - name: casos
+    description: Atención operacional de casos (RF-6, RF-7)
+  - name: moderacion
+    description: Moderación de denuncias anónimas (RF-5)
   - name: salud
     description: Estado del gateway
 
@@ -307,6 +311,278 @@ paths:
         "413": { description: La fotografía supera 5 MB }
         "422": { $ref: "#/components/responses/EvidenciaInvalida" }
         "429": { $ref: "#/components/responses/DemasiadasSolicitudes" }
+
+  # -------------------------------------------------------------------- casos
+  /api/v1/casos:
+    get:
+      tags: [casos]
+      operationId: listarCasos
+      summary: Bandeja de casos ordenada por prioridad (RF-7)
+      description: |
+        OPERADOR (solo su empresa; el filtro idEmpresa se ignora), REGULADOR y
+        ADMINISTRADOR. `sinEmpresa=true` lista los casos sin cobertura.
+      parameters:
+        - { name: estado, in: query, schema: { $ref: "#/components/schemas/EstadoCaso" } }
+        - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
+        - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: prioridad, in: query, schema: { $ref: "#/components/schemas/Prioridad" } }
+        - { name: idEmpresa, in: query, schema: { type: string, format: uuid } }
+        - { name: sinEmpresa, in: query, schema: { type: boolean } }
+        - { name: asignadoA, in: query, schema: { type: string, format: uuid } }
+        - { name: mios, in: query, schema: { type: boolean }, description: Solo los asignados a quien consulta }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: Página de casos (sin historia)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginaCasos" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/casos/{idCaso}:
+    get:
+      tags: [casos]
+      operationId: consultarCaso
+      summary: Caso con historia y evidencias
+      description: 404 si no existe o es de otra empresa (para un operador).
+      parameters:
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: El caso
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Caso" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /api/v1/casos/{idCaso}/atender:
+    post:
+      tags: [casos]
+      operationId: atenderCaso
+      summary: RECIBIDO -> EN_ATENCION (se asigna a quien lo atiende si no tenía responsable)
+      description: OPERADOR de la empresa del caso o ADMINISTRADOR. Publica caso.actualizado.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { $ref: "#/components/responses/CasoActualizado" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/casos/{idCaso}/resolver:
+    post:
+      tags: [casos]
+      operationId: resolverCaso
+      summary: RECIBIDO o EN_ATENCION -> RESUELTO (exige la resolución)
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Resolucion" }
+      responses:
+        "200": { $ref: "#/components/responses/CasoActualizado" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/casos/{idCaso}/cerrar:
+    post:
+      tags: [casos]
+      operationId: cerrarCaso
+      summary: Cerrar el caso (sin resolver exige el motivo)
+      description: Publica caso.actualizado y caso.cerrado; el reporte del ciudadano pasa a CERRADO.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Resolucion" }
+      responses:
+        "200": { $ref: "#/components/responses/CasoActualizado" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/casos/{idCaso}/asignacion:
+    put:
+      tags: [casos]
+      operationId: asignarCaso
+      summary: Asignar a un operador de la empresa del caso (sin idOperador, a quien lo pide)
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idOperador: { type: string, format: uuid }
+      responses:
+        "200": { $ref: "#/components/responses/CasoActualizado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/casos/{idCaso}/prioridad:
+    put:
+      tags: [casos]
+      operationId: fijarPrioridad
+      summary: Fijar la prioridad a mano (desde entonces no se recalcula)
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prioridad]
+              properties:
+                prioridad: { $ref: "#/components/schemas/Prioridad" }
+      responses:
+        "200": { $ref: "#/components/responses/CasoActualizado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/casos/{idCaso}/empresa:
+    put:
+      tags: [casos]
+      operationId: enrutarCaso
+      summary: Enrutar manualmente a otra empresa (solo ADMINISTRADOR)
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idEmpresa]
+              properties:
+                idEmpresa: { type: string, format: uuid }
+      responses:
+        "200": { $ref: "#/components/responses/CasoActualizado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/casos/{idCaso}/evidencias/{idEvidencia}:
+    get:
+      tags: [casos]
+      operationId: obtenerEvidenciaDeCaso
+      summary: Foto del reporte del caso
+      parameters:
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: idEvidencia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: La imagen
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  # --------------------------------------------------------------- moderación
+  /api/v1/moderacion/denuncias:
+    get:
+      tags: [moderacion]
+      operationId: listarDenunciasEnModeracion
+      summary: Denuncias anónimas por moderar o moderadas
+      description: OPERADOR (solo su empresa), REGULADOR y ADMINISTRADOR.
+      parameters:
+        - { name: estado, in: query, schema: { type: string, enum: [PENDIENTE, VALIDADA, DESCARTADA] } }
+        - { name: idEmpresa, in: query, schema: { type: string, format: uuid } }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: Página
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  elementos: { type: array, items: { $ref: "#/components/schemas/Moderacion" } }
+                  total: { type: integer }
+                  pagina: { type: integer }
+                  tamano: { type: integer }
+        "403": { $ref: "#/components/responses/Prohibido" }
+
+  /api/v1/moderacion/denuncias/{idDenuncia}:
+    get:
+      tags: [moderacion]
+      operationId: consultarDenunciaEnModeracion
+      parameters:
+        - { name: idDenuncia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: La denuncia (sin ningún dato del denunciante)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Moderacion" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /api/v1/moderacion/denuncias/{idDenuncia}/decision:
+    post:
+      tags: [moderacion]
+      operationId: moderarDenuncia
+      summary: Validar o descartar la denuncia (una sola vez, con nota)
+      description: OPERADOR de la empresa o ADMINISTRADOR. 409 YA_MODERADA si ya se decidió.
+      parameters:
+        - { name: idDenuncia, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, nota]
+              properties:
+                decision: { type: string, enum: [VALIDADA, DESCARTADA] }
+                nota: { type: string, minLength: 5, maxLength: 1000 }
+      responses:
+        "200":
+          description: Moderada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Moderacion" }
+        "400": { $ref: "#/components/responses/SolicitudInvalida" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/moderacion/denuncias/{idDenuncia}/evidencias/{idEvidencia}:
+    get:
+      tags: [moderacion]
+      operationId: obtenerEvidenciaDeDenuncia
+      parameters:
+        - { name: idDenuncia, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: idEvidencia, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: La imagen (sin metadatos)
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
 
   # ------------------------------------------------------------ autenticación
   /api/v1/auth/registro:
@@ -632,6 +908,94 @@ components:
           description: En orden de registro
           items: { $ref: "#/components/schemas/EntradaHistoria" }
 
+    EstadoCaso:
+      type: string
+      enum: [RECIBIDO, EN_ATENCION, RESUELTO, CERRADO]
+
+    Prioridad:
+      type: string
+      enum: [BAJA, MEDIA, ALTA, CRITICA]
+
+    Resolucion:
+      type: object
+      additionalProperties: false
+      properties:
+        resolucion: { type: string, maxLength: 1000 }
+
+    Caso:
+      type: object
+      required: [idCaso, idReporte, tipoServicio, codigoMunicipio, magnitud, estado, abiertoEn, prioridad,
+                 prioridadManual, corteValidado, version]
+      description: Sin ningún dato del ciudadano.
+      properties:
+        idCaso: { type: string, format: uuid }
+        idReporte: { type: string, format: uuid }
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        codigoMunicipio: { type: string }
+        nombreMunicipio: { type: string }
+        magnitud: { $ref: "#/components/schemas/Magnitud" }
+        estado: { $ref: "#/components/schemas/EstadoCaso" }
+        abiertoEn: { type: string, format: date-time }
+        idEmpresa: { type: string, format: uuid, description: Ausente si no hay cobertura }
+        prioridad: { $ref: "#/components/schemas/Prioridad" }
+        prioridadManual: { type: boolean }
+        corteValidado: { type: boolean }
+        latitud: { type: number }
+        longitud: { type: number }
+        descripcion: { type: string }
+        inicioEstimado: { type: string, format: date-time }
+        asignadoA: { type: string, format: uuid }
+        resolucion: { type: string }
+        resueltoEn: { type: string, format: date-time }
+        cerradoEn: { type: string, format: date-time }
+        version: { type: integer }
+        historia:
+          type: array
+          items:
+            type: object
+            properties:
+              estado: { $ref: "#/components/schemas/EstadoCaso" }
+              fecha: { type: string, format: date-time }
+              detalle: { type: string }
+              autor: { type: string, format: uuid, description: Cuenta del personal; ausente si fue el sistema }
+        evidencias:
+          type: array
+          items:
+            type: object
+            properties:
+              idEvidencia: { type: string, format: uuid }
+              tipoContenido: { type: string }
+              tamanoBytes: { type: integer }
+              creadaEn: { type: string, format: date-time }
+
+    PaginaCasos:
+      type: object
+      properties:
+        elementos: { type: array, items: { $ref: "#/components/schemas/Caso" } }
+        total: { type: integer }
+        pagina: { type: integer }
+        tamano: { type: integer }
+
+    Moderacion:
+      type: object
+      required: [idDenuncia, tipoServicio, codigoMunicipio, latitud, longitud, descripcion, recibidaEn, estado, version]
+      properties:
+        idDenuncia: { type: string, format: uuid }
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        codigoMunicipio: { type: string }
+        nombreMunicipio: { type: string }
+        latitud: { type: number }
+        longitud: { type: number }
+        descripcion: { type: string }
+        recibidaEn: { type: string, format: date-time }
+        idEmpresa: { type: string, format: uuid }
+        estado: { type: string, enum: [PENDIENTE, VALIDADA, DESCARTADA] }
+        nota: { type: string }
+        moderadaPor: { type: string, format: uuid }
+        moderadaEn: { type: string, format: date-time }
+        version: { type: integer }
+        evidencias: { type: array, items: { type: string, format: uuid } }
+
     ConteoValidacion:
       type: object
       required: [confirmaciones, controversias, confirmacionesNetas]
@@ -854,6 +1218,11 @@ components:
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/Problema" }
+    CasoActualizado:
+      description: Caso después del cambio
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Caso" }
     ReglaIncumplida:
       description: Una regla de negocio impide la operación; ver `motivo`
       content:
