@@ -1,0 +1,77 @@
+# Proyecto de la app iOS del ciudadano. Se genera con XcodeGen:  xcodegen generate
+name: ServiRed
+options:
+  bundleIdPrefix: co.edu.javeriana.servired
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: es
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    exactVersion: 7.0.0
+targets:
+  ServiRed:
+    type: application
+    platform: iOS
+    sources: [ServiRed]
+    dependencies:
+      - package: MapLibre
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.edu.javeriana.servired
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Base del gateway. En el simulador, localhost es la Mac anfitriona.
+        API_BASE: http://localhost:8080/
+      configs:
+        Release:
+          API_BASE: https://api.servired.example/
+    info:
+      path: ServiRed/Info.plist
+      properties:
+        CFBundleDisplayName: SERVI-RED
+        CFBundleDevelopmentRegion: es
+        ServiRedAPIBase: $(API_BASE)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSLocationWhenInUseUsageDescription: SERVI-RED usa su ubicación solo mientras usa la app, para ubicar su reporte y mostrarle los cortes cercanos. No se rastrea en segundo plano.
+        NSCameraUsageDescription: Para adjuntar una foto del problema. La foto se envía sin ubicación ni datos de la cámara.
+        # Solo HTTPS, salvo el gateway local de desarrollo.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [co.edu.javeriana.servired.envio]
+        ITSAppUsesNonExemptEncryption: false
+  ServiRedTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [ServiRedTests]
+    dependencies:
+      - target: ServiRed
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  ServiRedUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [ServiRedUITests]
+    dependencies:
+      - target: ServiRed
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  ServiRed:
+    build:
+      targets:
+        ServiRed: all
+    test:
+      targets: [ServiRedTests, ServiRedUITests]
