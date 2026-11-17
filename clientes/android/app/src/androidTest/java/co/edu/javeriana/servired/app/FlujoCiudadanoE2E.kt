@@ -47,7 +47,8 @@ class FlujoCiudadanoE2E {
         private var c: String? = null
         override fun leer() = r
         override fun guardar(refresco: String) { r = refresco }
-        override fun borrar() { r = null; c = null }
+        override fun borrarRefresco() { r = null }
+        override fun borrarTodo() { r = null; c = null }
         override fun leerCuenta() = c
         override fun guardarCuenta(cuenta: String) { c = cuenta }
     }
