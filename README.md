@@ -57,7 +57,7 @@ Atención nunca se llaman entre sí: se comunican por eventos.
 | JDK | 21 o superior | Compilar y probar los servicios Java (Maven va por wrapper) |
 | .NET SDK | 10.0 | Compilar y probar los servicios .NET |
 | Node.js | 24 | Portales web (desarrollo y pruebas; el compose los construye solo) |
-| Android Studio (JDK 21, SDK 37) | 2026 o superior | App Android |
+| Android Studio (JDK 21, SDK 37) | 2025.3 o superior (AGP 9.2) | App Android |
 | Xcode | 26 o superior | App iOS |
 
 ## Cómo correr todo (un solo comando)

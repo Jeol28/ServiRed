@@ -44,6 +44,11 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    lint {
+        // AGP está fijada a la versión que admite Android Studio (ver libs.versions.toml).
+        disable += "AndroidGradlePluginVersion"
+    }
 }
 
 ksp {

@@ -30,7 +30,8 @@ app/src/main/java/co/edu/javeriana/servired/app/
 
 ## Ejecutar
 
-Requisitos: Android Studio (o su JDK 21 en `JAVA_HOME`) y el SDK con la plataforma 37.
+Requisitos: Android Studio 2025.3 o superior (AGP 9.2; o su JDK 21 en `JAVA_HOME`) y el SDK con la plataforma 37.
+Para abrirlo: **File > Open** sobre la carpeta `clientes/android`.
 El compose de la raíz debe estar arriba (`docker compose up -d --build --wait`).
 
 ```bash

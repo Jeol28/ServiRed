@@ -1,5 +1,6 @@
 [versions]
-agp = "9.5.1"
+# AGP 9.2: la última que admite Android Studio 2025.3. Subirla exige actualizar Android Studio.
+agp = "9.2.0"
 kotlin = "2.4.21"
 ksp = "2.3.14"
 composeBom = "2026.09.00"
