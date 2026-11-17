@@ -1,6 +1,7 @@
 package co.edu.javeriana.servired.gateway.infraestructura;
 
 import co.edu.javeriana.servired.gateway.dominio.LimitadorVentanaFija;
+import co.edu.javeriana.servired.gateway.dominio.OrigenCliente;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -24,6 +25,8 @@ import reactor.core.publisher.Mono;
  * Límite de abuso (RNF-SEG5) en las rutas públicas sensibles: autenticación
  * (fuerza bruta) y denuncias anónimas (spam). La IP nunca se guarda ni se
  * registra: solo su SHA-256 con una sal aleatoria por proceso, en memoria.
+ * Detrás de los portales web la IP real llega en X-Forwarded-For, que solo se
+ * acepta si la conexión viene de un proxy configurado (ver {@link OrigenCliente}).
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
@@ -32,10 +35,13 @@ public class FiltroLimiteSolicitudes implements WebFilter {
     private final LimitadorVentanaFija autenticacion;
     private final LimitadorVentanaFija denuncias;
     private final byte[] sal = new byte[32];
+    private final ProxiesConfiables proxies;
 
     public FiltroLimiteSolicitudes(
             @Value("${servired.limites.autenticacion-por-minuto:20}") int autenticacionPorMinuto,
-            @Value("${servired.limites.denuncias-por-minuto:5}") int denunciasPorMinuto) {
+            @Value("${servired.limites.denuncias-por-minuto:5}") int denunciasPorMinuto,
+            ProxiesConfiables proxies) {
+        this.proxies = proxies;
         Clock reloj = Clock.systemUTC();
         this.autenticacion = new LimitadorVentanaFija(autenticacionPorMinuto, Duration.ofMinutes(1), reloj);
         this.denuncias = new LimitadorVentanaFija(denunciasPorMinuto, Duration.ofMinutes(1), reloj);
@@ -61,7 +67,8 @@ public class FiltroLimiteSolicitudes implements WebFilter {
 
     private String huellaCliente(ServerWebExchange exchange) {
         InetSocketAddress remota = exchange.getRequest().getRemoteAddress();
-        String ip = remota == null || remota.getAddress() == null ? "desconocida" : remota.getAddress().getHostAddress();
+        String ip = OrigenCliente.direccion(remota == null ? null : remota.getAddress(),
+                exchange.getRequest().getHeaders().getFirst("X-Forwarded-For"), proxies);
         try {
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
             sha.update(sal);

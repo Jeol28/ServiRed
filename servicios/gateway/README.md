@@ -51,8 +51,14 @@ lo registra en un log de acceso JSON (método, ruta, estado y duración; nunca I
   [ADR-12](../../docs/adr/ADR-12-identidad-y-control-de-acceso.md). Lo no declarado se niega.
 - **Límites (RNF-SEG5):** `/api/v1/auth/**` 20/min y `/api/v1/denuncias/**` 5/min
   por cliente (hash salado de la IP, solo en memoria). Responde 429 con `Retry-After`.
+  Detrás de los portales, la IP del cliente se toma de `X-Forwarded-For` **solo** si la
+  conexión viene de un proxy de `PROXIES_CONFIABLES` (nombres de host; ver
+  [ADR-17](../../docs/adr/ADR-17-portales-web.md)); de cualquier otro origen se ignora.
+- **Minimización:** no agrega ni reenvía `X-Forwarded-For`, `X-Real-IP` ni `Forwarded`
+  a los servicios: la IP del cliente no sale del gateway.
 - Errores 401, 403 y 429 en `application/problem+json` con `correlationId`.
 
 ## Estado
 - Fase 1 ✅ enrutamiento, correlación, health y métricas.
 - Fase 3 ✅ JWT, RBAC por ruta, límite de abuso y actuator en puerto de gestión.
+- Fase 8 ✅ proxies confiables para el límite por cliente detrás de los portales.

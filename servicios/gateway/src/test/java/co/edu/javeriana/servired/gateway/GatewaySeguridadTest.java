@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -34,17 +35,23 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"management.server.port=0", "servired.limites.autenticacion-por-minuto=1000",
-                "servired.limites.denuncias-por-minuto=4"})
+                "servired.limites.denuncias-por-minuto=4",
+                // La prueba se conecta desde localhost: hace de proxy de los portales.
+                "servired.limites.proxies-confiables=localhost"})
 @AutoConfigureWebTestClient
 class GatewaySeguridadTest {
 
     static final RSAKey CLAVE = generar();
     static final RSAKey OTRA_CLAVE = generar();
     static final Map<String, String> AUTORIZACION_RECIBIDA = new ConcurrentHashMap<>();
+    static final Map<String, String> REENVIADO_RECIBIDO = new ConcurrentHashMap<>();
     static final HttpServer DESTINO = iniciarDestino();
 
     @Autowired
     WebTestClient cliente;
+
+    @LocalServerPort
+    int puerto;
 
     static RSAKey generar() {
         try {
@@ -66,6 +73,9 @@ class GatewaySeguridadTest {
                 } else {
                     String auth = x.getRequestHeaders().getFirst("Authorization");
                     AUTORIZACION_RECIBIDA.put(ruta, auth == null ? "<ninguna>" : auth);
+                    var h = x.getRequestHeaders();
+                    REENVIADO_RECIBIDO.put(ruta, String.join("|", String.valueOf(h.getFirst("X-Forwarded-For")),
+                            String.valueOf(h.getFirst("X-Real-IP")), String.valueOf(h.getFirst("Forwarded"))));
                     cuerpo = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);
                 }
                 x.getResponseHeaders().add("Content-Type", "application/json");
@@ -214,5 +224,23 @@ class GatewaySeguridadTest {
             }
         }
         assertThat(limitadas).isPositive();
+    }
+
+    @Test
+    void detrasDeUnProxyConfiableElLimiteEsPorClienteYLaIpNoLlegaALosServicios() {
+        String ruta = "/api/v1/denuncias/proxy";
+        // Conexión TCP real desde localhost (el cliente enlazado al contexto no tiene dirección remota).
+        var cliente = WebTestClient.bindToServer().baseUrl("http://localhost:" + puerto).build();
+        // Un cliente detrás del proxy agota su cupo (4/min)...
+        int limitadas = 0;
+        for (int i = 0; i < 5; i++) {
+            limitadas += cliente.post().uri(ruta).header("X-Forwarded-For", "203.0.113.7").exchange()
+                    .returnResult(String.class).getStatus().value() == 429 ? 1 : 0;
+        }
+        assertThat(limitadas).isEqualTo(1);
+        // ...sin afectar a otro cliente que llega por el mismo proxy.
+        cliente.post().uri(ruta).header("X-Forwarded-For", "203.0.113.8").header("X-Real-IP", "203.0.113.8")
+                .header("Forwarded", "for=203.0.113.8").exchange().expectStatus().isOk();
+        assertThat(REENVIADO_RECIBIDO.get(ruta)).isEqualTo("null|null|null");
     }
 }

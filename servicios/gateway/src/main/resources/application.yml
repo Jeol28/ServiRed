@@ -9,6 +9,16 @@ spring:
     gateway:
       server:
         webflux:
+          # Minimización (RNF-SEG4): la IP del cliente no viaja a los servicios.
+          # El gateway no agrega X-Forwarded-*/Forwarded y descarta los que lleguen.
+          x-forwarded:
+            enabled: false
+          forwarded:
+            enabled: false
+          default-filters:
+            - RemoveRequestHeader=X-Forwarded-For
+            - RemoveRequestHeader=X-Real-IP
+            - RemoveRequestHeader=Forwarded
           # Los clientes solo conocen /api/v1/**. Persistencia NUNCA se enruta;
           # de auditoría solo se expone la consulta (GET /api/v1/auditoria/**).
           routes:
@@ -52,6 +62,9 @@ servired:
   limites:
     autenticacion-por-minuto: 20
     denuncias-por-minuto: 5
+    # Proxies propios (nginx de los portales) cuyo X-Forwarded-For se acepta
+    # para el límite por cliente. Nombres de host separados por coma.
+    proxies-confiables: ${PROXIES_CONFIABLES:}
 
 management:
   # Trazas: desactivadas salvo TRAZAS_ACTIVAS=true (perfil observabilidad, Jaeger).
