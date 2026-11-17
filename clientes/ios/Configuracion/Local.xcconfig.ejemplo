@@ -1,0 +1,13 @@
+// Copie este archivo a Local.xcconfig (no se versiona) para instalar la app en su
+// iPhone contra el servidor de pruebas (ADR-19). Luego: xcodegen generate (si cambió
+// project.yml) y Run en Xcode con el iPhone conectado.
+
+// Dirección que imprime "infra/servidor/servired.sh publicar".
+API_BASE = https:/$()/servired.su-red.ts.net/
+
+// Equipo de firma gratuito: Xcode > Settings > Accounts > su Apple ID > "Personal Team".
+// El identificador aparece en Signing & Capabilities o en el portal de Apple.
+DEVELOPMENT_TEAM = ABCDE12345
+
+// Con un Personal Team el identificador de la app debe ser único: agregue su usuario.
+PRODUCT_BUNDLE_IDENTIFIER = co.edu.javeriana.servired.su-usuario

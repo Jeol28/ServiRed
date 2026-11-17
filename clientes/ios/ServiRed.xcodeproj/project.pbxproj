@@ -95,7 +95,9 @@
 		8560C606556FFF237FA1BD1D /* Mapa.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mapa.swift; sourceTree = "<group>"; };
 		8DC0FC311E11DE7C46A1C8B5 /* Dtos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dtos.swift; sourceTree = "<group>"; };
 		929A6BDCC90D84045F496DC4 /* Mapeo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mapeo.swift; sourceTree = "<group>"; };
+		9420F6DF791D0E63EE3975D2 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		9701B7E0131650577BF57AD0 /* IngresoVista.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngresoVista.swift; sourceTree = "<group>"; };
+		9D50DCFC912E43E16AFB3A9E /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		A08980EF178C0F6A22946075 /* Modelos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Modelos.swift; sourceTree = "<group>"; };
 		A6CF8947D69EAC9E2F2F1E75 /* RepositorioReportesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositorioReportesTests.swift; sourceTree = "<group>"; };
 		A73A3448AFF795397DD164DF /* ServiRedApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiRedApp.swift; sourceTree = "<group>"; };
@@ -206,6 +208,7 @@
 		7CB5F9BEA8E94C18FA5752AF = {
 			isa = PBXGroup;
 			children = (
+				A2ABE378142D07B43A90F439 /* Configuracion */,
 				075CA5779BEB64469D976637 /* ServiRed */,
 				B471A6ED4CC777E2EC8097AC /* ServiRedTests */,
 				CFAAEAADA974748C455736F1 /* ServiRedUITests */,
@@ -225,6 +228,15 @@
 				D5EB435D1D295BA6B0086695 /* Reportes */,
 			);
 			path = UI;
+			sourceTree = "<group>";
+		};
+		A2ABE378142D07B43A90F439 /* Configuracion */ = {
+			isa = PBXGroup;
+			children = (
+				9D50DCFC912E43E16AFB3A9E /* Debug.xcconfig */,
+				9420F6DF791D0E63EE3975D2 /* Release.xcconfig */,
+			);
+			path = Configuracion;
 			sourceTree = "<group>";
 		};
 		A5EBC2CF289F248909A1E38F /* Dominio */ = {
@@ -573,8 +585,8 @@
 		};
 		4FF745D6FE79D7231398360C /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9D50DCFC912E43E16AFB3A9E /* Debug.xcconfig */;
 			buildSettings = {
-				API_BASE = "http://localhost:8080/";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = ServiRed/Info.plist;
@@ -582,7 +594,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = co.edu.javeriana.servired;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -674,8 +685,8 @@
 		};
 		E227B5D3049745E6841541B3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9420F6DF791D0E63EE3975D2 /* Release.xcconfig */;
 			buildSettings = {
-				API_BASE = "https://api.servired.example/";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = ServiRed/Info.plist;
@@ -683,7 +694,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = co.edu.javeriana.servired;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 			};

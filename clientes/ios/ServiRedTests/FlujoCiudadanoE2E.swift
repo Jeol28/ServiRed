@@ -43,9 +43,18 @@ struct FlujoCiudadanoE2E {
         }
     }
 
+    /// El límite de /auth (20/min) es compartido con otras suites e2e: ante un 429 se espera y se reintenta.
+    func conReintento(_ operacion: () async throws -> Void) async throws {
+        for intento in 1...6 {
+            do { return try await operacion() } catch let e as ErrorApp where e.tipo == .limite && intento < 6 {
+                try await Task.sleep(for: .seconds(11))
+            }
+        }
+    }
+
     @Test func registroReporteValidacionRestablecimientoDenunciaYSupresion() async throws {
         let ana = try Ciudadano(base: base)
-        try await ana.sesion.registrar(correo: ana.correo, clave: "una clave larga de prueba", nombre: "Ana")
+        try await conReintento { try await ana.sesion.registrar(correo: ana.correo, clave: "una clave larga de prueba", nombre: "Ana") }
         guard case .autenticada = ana.sesion.estado else { Issue.record("sin sesión"); return }
 
         let aqui = Ubicacion(latitud: 4.6287, longitud: -74.0648)
@@ -59,7 +68,7 @@ struct FlujoCiudadanoE2E {
 
         // Otro ciudadano cercano lo ve y confirma el corte.
         let beto = try Ciudadano(base: base)
-        try await beto.sesion.registrar(correo: beto.correo, clave: "otra clave larga de prueba", nombre: nil)
+        try await conReintento { try await beto.sesion.registrar(correo: beto.correo, clave: "otra clave larga de prueba", nombre: nil) }
         let cerca = Ubicacion(latitud: 4.6290, longitud: -74.0650)
         #expect(try await beto.reportes.cercanos(desde: cerca).contains { $0.id == reporte.id })
         let voto = try await beto.reportes.validar(reporte.id, objeto: .CORTE, sentido: .CONFIRMA, desde: cerca)

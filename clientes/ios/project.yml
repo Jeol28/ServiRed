@@ -24,16 +24,15 @@ targets:
     sources: [ServiRed]
     dependencies:
       - package: MapLibre
+    # API_BASE, identificador y equipo de firma viven en Configuracion/*.xcconfig
+    # (más un Local.xcconfig opcional, no versionado, para el servidor de pruebas).
+    configFiles:
+      Debug: Configuracion/Debug.xcconfig
+      Release: Configuracion/Release.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: co.edu.javeriana.servired
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # Base del gateway. En el simulador, localhost es la Mac anfitriona.
-        API_BASE: http://localhost:8080/
-      configs:
-        Release:
-          API_BASE: https://api.servired.example/
     info:
       path: ServiRed/Info.plist
       properties:

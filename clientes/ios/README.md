@@ -39,7 +39,21 @@ open ServiRed.xcodeproj            # y Run sobre un simulador de iPhone
 # Si se cambia project.yml:  brew install xcodegen && xcodegen generate
 ```
 
-La base del gateway está en `API_BASE` (`project.yml`). La configuración Release usa HTTPS.
+La base del gateway (`API_BASE`), el identificador y el equipo de firma están en
+`Configuracion/Debug.xcconfig` y `Release.xcconfig`. La configuración Release usa HTTPS.
+
+### En su iPhone, contra el servidor de pruebas
+
+Sin tiendas ni cuenta de pago:
+
+1. Copie `Configuracion/Local.xcconfig.ejemplo` a `Configuracion/Local.xcconfig`. Ese
+   archivo no se versiona.
+2. Ponga la dirección del servidor, su *Personal Team* (Xcode > Settings > Accounts, con
+   su Apple ID gratuito) y un identificador propio.
+3. Conecte el iPhone, active el *Modo de desarrollador* y use Run en Xcode.
+
+Firmada con un Apple ID gratuito, la app caduca a los 7 días: se vuelve a instalar igual.
+Ver [infra/servidor](../../infra/servidor/README.md).
 
 ## Pruebas
 

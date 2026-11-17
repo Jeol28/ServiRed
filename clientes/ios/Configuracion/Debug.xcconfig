@@ -1,0 +1,8 @@
+// Configuración Debug (la que usa Xcode al instalar en el simulador o en su iPhone).
+// En el simulador, localhost es la Mac con el compose arriba.
+// En xcconfig "//" inicia un comentario: por eso las URL llevan "$()".
+PRODUCT_BUNDLE_IDENTIFIER = co.edu.javeriana.servired
+API_BASE = http:/$()/localhost:8080/
+
+// Valores propios (servidor de pruebas, equipo de firma): ver Local.xcconfig.ejemplo.
+#include? "Local.xcconfig"
