@@ -27,8 +27,10 @@ public sealed class GestionModeracion(IRepositorioModeracion moderaciones, TimeP
         IdCorrelacion correlacion, CancellationToken ct)
     {
         var m = await ConsultarAsync(actor, idDenuncia, correlacion, ct);
-        return await moderaciones.DecidirAsync(idDenuncia, m.Decidir(actor, decision, nota, reloj.GetUtcNow()),
-            correlacion, ct);
+        var ahora = reloj.GetUtcNow();
+        var d = m.Decidir(actor, decision, nota, ahora);
+        return await moderaciones.DecidirAsync(idDenuncia, d,
+            [EventosCaso.DenunciaModerada(actor, idDenuncia, d.Estado, correlacion, ahora)], correlacion, ct);
     }
 
     public async Task<Archivo> EvidenciaAsync(Actor actor, Guid idDenuncia, Guid idEvidencia, IdCorrelacion correlacion,

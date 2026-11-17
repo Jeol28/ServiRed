@@ -134,4 +134,30 @@ public class AplicacionPruebas
             _gestion.AsignarAsync(_operador, caso.IdCaso, Guid.NewGuid(), IdCorrelacion.Nuevo(), CancellationToken.None));
         Assert.Equal("OPERADOR_INVALIDO", e.Motivo);
     }
+
+    [Fact]
+    public async Task ModerarPublicaUnaAccionAuditadaConElModerador()
+    {
+        var id = Guid.NewGuid();
+        await ((IRepositorioModeracion)_p).AbrirAsync(id, PersistenciaFalsa.EmpresaA, DateTimeOffset.UtcNow, _c,
+            CancellationToken.None);
+
+        await new GestionModeracion(_p, TimeProvider.System).DecidirAsync(_operador, id, EstadoModeracion.VALIDADA,
+            "Verificada en terreno", _c, CancellationToken.None);
+
+        var e = Assert.Single(_p.Eventos);
+        Assert.Equal("accion.auditada", e.Tipo);
+        Assert.Equal("MODERACION", e.Datos["categoria"]);
+        Assert.Equal(_operador.IdCuenta.ToString(), ((IDictionary<string, object?>)e.Datos["actor"]!)["idCuenta"]);
+    }
+
+    [Fact]
+    public async Task LosEventosDeCasoLlevanAlActor()
+    {
+        var caso = _p.Sembrar();
+
+        await _gestion.AtenderAsync(_operador, caso.IdCaso, _c, CancellationToken.None);
+
+        Assert.Equal(_operador.IdCuenta.ToString(), Assert.Single(_p.Eventos).Datos["idActor"]);
+    }
 }

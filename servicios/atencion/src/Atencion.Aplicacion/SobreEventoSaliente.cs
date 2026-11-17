@@ -36,7 +36,7 @@ public static class EventosCaso
         if (cambia)
         {
             eventos.Add(SobreEventoSaliente.Nuevo("caso.actualizado", correlacion, cambios.Fecha,
-                new Dictionary<string, object?>
+                ConActor(cambios.Autor, new Dictionary<string, object?>
                 {
                     ["idCaso"] = antes.IdCaso.ToString(),
                     ["idReporte"] = antes.IdReporte.ToString(),
@@ -45,19 +45,39 @@ public static class EventosCaso
                     ["prioridad"] = (cambios.Prioridad ?? antes.Prioridad).ToString(),
                     ["idEmpresaOperadora"] = (cambios.IdEmpresa ?? antes.IdEmpresa)?.ToString(),
                     ["fechaActualizacion"] = cambios.Fecha.ToString("O"),
-                }));
+                })));
         }
         if (estado == EstadoCaso.CERRADO && antes.Estado != EstadoCaso.CERRADO)
         {
             eventos.Add(SobreEventoSaliente.Nuevo("caso.cerrado", correlacion, cambios.Fecha,
-                new Dictionary<string, object?>
+                ConActor(cambios.Autor, new Dictionary<string, object?>
                 {
                     ["idCaso"] = antes.IdCaso.ToString(),
                     ["idReporte"] = antes.IdReporte.ToString(),
                     ["fechaCierre"] = cambios.Fecha.ToString("O"),
                     ["resolucion"] = cambios.Resolucion ?? antes.Resolucion,
-                }));
+                })));
         }
         return eventos;
     }
+
+    /// <summary>idActor (opcional en caso.* v1) solo cuando lo hizo una persona; ausente si fue automático.</summary>
+    private static Dictionary<string, object?> ConActor(Guid? autor, Dictionary<string, object?> datos)
+    {
+        if (autor is not null) datos["idActor"] = autor.ToString();
+        return datos;
+    }
+
+    /** accion.auditada v1 de una decisión de moderación (RF-12). */
+    public static SobreEventoSaliente DenunciaModerada(Actor actor, Guid idDenuncia, EstadoModeracion decision,
+        IdCorrelacion correlacion, DateTimeOffset fecha) =>
+        SobreEventoSaliente.Nuevo("accion.auditada", correlacion, fecha, new Dictionary<string, object?>
+        {
+            ["categoria"] = "MODERACION",
+            ["accion"] = "DENUNCIA_MODERADA",
+            ["resultado"] = "EXITO",
+            ["actor"] = new Dictionary<string, object?> { ["idCuenta"] = actor.IdCuenta.ToString(), ["rol"] = actor.Rol.ToString() },
+            ["recurso"] = new Dictionary<string, object?> { ["tipo"] = "DENUNCIA", ["id"] = idDenuncia.ToString() },
+            ["detalle"] = new Dictionary<string, object?> { ["decision"] = decision.ToString() },
+        });
 }
