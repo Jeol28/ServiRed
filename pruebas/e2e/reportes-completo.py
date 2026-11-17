@@ -105,7 +105,10 @@ comprobar(estado == 200 and mios["elementos"][0]["validacion"]["corte"]["confirm
 print("4) Eventos publicados y consumidos")
 tipos = sql(f"SELECT string_agg(DISTINCT tipo, ',' ORDER BY tipo) FROM infraestructura.outbox "
             f"WHERE sobre->'datos'->>'idReporte' = '{id_reporte}'")
-comprobar(tipos == "reporte.creado,restablecimiento.registrado,validacion.registrada", f"tipos en el outbox: {tipos}")
+propios = {"reporte.creado", "restablecimiento.registrado", "validacion.registrada"}
+comprobar(propios <= set(tipos.split(",")), f"eventos de Reportes en el outbox: {tipos}")
+# Desde la fase 5, Atención reacciona (validación y restablecimiento) con caso.actualizado.
+comprobar(set(tipos.split(",")) - propios <= {"caso.actualizado"}, "Atención solo agrega caso.actualizado")
 comprobar(esperar(lambda: sql(f"SELECT count(*) FROM infraestructura.outbox WHERE publicado_en IS NULL "
                               f"AND sobre->'datos'->>'idReporte' = '{id_reporte}'") == "0"), "todos publicados")
 comprobar(mensajes_en_cola("atencion.eventos-reportes.dlq") == 0, "Atención no envió nada a la DLQ")
