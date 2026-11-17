@@ -6,16 +6,21 @@ publicado con [Tailscale](https://tailscale.com). Decisión y alternativas en
 [ADR-19](../../docs/adr/ADR-19-servidor-de-pruebas.md).
 
 ```
-Internet ──HTTPS──▶ Tailscale Funnel ──▶ 127.0.0.1:4300 portal público ──/api──▶ gateway ─▶ servicios
-Sus dispositivos ──Tailscale──▶ Serve ──▶ 127.0.0.1:4200 portal de operación (y Grafana)
+Internet ──HTTPS──▶ Tailscale Funnel ──▶ 127.0.0.1:4200 portal de operación ──/api──▶ gateway ─▶ servicios
+   (apps móviles: misma dirección, solo /api)
+Sus dispositivos ──Tailscale──▶ Serve ──▶ 127.0.0.1:4300 portal público (y Grafana)
 ```
 
 - **Nada escucha fuera de 127.0.0.1.** La VM no abre puertos; Tailscale entra por una
   conexión saliente.
-- **Público (Funnel):** portal público y API en `https://<máquina>.<su-red>.ts.net/`, con
-  certificado automático. Las apps usan esa misma dirección como base.
-- **Privado (Serve):** el portal de operación en `https://<máquina>.<su-red>.ts.net:8443/`
-  y, con observabilidad, Grafana en `:10000`. Solo los ven sus dispositivos con Tailscale.
+- **Público (Funnel):** el portal de operación en `https://<máquina>.<su-red>.ts.net/`, con
+  certificado automático. Su `/api` es el proxy al gateway, así que las apps usan esa misma
+  dirección como base.
+- **Privado (Serve):** el portal público en `https://<máquina>.<su-red>.ts.net:8443/` y, con
+  observabilidad, Grafana en `:10000`. Solo los ven sus dispositivos con Tailscale.
+- Como en Waze, **los ciudadanos solo usan las apps**: no hay una página web pública para
+  reportar. Los indicadores y datos abiertos (RF-8 a RF-10) siguen disponibles por la API
+  (`/api/v1/indicadores`, `/api/v1/datos-abiertos`) y en el portal público privado.
 - **Todo queda dentro de la máquina**, incluidos PostgreSQL, el almacén de fotos y RabbitMQ.
 
 ## Opción A (recomendada): VM gratuita de Oracle Cloud
@@ -31,10 +36,10 @@ Sus dispositivos ──Tailscale──▶ Serve ──▶ 127.0.0.1:4200 portal 
 3. Cree una cuenta gratuita de Tailscale. En la
    [consola](https://login.tailscale.com/admin/dns) active **MagicDNS** y
    **HTTPS Certificates**. Funnel se autoriza la primera vez que se usa.
-   - Las apps y el portal público **no** necesitan Tailscale en el teléfono: Funnel los
-     deja en internet abierto.
-   - Instálelo solo en los dispositivos desde los que quiera abrir lo privado (el portal
-     de operación y Grafana), por ejemplo su computador.
+   - Las apps y el portal de operación **no** necesitan Tailscale en el dispositivo:
+     Funnel los deja en internet abierto.
+   - Instálelo solo donde quiera abrir lo privado (el portal público y Grafana), por
+     ejemplo su computador.
 4. Entre por SSH y ejecute:
 
    ```bash
@@ -89,7 +94,11 @@ Las pruebas e2e se pueden correr en el propio servidor (el gateway escucha en
 
 - `.env` tiene secretos nuevos y solo lo lee su usuario (`umask 077`). Cambie la clave del
   administrador desde el portal si la compartió.
-- El portal de operación, la consola de RabbitMQ y Grafana no están en internet.
+- El portal de operación está en internet, protegido por el inicio de sesión. El gateway
+  limita `/auth` a 20 intentos por minuto por cliente, Auditoría alerta ante fuerza bruta
+  (ADR-16) y el portal rechaza las cuentas de ciudadano. Cambie la clave del administrador
+  generada si la compartió.
+- El portal público, la consola de RabbitMQ y Grafana no están en internet.
 - nginx toma la IP real del cliente solo cuando la conexión viene del proxy local
   (`172.30.0.1`). Así el límite de abuso del gateway sigue siendo por cliente.
 - Es un entorno de **pruebas**, sin copias de seguridad automáticas. Para guardar los

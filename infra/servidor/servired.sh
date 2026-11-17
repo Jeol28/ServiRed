@@ -78,17 +78,18 @@ publicar() {
   command -v tailscale >/dev/null || { echo "Instale Tailscale e inicie sesión (tailscale up)" >&2; exit 1; }
   tailscale status >/dev/null || { echo "Tailscale no tiene sesión: ejecute 'tailscale up'" >&2; exit 1; }
   aviso "Publicando con Tailscale"
-  # Público (Funnel): portal público y API para las apps.
-  tailscale funnel --bg 4300
-  # Privado (Serve, solo su red Tailscale): portal de operación y, si está, Grafana.
-  tailscale serve --bg --https=8443 4200
+  # Público (Funnel): portal de operación y, en su /api, la API de las apps.
+  # Los ciudadanos solo usan las apps (como Waze): el portal público queda privado.
+  tailscale funnel --bg 4200
+  # Privado (Serve, solo su red Tailscale): portal público y, si está, Grafana.
+  tailscale serve --bg --https=8443 4300
   if [[ "${OBSERVABILIDAD:-0}" == "1" ]]; then tailscale serve --bg --https=10000 3000; fi
   local nombre
   nombre="$(tailscale status --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))')"
   aviso "Direcciones"
-  echo "   Portal público (internet):        https://$nombre/"
+  echo "   Portal de operación (internet):   https://$nombre/"
   echo "   API para las apps (internet):     https://$nombre/   (base del gateway)"
-  echo "   Portal de operación (su tailnet): https://$nombre:8443/"
+  echo "   Portal público (su tailnet):      https://$nombre:8443/"
   if [[ "${OBSERVABILIDAD:-0}" == "1" ]]; then echo "   Grafana (su tailnet):             https://$nombre:10000/"; fi
 }
 

@@ -18,11 +18,19 @@ de unos 350 MB, tres servicios .NET, RabbitMQ y PostgreSQL.
   - La alternativa sin tarjeta es el propio computador del equipo, encendido mientras se
     prueba.
 - **Publicación con Tailscale (plan personal gratuito):**
-  - *Funnel* expone a internet el portal público por HTTPS, con nombre `*.ts.net` y
+  - *Funnel* expone a internet el **portal de operación** por HTTPS, con nombre `*.ts.net` y
     certificado automático. Su `/api` es el proxy al gateway, así que las apps usan esa
     misma dirección.
-  - *Serve* deja el portal de operación y Grafana visibles **solo** para los dispositivos
-    de la red Tailscale del equipo.
+  - *Serve* deja el **portal público** y Grafana visibles **solo** para los dispositivos de
+    la red Tailscale del equipo.
+  - **Modelo "solo app" (como Waze):** el ciudadano reporta, valida y denuncia únicamente
+    desde las apps; no hay una página web pública para hacerlo. El personal sí trabaja en
+    la web, que es el portal de operación. Los indicadores y datos abiertos siguen siendo
+    públicos por la API.
+    - Esto oculta la interfaz web, pero la API sigue siendo pública: cualquier cliente con
+      una cuenta de ciudadano puede usarla. Para exigir que las llamadas vengan de la app
+      oficial haría falta atestación (Play Integrity, App Attest), que requiere publicar
+      las apps.
   - La VM no abre puertos de entrada.
 - **`infra/servidor/compose.servidor.yaml`** se aplica encima del compose normal:
   - Todo escucha solo en `127.0.0.1`. El gateway queda ahí para diagnóstico y para las
@@ -53,6 +61,8 @@ de unos 350 MB, tres servicios .NET, RabbitMQ y PostgreSQL.
   la VM con `git pull` es suficiente y no cuesta nada.
 
 ## Consecuencias
+- El portal de operación queda en internet protegido por el inicio de sesión, el límite de
+  `/auth` (20 por minuto por cliente) y las alertas de fuerza bruta (ADR-16).
 - La dirección pública es la de Tailscale, por ejemplo `https://servired.<red>.ts.net`. Si
   cambia el nombre de la red Tailscale, hay que recompilar las apps.
 - Funnel tiene límites de ancho de banda pensados para pruebas, no para producción.
