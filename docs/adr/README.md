@@ -19,4 +19,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-15](ADR-15-indicadores-y-datos-abiertos.md) | Indicadores, mapas y datos abiertos anonimizados | Aceptada |
 | [ADR-16](ADR-16-auditoria-y-alertas.md) | Auditoría a prueba de manipulación y alertas | Aceptada |
 | [ADR-17](ADR-17-portales-web.md) | Portales web: sesión en el navegador, proxy y anonimato | Aceptada |
-| [ADR-18](ADR-18-app-movil-ciudadano.md) | App móvil del ciudadano: sin conexión, sesión segura y mapas | Aceptada |
+| [ADR-18](ADR-18-app-movil-ciudadano.md) | Apps móviles del ciudadano (Android e iOS): sin conexión, sesión segura y mapas | Aceptada |

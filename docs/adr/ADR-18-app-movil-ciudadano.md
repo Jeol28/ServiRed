@@ -3,8 +3,8 @@
 **Estado:** aceptada · **Fecha:** 2026-11-17 · **Requisitos:** RF-1 a RF-5, RF-11, RNF-DC2, RNF-SEG1, RNF-SEG4, RNF-USA
 
 ## Contexto
-La fase 9 construye la app Android del ciudadano. La fase 10 debe tener las mismas
-pantallas y el mismo flujo en iOS. Los cortes suelen coincidir con mala señal, así que
+Las fases 9 y 10 construyen la app del ciudadano en Android y en iOS, con las mismas
+pantallas y el mismo flujo. Los cortes suelen coincidir con mala señal, así que
 un reporte no puede perderse por falta de red. La app guarda tokens de larga vida y
 fotos que pueden llevar la ubicación de la casa del ciudadano.
 
@@ -58,6 +58,27 @@ fotos que pueden llevar la ubicación de la casa del ciudadano.
     `10.0.2.2` del emulador. Por eso en desarrollo se usa
     `adb reverse tcp:8080 tcp:8080` y `http://localhost:8080/`.
   - La base del gateway se cambia con `-PapiBase=...`.
+
+## Equivalencias en iOS (fase 10)
+Las decisiones anteriores se aplican igual en iOS. Cambia la tecnología:
+
+| Android | iOS |
+|---|---|
+| ViewModel + StateFlow | `@Observable` en el actor principal (Swift 6, concurrencia estricta) |
+| Retrofit/OkHttp con interceptores y `Authenticator` | `ClienteAPI` sobre un `Transporte` inyectable (URLSession efímera) |
+| `GestorTokens` con `synchronized` | `actor GestorTokens`, con una sola `Task` de renovación compartida |
+| Android Keystore + AES-GCM | Keychain `AfterFirstUnlockThisDeviceOnly` |
+| Room | SwiftData en un `@ModelActor` |
+| WorkManager | `NWPathMonitor` (envía al volver la red) + `BGAppRefreshTask` |
+| CameraX + selector del sistema | Cámara del sistema + `PhotosPicker` |
+| Fused Location | CoreLocation (`requestLocation`, solo en uso) |
+| MapLibre `android-sdk-opengl` | MapLibre iOS 7 (Metal) |
+
+- El simulador de iOS comparte la red de la Mac: `http://localhost:8080/` funciona sin
+  reenvíos. ATS solo admite HTTP hacia la red local (`NSAllowsLocalNetworking`).
+- En las dos plataformas, el cofre separa "retirar el refresco" de "borrar todo". Así, si
+  una renovación no llega a salir del teléfono, la app conserva el resumen de la cuenta y
+  abre la sesión sin red.
 
 ## Consecuencias
 - Si la clave del Keystore se pierde (por ejemplo, al restaurar el sistema), la app

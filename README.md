@@ -56,6 +56,9 @@ Atención nunca se llaman entre sí: se comunican por eventos.
 | Docker + Docker Compose (con buildx) | Compose ≥ 2.20 | Levantar todo |
 | JDK | 21 o superior | Compilar y probar los servicios Java (Maven va por wrapper) |
 | .NET SDK | 10.0 | Compilar y probar los servicios .NET |
+| Node.js | 24 | Portales web (desarrollo y pruebas; el compose los construye solo) |
+| Android Studio (JDK 21, SDK 37) | 2026 o superior | App Android |
+| Xcode | 26 o superior | App iOS |
 
 ## Cómo correr todo (un solo comando)
 
@@ -128,6 +131,9 @@ npx ng test compartido --watch=false
 
 # App Android, desde clientes/android (instrumentadas: emulador y adb reverse tcp:8080 tcp:8080)
 ./gradlew testDebugUnitTest connectedDebugAndroidTest
+
+# App iOS, desde clientes/ios (simulador; el flujo completo requiere el compose arriba)
+xcodebuild -scheme ServiRed -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
 
 La prueba e2e crea, repite (idempotencia) y consulta un reporte por el gateway,
@@ -171,4 +177,4 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | 7 | Auditoría y alertas | ✅ |
 | 8 | Portales Angular | ✅ |
 | 9 | App Android | ✅ |
-| 10 | App iOS | |
+| 10 | App iOS | ✅ |

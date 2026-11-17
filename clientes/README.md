@@ -10,7 +10,7 @@ Mapas con OpenStreetMap, sin licencias propietarias.
 | `web/portal-publico` | Angular, Leaflet | 8 ✅ |
 | `web/compartido` | Librería Angular: modelos, servicios HTTP, componentes de mapa | 8 ✅ |
 | `android` | Kotlin, Jetpack Compose, MVVM, Retrofit, Room, CameraX, Fused Location, MapLibre | 9 ✅ |
-| `ios` | Swift, SwiftUI, MVVM, URLSession async/await, SwiftData, CoreLocation, PhotosUI, MapLibre | 10 |
+| `ios` | Swift, SwiftUI, MVVM, URLSession async/await, SwiftData, CoreLocation, PhotosUI, MapLibre | 10 ✅ |
 
 Android e iOS tienen las mismas pantallas y el mismo flujo. Cada cliente tiene
-su propio README: [web](web/README.md), [android](android/README.md).
+su propio README: [web](web/README.md), [android](android/README.md), [ios](ios/README.md).
