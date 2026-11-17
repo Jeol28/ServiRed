@@ -97,7 +97,10 @@ AYUDA
   cp -p .env ".env.antes-supabase"
   URI="$uri" CLAVE="$clave" S3URL="$s3url" S3REGION="$s3region" S3ACCESO="$s3acceso" S3SECRETO="$s3secreto" python3 - <<'PY'
 import os, re, sys, urllib.parse
-u = urllib.parse.urlparse(os.environ["URI"].strip())
+# Supabase muestra la URI con "[YOUR-PASSWORD]": se quita (la clave se pide aparte). Python 3.12+
+# rechaza corchetes fuera de una dirección IPv6, así que se quitan antes de analizarla.
+texto = re.sub(r":?\[[^\]]*\]@", "@", os.environ["URI"].strip())
+u = urllib.parse.urlparse(texto)
 if u.scheme not in ("postgres", "postgresql") or not (u.hostname or "").endswith("pooler.supabase.com") or (u.port or 5432) != 5432:
     sys.exit("La URI debe ser la del Session pooler (…pooler.supabase.com:5432).")
 if not os.environ["S3URL"].strip().startswith("https://"):
