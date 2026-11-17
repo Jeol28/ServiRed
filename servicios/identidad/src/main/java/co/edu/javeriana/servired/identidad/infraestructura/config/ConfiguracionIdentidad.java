@@ -46,17 +46,19 @@ public class ConfiguracionIdentidad {
     }
 
     @Bean
-    ClientePersistencia clientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades) {
+    ClientePersistencia clientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades,
+                                            io.micrometer.core.instrument.MeterRegistry metricas) {
         var fabrica = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(propiedades.timeoutConexion()).build());
         fabrica.setReadTimeout(propiedades.timeoutLectura());
-        return new ClientePersistencia(constructor.clone().requestFactory(fabrica), propiedades);
+        return new ClientePersistencia(constructor.clone().requestFactory(fabrica), propiedades, metricas);
     }
 
     @Bean
     Autenticacion autenticacion(RepositorioCuentas cuentas, RepositorioSesiones sesiones, CifradorClaves c,
-                                EmisorTokens e, Clock reloj, PropiedadesJwt jwt) {
-        return new Autenticacion(cuentas, sesiones, c, e, reloj, jwt.duracionRefresco());
+                                EmisorTokens e, Clock reloj, PropiedadesJwt jwt,
+                                co.edu.javeriana.servired.identidad.aplicacion.puertos.RegistroAcciones acciones) {
+        return new Autenticacion(cuentas, sesiones, c, e, reloj, jwt.duracionRefresco(), acciones);
     }
 
     @Bean

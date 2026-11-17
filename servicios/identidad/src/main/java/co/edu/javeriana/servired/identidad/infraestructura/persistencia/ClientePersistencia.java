@@ -1,7 +1,14 @@
 package co.edu.javeriana.servired.identidad.infraestructura.persistencia;
 
+import co.edu.javeriana.servired.identidad.aplicacion.AccionAuditada;
+import co.edu.javeriana.servired.identidad.aplicacion.puertos.RegistroAcciones;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioCuentas;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones;
+import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones.ResultadoRotacion;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import co.edu.javeriana.servired.identidad.dominio.Correo;
 import co.edu.javeriana.servired.identidad.dominio.Cuenta;
 import co.edu.javeriana.servired.identidad.dominio.DatosInvalidos;
@@ -28,15 +35,22 @@ import org.springframework.web.client.RestClient;
  * (contratos/internos/persistencia.v1.yaml). Reintenta ante fallas de red o 5xx.
  * El correo nunca va en la URL ni en los logs.
  */
-public class ClientePersistencia implements RepositorioCuentas, RepositorioSesiones {
+public class ClientePersistencia implements RepositorioCuentas, RepositorioSesiones, RegistroAcciones {
 
     private static final Logger log = LoggerFactory.getLogger(ClientePersistencia.class);
 
     private final RestClient http;
     private final PropiedadesPersistencia propiedades;
+    private final MeterRegistry metricas;
 
     public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades) {
+        this(constructor, propiedades, new SimpleMeterRegistry());
+    }
+
+    public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades,
+                               MeterRegistry metricas) {
         this.propiedades = propiedades;
+        this.metricas = metricas;
         this.http = constructor.clone()
                 .baseUrl(propiedades.url())
                 .defaultHeader("X-Clave-Servicio", propiedades.clave())
@@ -46,12 +60,19 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
     // ------------------------------------------------------------------ cuentas
     @Override
     public Cuenta registrar(NuevaCuenta c, String hashClave, IdCorrelacion correlacion) {
+        return registrar(c, hashClave, List.of(), correlacion);
+    }
+
+    @Override
+    public Cuenta registrar(NuevaCuenta c, String hashClave, List<AccionAuditada> acciones, IdCorrelacion correlacion) {
         var cuerpo = new SolicitudRegistrar(c.idCuenta(), c.correo().valor(), hashClave, c.rol().name(),
-                c.idEmpresa(), c.nombre(), c.consentimientoDatosEn(), c.creadaEn());
+                c.idEmpresa(), c.nombre(), c.consentimientoDatosEn(), c.creadaEn(), sobres(acciones, correlacion));
         try {
-            return conReintentos("registrarCuenta", () -> http.post().uri("/interno/v1/cuentas/registrar")
+            var cuenta = conReintentos("registrarCuenta", () -> http.post().uri("/interno/v1/cuentas/registrar")
                     .header(IdCorrelacion.CABECERA, correlacion.valor())
                     .body(cuerpo).retrieve().body(CuentaDto.class)).aDominio();
+            contar(acciones);
+            return cuenta;
         } catch (HttpClientErrorException.Conflict e) {
             if (e.getResponseBodyAsString().contains("correo ya está registrado")) {
                 throw new CorreoYaRegistrado();
@@ -91,18 +112,89 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
 
     @Override
     public Optional<Cuenta> actualizar(UUID idCuenta, Cambios c, IdCorrelacion correlacion) {
-        return opcional(() -> conReintentos("actualizarCuenta", () -> http.post()
+        return actualizar(idCuenta, c, List.of(), correlacion);
+    }
+
+    @Override
+    public Optional<Cuenta> actualizar(UUID idCuenta, Cambios c, List<AccionAuditada> acciones,
+                                       IdCorrelacion correlacion) {
+        var cuerpo = new HashMap<String, Object>();
+        if (c.nombre() != null) cuerpo.put("nombre", c.nombre());
+        if (c.activa() != null) cuerpo.put("activa", c.activa());
+        if (c.idEmpresa() != null) cuerpo.put("idEmpresa", c.idEmpresa());
+        if (c.hashClave() != null) cuerpo.put("hashClave", c.hashClave());
+        cuerpo.put("eventos", sobres(acciones, correlacion));
+        var r = opcional(() -> conReintentos("actualizarCuenta", () -> http.post()
                 .uri("/interno/v1/cuentas/{id}/actualizar", idCuenta)
                 .header(IdCorrelacion.CABECERA, correlacion.valor())
-                .body(c).retrieve().body(CuentaDto.class))).map(CuentaDto::aDominio);
+                .body(cuerpo).retrieve().body(CuentaDto.class))).map(CuentaDto::aDominio);
+        r.ifPresent(x -> contar(acciones));
+        return r;
     }
 
     @Override
     public boolean eliminar(UUID idCuenta, IdCorrelacion correlacion) {
-        return opcional(() -> conReintentos("eliminarCuenta", () -> http.post()
+        return eliminar(idCuenta, List.of(), correlacion);
+    }
+
+    @Override
+    public boolean eliminar(UUID idCuenta, List<AccionAuditada> acciones, IdCorrelacion correlacion) {
+        boolean r = opcional(() -> conReintentos("eliminarCuenta", () -> http.post()
                 .uri("/interno/v1/cuentas/{id}/eliminar", idCuenta)
                 .header(IdCorrelacion.CABECERA, correlacion.valor())
-                .body(Map.of()).retrieve().toBodilessEntity())).isPresent();
+                .body(Map.of("eventos", sobres(acciones, correlacion))).retrieve().toBodilessEntity())).isPresent();
+        if (r) {
+            contar(acciones);
+        }
+        return r;
+    }
+
+    // ---------------------------------------------------------- auditoría (RF-12)
+    @Override
+    public void publicar(AccionAuditada accion, IdCorrelacion correlacion) {
+        try {
+            conReintentos("publicarAccionAuditada", () -> http.post().uri("/interno/v1/acciones-auditadas")
+                    .header(IdCorrelacion.CABECERA, correlacion.valor())
+                    .body(sobre(accion, correlacion)).retrieve().toBodilessEntity());
+            contar(List.of(accion));
+        } catch (RuntimeException e) {
+            log.error("no se pudo publicar la acción auditable {}: {}", accion.accion(), e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Sobre del evento accion.auditada v1 (contratos/eventos/esquemas/accion.auditada.v1.json). */
+    static Map<String, Object> sobre(AccionAuditada a, IdCorrelacion correlacion) {
+        var datos = new LinkedHashMap<String, Object>();
+        datos.put("categoria", a.categoria());
+        datos.put("accion", a.accion());
+        datos.put("resultado", a.exito() ? "EXITO" : "FALLO");
+        if (a.actorId() != null) {
+            var actor = new LinkedHashMap<String, Object>();
+            actor.put("idCuenta", a.actorId().toString());
+            if (a.actorRol() != null) actor.put("rol", a.actorRol().name());
+            datos.put("actor", actor);
+        }
+        if (a.recursoTipo() != null) {
+            var recurso = new LinkedHashMap<String, Object>();
+            recurso.put("tipo", a.recursoTipo());
+            if (a.recursoId() != null) recurso.put("id", a.recursoId());
+            datos.put("recurso", recurso);
+        }
+        datos.put("detalle", a.detalle());
+        return Map.of("idEvento", UUID.randomUUID().toString(), "tipo", "accion.auditada", "version", 1,
+                "fechaOcurrencia", Instant.now().toString(), "correlationId", correlacion.valor(), "origen", "identidad",
+                "datos", datos);
+    }
+
+    private static List<Map<String, Object>> sobres(List<AccionAuditada> acciones, IdCorrelacion correlacion) {
+        return acciones.stream().map(a -> sobre(a, correlacion)).toList();
+    }
+
+    /** servired_acciones_auditadas_total{accion,resultado}: base de las alertas de seguridad (RF-13). */
+    private void contar(List<AccionAuditada> acciones) {
+        acciones.forEach(a -> metricas.counter("servired.acciones.auditadas", "accion", a.accion(),
+                "resultado", a.exito() ? "EXITO" : "FALLO").increment());
     }
 
     // ----------------------------------------------------------------- sesiones
@@ -117,20 +209,21 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
 
     /** Sin reintentos: repetir una rotación ya aplicada se interpretaría como reutilización del token. */
     @Override
-    public Optional<Cuenta> rotar(String hashActual, UUID idSesionNueva, String hashNuevo, Instant expiraEn,
-                                  IdCorrelacion correlacion) {
+    public ResultadoRotacion rotar(String hashActual, UUID idSesionNueva, String hashNuevo, Instant expiraEn,
+                                   IdCorrelacion correlacion) {
         try {
             var r = http.post().uri("/interno/v1/sesiones/rotar")
                     .header(IdCorrelacion.CABECERA, correlacion.valor())
                     .body(Map.of("hashRefrescoActual", hashActual, "idSesionNueva", idSesionNueva,
                             "hashRefrescoNuevo", hashNuevo, "expiraEn", expiraEn))
                     .retrieve().body(RotacionDto.class);
-            return Optional.of(r.cuenta().aDominio());
+            return ResultadoRotacion.valida(r.cuenta().aDominio());
         } catch (HttpClientErrorException.Conflict e) {
-            if (e.getResponseBodyAsString().contains("REUTILIZADA")) {
+            boolean reutilizado = e.getResponseBodyAsString().contains("REUTILIZADA");
+            if (reutilizado) {
                 log.warn("se presentó un token de refresco ya usado; se revocaron las sesiones de la cuenta");
             }
-            return Optional.empty();
+            return ResultadoRotacion.invalida(reutilizado);
         } catch (ResourceAccessException | HttpServerErrorException e) {
             throw new PersistenciaNoDisponible("Persistencia no disponible para rotarSesion", e);
         }
@@ -184,7 +277,8 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
     }
 
     record SolicitudRegistrar(UUID idCuenta, String correo, String hashClave, String rol, UUID idEmpresa,
-                              String nombre, Instant consentimientoDatosEn, Instant creadaEn) {
+                              String nombre, Instant consentimientoDatosEn, Instant creadaEn,
+                              List<Map<String, Object>> eventos) {
     }
 
     record CuentaDto(UUID idCuenta, String correo, String rol, UUID idEmpresa, String nombre, boolean activa,

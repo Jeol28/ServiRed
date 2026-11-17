@@ -2,6 +2,7 @@ package co.edu.javeriana.servired.identidad.aplicacion;
 
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioCuentas;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones;
+import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones.ResultadoRotacion;
 import co.edu.javeriana.servired.identidad.dominio.Correo;
 import co.edu.javeriana.servired.identidad.dominio.Cuenta;
 import co.edu.javeriana.servired.identidad.dominio.Excepciones.CorreoYaRegistrado;
@@ -15,7 +16,37 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Doble de Persistencia con la misma semántica (rotación con detección de reutilización). */
-public class PersistenciaEnMemoria implements RepositorioCuentas, RepositorioSesiones {
+public class PersistenciaEnMemoria implements RepositorioCuentas, RepositorioSesiones,
+        co.edu.javeriana.servired.identidad.aplicacion.puertos.RegistroAcciones {
+
+    /** Acciones auditables recibidas (con la operación o sueltas). */
+    public final java.util.List<AccionAuditada> acciones = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    @Override
+    public void publicar(AccionAuditada accion, IdCorrelacion correlacion) {
+        acciones.add(accion);
+    }
+
+    @Override
+    public Cuenta registrar(NuevaCuenta c, String hash, java.util.List<AccionAuditada> a, IdCorrelacion correlacion) {
+        var cuenta = registrar(c, hash, correlacion);
+        acciones.addAll(a);
+        return cuenta;
+    }
+
+    @Override
+    public Optional<Cuenta> actualizar(UUID id, Cambios c, java.util.List<AccionAuditada> a, IdCorrelacion correlacion) {
+        var r = actualizar(id, c, correlacion);
+        r.ifPresent(x -> acciones.addAll(a));
+        return r;
+    }
+
+    @Override
+    public boolean eliminar(UUID id, java.util.List<AccionAuditada> a, IdCorrelacion correlacion) {
+        boolean r = eliminar(id, correlacion);
+        if (r) acciones.addAll(a);
+        return r;
+    }
 
     record Fila(Cuenta cuenta, String hash) {
     }
@@ -82,23 +113,23 @@ public class PersistenciaEnMemoria implements RepositorioCuentas, RepositorioSes
     }
 
     @Override
-    public synchronized Optional<Cuenta> rotar(String hashActual, UUID idNueva, String hashNuevo, Instant expiraEn,
-                                               IdCorrelacion correlacion) {
+    public synchronized ResultadoRotacion rotar(String hashActual, UUID idNueva, String hashNuevo, Instant expiraEn,
+                                                IdCorrelacion correlacion) {
         var s = sesiones.get(hashActual);
         if (s == null) {
-            return Optional.empty();
+            return ResultadoRotacion.invalida(false);
         }
         if (s.revocada()) {
             revocarTodas(s.idCuenta());
-            return Optional.empty();
+            return ResultadoRotacion.invalida(true);
         }
         var cuenta = consultar(s.idCuenta(), correlacion).filter(Cuenta::activa);
         if (cuenta.isEmpty() || !s.expira().isAfter(Instant.now())) {
-            return Optional.empty();
+            return ResultadoRotacion.invalida(false);
         }
         sesiones.put(hashActual, new Sesion(s.idCuenta(), s.expira(), true));
         sesiones.put(hashNuevo, new Sesion(s.idCuenta(), expiraEn, false));
-        return cuenta;
+        return ResultadoRotacion.valida(cuenta.get());
     }
 
     @Override

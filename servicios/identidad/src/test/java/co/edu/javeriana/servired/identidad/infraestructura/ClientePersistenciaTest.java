@@ -72,7 +72,9 @@ class ClientePersistenciaTest {
                 .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_PROBLEM_JSON)
                         .body("{\"motivo\":\"REUTILIZADA\"}"));
 
-        assertThat(cliente.rotar("a".repeat(64), UUID.randomUUID(), "b".repeat(64), Instant.now(), correlacion)).isEmpty();
+        var r = cliente.rotar("a".repeat(64), UUID.randomUUID(), "b".repeat(64), Instant.now(), correlacion);
+        assertThat(r.cuenta()).isEmpty();
+        assertThat(r.reutilizado()).isTrue();
         servidor.verify();
     }
 
