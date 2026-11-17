@@ -26,11 +26,13 @@ import { ServicioSesion, mensajeDeError } from 'compartido';
           {{ enviando() ? 'Ingresando…' : 'Ingresar' }}
         </button>
       </form>
+      <p class="volver"><a href="/">← Ir al portal público</a></p>
     </section>
   `,
   styles: `
     .ingreso { max-width: 380px; margin: 3rem auto; }
     form { display: flex; flex-direction: column; gap: .8rem; }
+    .volver { margin: 1rem 0 0; font-size: .9rem; }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

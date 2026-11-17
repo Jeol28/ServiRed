@@ -59,6 +59,25 @@ comprobar("geolocation=(self)" in pedir(PUBLICO, "/")[1].get("Permissions-Policy
 comprobar("geolocation=()" in pedir(OPERADOR, "/")[1].get("Permissions-Policy", ""),
           "el portal de operación no")
 
+print("1b) Una sola dirección: el portal de operación en /operacion/ del público")
+estado, _, html = pedir(PUBLICO, "/operacion/casos/123")
+comprobar(estado == 200 and "Portal de operación" in html and '<base href="/operacion/"' in html,
+          "/operacion/casos/123 abre el portal de operación")
+js = re.search(r"main-[A-Za-z0-9]+\.js", html).group(0)
+estado, h, _ = pedir(PUBLICO, f"/operacion/{js}")
+comprobar(estado == 200 and "javascript" in h.get("Content-Type", ""), "sus archivos llegan con el tipo correcto")
+comprobar(pedir(PUBLICO, "/operacion/favicon.svg")[1].get("Content-Type") == "image/svg+xml", "y su ícono también")
+comprobar(len(pedir(PUBLICO, "/operacion/")[1].get_all("Content-Security-Policy") or []) == 1, "sin cabeceras duplicadas")
+req = urllib.request.Request(PUBLICO + "/operacion", method="GET")
+class SinSeguir(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k): return None
+try:
+    urllib.request.build_opener(SinSeguir).open(req, timeout=10)
+    redireccion = None
+except urllib.error.HTTPError as e:
+    redireccion = e.headers.get("Location")
+comprobar(redireccion == "/operacion/", f"/operacion redirige de forma relativa ({redireccion})")
+
 print("2) Proxy hacia el gateway")
 estado, h, cuerpo = pedir(PUBLICO, "/api/v1/indicadores/resumen")
 comprobar(estado == 200 and "metadatos" in json.loads(cuerpo), "indicadores públicos por el portal público")

@@ -24,8 +24,9 @@ Menú por rol en el portal de operación:
 Con todo el compose arriba (`docker compose up -d --build --wait` en la raíz):
 
 - Portal público: http://localhost:4300
-- Portal de operación: http://127.0.0.1:4200 (primer administrador:
-  `IDENTIDAD_ADMIN_CORREO` / `IDENTIDAD_ADMIN_CLAVE` de `.env`)
+- Portal de operación, en la misma dirección: http://localhost:4300/operacion/ (botón
+  «Acceso del personal»; primer administrador: `IDENTIDAD_ADMIN_CORREO` /
+  `IDENTIDAD_ADMIN_CLAVE` de `.env`). También responde directo en 127.0.0.1:4200.
 
 Para desarrollar con recarga en caliente (Node 24, el gateway en :8080):
 

@@ -22,6 +22,8 @@ server {
   server_name _;
   root /usr/share/nginx/html;
   server_tokens off;
+  # Redirecciones relativas: detrás de proxies no deben exponer el puerto ni el esquema internos.
+  absolute_redirect off;
 
   access_log /dev/stdout servired_json;
 
@@ -31,6 +33,9 @@ server {
   add_header Referrer-Policy "no-referrer" always;
   add_header Permissions-Policy "${PERMISOS}" always;
   add_header Cross-Origin-Opener-Policy "same-origin" always;
+
+  # Rutas propias de cada portal (ver nginx/rutas-<portal>/).
+  include /etc/nginx/conf.d/rutas/*.conf;
 
   location = /salud {
     access_log off;

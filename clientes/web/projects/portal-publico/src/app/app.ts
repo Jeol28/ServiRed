@@ -13,6 +13,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         <a routerLink="/datos-abiertos" routerLinkActive="activo" ariaCurrentWhenActive="page">Datos abiertos</a>
         <a routerLink="/denunciar" routerLinkActive="activo" ariaCurrentWhenActive="page">Denuncia anónima</a>
       </nav>
+      <!-- El portal de operación está en la misma dirección y pide inicio de sesión. -->
+      <div class="derecha"><a class="sr-boton" href="/operacion/">Acceso del personal</a></div>
     </header>
     <main class="sr-contenedor">
       <router-outlet />

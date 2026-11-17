@@ -1,0 +1,5 @@
+# Este portal se compila con base /operacion/: sus archivos y rutas llegan con
+# ese prefijo (directo o a través del portal público) y se sirven desde la raíz.
+location ^~ /operacion/ {
+  rewrite ^/operacion/(.*)$ /$1 last;
+}

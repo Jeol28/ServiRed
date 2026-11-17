@@ -10,5 +10,8 @@ describe('App pública', () => {
     const enlaces = [...f.nativeElement.querySelectorAll('nav a')].map((a: Element) => a.textContent!.trim());
     expect(enlaces).toEqual(['Mapa', 'Indicadores', 'Datos abiertos', 'Denuncia anónima']);
     expect(f.nativeElement.textContent).not.toContain('Ingresar');
+    // El personal entra por la misma dirección, en /operacion/ (página completa, otra app).
+    const personal = f.nativeElement.querySelector('a[href="/operacion/"]') as HTMLAnchorElement;
+    expect(personal.textContent?.trim()).toBe('Acceso del personal');
   });
 });

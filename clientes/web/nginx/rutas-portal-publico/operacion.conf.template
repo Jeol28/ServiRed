@@ -1,0 +1,19 @@
+# El portal de operación vive en la misma dirección, bajo /operacion/ (ADR-17).
+# Se reenvía tal cual (con el prefijo) al contenedor del portal de operación.
+location = /operacion {
+  return 301 /operacion/;
+}
+
+location ^~ /operacion/ {
+  set $operacion ${OPERACION_URL};
+  proxy_pass $operacion;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $remote_addr;
+  # Las cabeceras de seguridad las pone este servidor (una sola vez).
+  proxy_hide_header Content-Security-Policy;
+  proxy_hide_header X-Content-Type-Options;
+  proxy_hide_header X-Frame-Options;
+  proxy_hide_header Referrer-Policy;
+  proxy_hide_header Permissions-Policy;
+  proxy_hide_header Cross-Origin-Opener-Policy;
+}

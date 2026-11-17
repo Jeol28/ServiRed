@@ -40,7 +40,8 @@
             },
             "allowedCommonJsDependencies": [
               "leaflet"
-            ]
+            ],
+            "baseHref": "/operacion/"
           },
           "configurations": {
             "production": {
