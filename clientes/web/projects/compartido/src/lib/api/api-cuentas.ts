@@ -17,7 +17,8 @@ export class ApiCuentas {
   private readonly http = inject(HttpClient);
   private readonly url = `${inject(API_BASE)}/api/v1/cuentas`;
 
-  listar(filtro: { rol?: Rol; pagina?: number; tamano?: number } = {}): Observable<Pagina<Cuenta>> {
+  /** Las más recientes primero. `correo` busca un fragmento, sin distinguir mayúsculas. */
+  listar(filtro: { rol?: Rol; correo?: string; pagina?: number; tamano?: number } = {}): Observable<Pagina<Cuenta>> {
     return this.http.get<Pagina<Cuenta>>(this.url, { params: parametros(filtro) });
   }
 

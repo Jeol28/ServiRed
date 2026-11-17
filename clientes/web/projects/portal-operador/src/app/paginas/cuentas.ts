@@ -43,14 +43,19 @@ const ROLES_PERSONAL: Rol[] = ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'];
     @if (aviso()) { <p class="sr-aviso exito" role="status">{{ aviso() }}</p> }
 
     <section class="sr-tarjeta">
-      <div class="sr-fila">
+      <form class="sr-fila" (ngSubmit)="buscar(0)" role="search" aria-label="Buscar cuentas">
+        <label>Correo
+          <input name="correo" type="search" [(ngModel)]="filtroCorreo" placeholder="parte del correo" size="24" />
+        </label>
         <label>Rol
           <select [(ngModel)]="filtroRol" name="filtroRol" (ngModelChange)="buscar(0)">
             <option [ngValue]="undefined">Todos</option>
             @for (r of todosLosRoles; track r) { <option [ngValue]="r">{{ r }}</option> }
           </select>
         </label>
-      </div>
+        <button type="submit">Buscar</button>
+      </form>
+      @if (pagina(); as p) { <p class="sr-suave">{{ p.total }} cuentas · las más recientes primero</p> }
       @if (pagina(); as p) {
         <div class="sr-desplazable">
           <table class="sr-tabla">
@@ -92,6 +97,7 @@ export class Cuentas {
   protected readonly empresa = nombreEmpresa;
   protected nueva: NuevaCuentaPersonal = this.vacia();
   protected filtroRol: Rol | undefined = undefined;
+  protected filtroCorreo = '';
   protected readonly pagina = signal<Pagina<Cuenta> | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
@@ -106,7 +112,7 @@ export class Cuentas {
   }
 
   protected buscar(pagina: number): void {
-    this.api.listar({ rol: this.filtroRol, pagina, tamano: 20 }).subscribe({
+    this.api.listar({ rol: this.filtroRol, correo: this.filtroCorreo.trim() || undefined, pagina, tamano: 20 }).subscribe({
       next: (p) => this.pagina.set(p),
       error: (e: unknown) => this.error.set(mensajeDeError(e)),
     });
