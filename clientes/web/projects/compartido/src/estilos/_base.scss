@@ -94,11 +94,37 @@ input, select, textarea {
 }
 textarea { min-height: 5rem; resize: vertical; }
 
+// Mismo alto para todos los campos de una línea y las listas, en cualquier navegador.
+// Safari (Mac y iPhone) dibuja select y date con su estilo nativo e ignora la altura:
+// se quita ese estilo y la lista lleva su propia flecha, del color del texto.
+input:not([type='checkbox']):not([type='radio']):not([type='file']), select {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2.4rem;
+  line-height: 1.2;
+  min-width: 0;
+}
+select {
+  padding-right: 2rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  text-overflow: ellipsis;
+}
+// Apagada no se puede abrir: sin flecha, y su texto (p. ej. «← Departamento») cabe completo.
+select:disabled { background-image: none; padding-right: .6rem; }
+input[type='date'] { display: block; text-align: left; }
+input[type='date']::-webkit-date-and-time-value { text-align: left; margin: 0; }
+input[type='search']::-webkit-search-decoration { -webkit-appearance: none; }
+
 // Campo apagado (p. ej. Municipio sin departamento): se nota que no se puede usar todavía.
 input:disabled, select:disabled, textarea:disabled {
   opacity: .5;
   cursor: not-allowed;
-  background: color-mix(in srgb, var(--sr-borde) 35%, var(--sr-superficie));
+  background-color: color-mix(in srgb, var(--sr-borde) 35%, var(--sr-superficie));
   border-style: dashed;
 }
 label:has(> select:disabled, > input:disabled) { color: color-mix(in srgb, var(--sr-texto-suave) 60%, transparent); }
@@ -112,6 +138,7 @@ button, .sr-boton {
   color: var(--sr-texto);
   padding: .45rem .9rem;
   min-height: 2.4rem;
+  line-height: 1.2;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
