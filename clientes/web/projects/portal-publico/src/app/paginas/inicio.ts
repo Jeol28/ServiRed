@@ -80,7 +80,7 @@ const PERIODOS = [
             <p class="sr-suave">Muy pocos reportes en este periodo para publicarlos (menos de 3), para proteger la privacidad.</p>
           } @else {
             <dl class="cifras">
-              <div><dt>Reportes</dt><dd>{{ r.indicadores.reportes | number }}</dd></div>
+              <div><dt>Reportes</dt><dd>{{ r.indicadores.reportes ?? 0 | number }}</dd></div>
               <div><dt>Duración mediana</dt><dd>{{ r.indicadores.duracion?.mediana | duracion }}</dd></div>
               <div>
                 <dt>Resueltos</dt>

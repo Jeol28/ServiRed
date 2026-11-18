@@ -18,3 +18,5 @@ export * from './lib/ui/etiquetas';
 export * from './lib/ui/menu-lateral';
 export * from './lib/ui/pipes';
 export * from './lib/ui/filtro-periodo';
+export * from './lib/territorio/territorio';
+export * from './lib/territorio/selector-territorio';

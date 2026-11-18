@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { FormularioPeriodo, NOMBRE_SERVICIO, TIPOS_SERVICIO } from 'compartido';
+import { FormularioPeriodo, NOMBRE_SERVICIO, SelectorTerritorio, TIPOS_SERVICIO } from 'compartido';
 
 /** Filtros de periodo, servicio y territorio comunes a las páginas públicas. */
 @Component({
   selector: 'app-formulario-filtros',
-  imports: [FormsModule],
+  imports: [FormsModule, SelectorTerritorio],
   template: `
     <form class="sr-tarjeta filtros" (ngSubmit)="aplicar.emit()" aria-label="Filtros">
       <label>Desde <input type="date" name="desde" [(ngModel)]="f().desde" /></label>
@@ -23,12 +23,7 @@ import { FormularioPeriodo, NOMBRE_SERVICIO, TIPOS_SERVICIO } from 'compartido';
           <option ngValue="RESUELTO">Resueltas</option>
         </select>
       </label>
-      <label>Departamento
-        <input name="dep" [(ngModel)]="f().codigoDepartamento" inputmode="numeric" maxlength="2" placeholder="11" />
-      </label>
-      <label>Municipio
-        <input name="mun" [(ngModel)]="f().codigoMunicipio" inputmode="numeric" maxlength="5" placeholder="11001" />
-      </label>
+      <sr-selector-territorio [f]="f()" />
       <button class="sr-primario" type="submit">Aplicar</button>
     </form>
   `,

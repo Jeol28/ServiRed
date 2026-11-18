@@ -13,7 +13,7 @@ import { ConjuntoIndicadores, DuracionPipe } from 'compartido';
         <p class="sr-suave">Datos insuficientes para publicar (menos de 3 reportes), para proteger la privacidad.</p>
       } @else {
         <dl>
-          <dt>Reportes</dt><dd class="sr-cifra">{{ c.reportes }}</dd>
+          <dt>Reportes</dt><dd class="sr-cifra">{{ c.reportes ?? 0 }}</dd>
           <dt>Duración mediana</dt><dd>{{ c.duracion?.mediana | duracion }}</dd>
           <dt>Duración promedio</dt><dd>{{ c.duracion?.promedio | duracion }}</dd>
           <dt>Índice de severidad</dt><dd>{{ c.severidad?.indice ?? '—' }}</dd>

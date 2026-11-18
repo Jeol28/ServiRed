@@ -43,6 +43,16 @@ npx ng serve portal-publico --port 4300 --proxy-config proxy.conf.json
 npx ng serve portal-operador --port 4200 --proxy-config proxy.conf.json
 ```
 
+## Catálogo de departamentos y municipios
+
+Los filtros de territorio usan dos listas desplegables: al elegir el departamento solo se
+ofrecen sus municipios, con su nombre oficial del DANE (p. ej. «Santiago de Cali»).
+
+- **Origen:** `compartido/src/lib/territorio/divipola.ts` se genera desde la misma semilla
+  DIVIPOLA de la base (`V3__semilla_divipola.sql`), así que no hace falta otra API.
+- **Carga:** se descarga aparte (~7 kB comprimido) la primera vez que se abren los filtros.
+- **Si cambia la semilla:** `python3 herramientas/generar-divipola.py`.
+
 ## Pruebas
 
 ```bash

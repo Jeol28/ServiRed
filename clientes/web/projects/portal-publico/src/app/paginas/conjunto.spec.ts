@@ -24,4 +24,12 @@ describe('Conjunto', () => {
     expect(texto).toContain('2 h 15 min');
     expect(texto).toContain('75 %');
   });
+
+  it('sin reportes en el filtro muestra 0, no un espacio vacío', () => {
+    const f = TestBed.createComponent(Conjunto);
+    f.componentRef.setInput('titulo', 'Todos los servicios');
+    f.componentRef.setInput('c', { suprimido: false });
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('.sr-cifra').textContent.trim()).toBe('0');
+  });
 });
