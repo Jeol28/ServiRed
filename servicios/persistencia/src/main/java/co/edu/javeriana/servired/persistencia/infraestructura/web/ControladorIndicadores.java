@@ -57,6 +57,17 @@ public class ControladorIndicadores {
         return indicadores.hechos(s, h.filtro().aDominio(), h.desde(), h.limite() == 0 ? 1000 : h.limite());
     }
 
+    /** R14: verificar (aplicar = false) o reconstruir la vista desde los datos de origen. */
+    @PostMapping("/reconstruccion")
+    public co.edu.javeriana.servired.persistencia.dominio.Indicadores.Reconstruccion reconstruir(
+            @RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
+            @Valid @RequestBody SolicitudReconstruccion r) {
+        return indicadores.reconstruir(s, r.umbralValidacion() == null ? 3 : r.umbralValidacion(), r.aplicar());
+    }
+
+    public record SolicitudReconstruccion(Integer umbralValidacion, boolean aplicar) {
+    }
+
     @GetMapping("/estado")
     public EstadoVista estado(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
         return indicadores.estado(s);

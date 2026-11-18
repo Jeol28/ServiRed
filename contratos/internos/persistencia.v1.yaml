@@ -741,6 +741,40 @@ paths:
       responses:
         "200": { description: "{elementos, hayMas}" }
 
+  /interno/v1/indicadores/reconstruccion:
+    post:
+      operationId: reconstruirVistaIndicadores
+      description: |
+        Solo `indicadores` (R14). Compara la vista de lectura con los datos de origen
+        (reportes, votos de CORTE que cuentan, casos) y, con `aplicar`, la reescribe desde
+        ellos y borra las filas huérfanas. Sin `aplicar` solo informa las diferencias.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                aplicar: { type: boolean, default: false }
+                umbralValidacion: { type: integer, minimum: 1, maximum: 100, default: 3 }
+      responses:
+        "200":
+          description: Resultado de la comparación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reportesEnOrigen: { type: integer }
+                  filasEnVista: { type: integer }
+                  faltantes: { type: integer, description: Reportes sin fila en la vista }
+                  sobrantes: { type: integer, description: Filas sin reporte de origen }
+                  distintas: { type: integer, description: Filas con algún valor distinto al del origen }
+                  distintasPorColumna: { type: object, additionalProperties: { type: integer } }
+                  aplicada: { type: boolean }
+
   /interno/v1/indicadores/estado:
     get:
       operationId: consultarEstadoVista

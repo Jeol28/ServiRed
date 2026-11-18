@@ -86,6 +86,98 @@ public class RepositorioIndicadoresJdbc implements RepositorioIndicadores {
                 .update();
     }
 
+    /** Columnas comparables: las de negocio (caso_en y validacion_en solo ordenan eventos). */
+    private static final java.util.List<String> COMPARABLES = java.util.List.of(
+            "tipo_servicio", "codigo_municipio", "latitud", "longitud", "magnitud", "inicio_estimado",
+            "fecha_registro", "fecha_restablecimiento", "duracion_minutos", "validado", "confirmaciones_netas",
+            "estado_caso", "prioridad", "id_empresa", "resuelto_en", "cerrado_en");
+    private static final java.util.Set<String> FECHAS = java.util.Set.of(
+            "inicio_estimado", "fecha_registro", "fecha_restablecimiento", "resuelto_en", "cerrado_en");
+
+    /**
+     * La fila que la vista debería tener para cada reporte, calculada desde el origen: el
+     * reporte y su restablecimiento, los votos de CORTE que cuentan (ADR-22) y el caso.
+     */
+    private static final String VERDAD = """
+            WITH votos AS (
+                SELECT id_reporte,
+                       count(*) FILTER (WHERE sentido = 'CONFIRMA') - count(*) FILTER (WHERE sentido = 'CONTROVIERTE') AS netas,
+                       max(fecha) AS ultima
+                FROM reportes.validaciones WHERE objeto = 'CORTE' AND cuenta GROUP BY id_reporte),
+            casos AS (
+                SELECT c.id_reporte, c.estado, c.prioridad, c.id_empresa, c.resuelto_en, c.cerrado_en,
+                       GREATEST(c.abierto_en, (SELECT max(h.fecha) FROM atencion.historia_caso h WHERE h.id_caso = c.id)) AS caso_en
+                FROM atencion.casos c),
+            verdad AS (
+                SELECT r.id AS id_reporte, r.tipo_servicio, r.codigo_municipio, r.latitud, r.longitud, r.magnitud,
+                       r.inicio_estimado, r.fecha_registro, r.fecha_restablecimiento, r.duracion_minutos,
+                       COALESCE(v.netas, 0) >= :umbral AS validado, COALESCE(v.netas, 0)::int AS confirmaciones_netas,
+                       v.ultima AS validacion_en, c.estado AS estado_caso, c.prioridad, c.id_empresa, c.caso_en,
+                       c.resuelto_en, c.cerrado_en
+                FROM reportes.reportes r
+                LEFT JOIN votos v ON v.id_reporte = r.id
+                LEFT JOIN casos c ON c.id_reporte = r.id)
+            """;
+
+    @Override
+    public co.edu.javeriana.servired.persistencia.dominio.Indicadores.Reconstruccion reconstruir(int umbral,
+                                                                                                 boolean aplicar) {
+        // Mientras se compara y reescribe, la proyección de eventos espera (no escribe a medias).
+        jdbc.sql("LOCK TABLE indicadores.vista_reportes IN SHARE ROW EXCLUSIVE MODE").update();
+        var porColumna = new java.util.LinkedHashMap<String, Long>();
+        var conteos = new StringBuilder();
+        for (String c : COMPARABLES) {
+            String a = FECHAS.contains(c) ? "date_trunc('milliseconds', t." + c + ")" : "t." + c;
+            String b = FECHAS.contains(c) ? "date_trunc('milliseconds', x." + c + ")" : "x." + c;
+            conteos.append(", count(*) FILTER (WHERE ").append(a).append(" IS DISTINCT FROM ").append(b)
+                    .append(") AS ").append(c);
+        }
+        String distinta = COMPARABLES.stream()
+                .map(c -> FECHAS.contains(c)
+                        ? "date_trunc('milliseconds', t." + c + ") IS DISTINCT FROM date_trunc('milliseconds', x." + c + ")"
+                        : "t." + c + " IS DISTINCT FROM x." + c)
+                .collect(java.util.stream.Collectors.joining(" OR "));
+        var fila = jdbc.sql(VERDAD + """
+                        SELECT (SELECT count(*) FROM verdad) AS origen,
+                               (SELECT count(*) FROM indicadores.vista_reportes) AS vista,
+                               (SELECT count(*) FROM verdad t WHERE NOT EXISTS
+                                   (SELECT 1 FROM indicadores.vista_reportes x WHERE x.id_reporte = t.id_reporte)) AS faltantes,
+                               (SELECT count(*) FROM indicadores.vista_reportes x WHERE NOT EXISTS
+                                   (SELECT 1 FROM verdad t WHERE t.id_reporte = x.id_reporte)) AS sobrantes,
+                               d.*
+                        FROM (SELECT count(*) FILTER (WHERE %s) AS distintas %s
+                              FROM verdad t JOIN indicadores.vista_reportes x ON x.id_reporte = t.id_reporte) d
+                        """.formatted(distinta, conteos))
+                .param("umbral", umbral)
+                .query((rs, n) -> {
+                    for (String c : COMPARABLES) {
+                        long v = rs.getLong(c);
+                        if (v > 0) {
+                            porColumna.put(c, v);
+                        }
+                    }
+                    return new long[]{rs.getLong("origen"), rs.getLong("vista"), rs.getLong("faltantes"),
+                            rs.getLong("sobrantes"), rs.getLong("distintas")};
+                })
+                .single();
+        if (aplicar) {
+            String columnas = "id_reporte, " + String.join(", ", COMPARABLES) + ", validacion_en, caso_en";
+            String asignaciones = java.util.stream.Stream.concat(COMPARABLES.stream(),
+                            java.util.stream.Stream.of("validacion_en", "caso_en"))
+                    .map(c -> c + " = EXCLUDED." + c)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            jdbc.sql(VERDAD + "INSERT INTO indicadores.vista_reportes (" + columnas + ", actualizado_en) "
+                            + "SELECT " + columnas + ", now() FROM verdad "
+                            + "ON CONFLICT (id_reporte) DO UPDATE SET " + asignaciones + ", actualizado_en = now()")
+                    .param("umbral", umbral)
+                    .update();
+            jdbc.sql("DELETE FROM indicadores.vista_reportes x "
+                    + "WHERE NOT EXISTS (SELECT 1 FROM reportes.reportes r WHERE r.id = x.id_reporte)").update();
+        }
+        return new co.edu.javeriana.servired.persistencia.dominio.Indicadores.Reconstruccion(
+                fila[0], fila[1], fila[2], fila[3], fila[4], porColumna, aplicar);
+    }
+
     private static final String DESDE = """
              FROM indicadores.vista_reportes v
              JOIN catalogo.municipios m ON m.codigo = v.codigo_municipio

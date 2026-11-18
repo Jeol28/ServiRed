@@ -12,6 +12,11 @@ Topología por cada cola consumidora <q>:
 
 No se usa el exchange por defecto ("") como DLX: al importar definiciones
 queda guardado como lista vacía y las colas quorum descartan el mensaje.
+
+Las colas de mensajes fallidos (<q>.dlq) no tienen límite de entregas (R2). Las quorum
+traen 20 por defecto, y una DLQ no tiene a dónde reenviar lo que lo excede: leer un
+mensaje y devolverlo a la cola (la consola de RabbitMQ, «Get messages») suma una entrega,
+y a la lectura 21 el mensaje se BORRA. Comprobado en RabbitMQ 4.1.
 """
 import json
 from pathlib import Path
@@ -21,6 +26,7 @@ EXCHANGE_EVENTOS = "servired.eventos"
 EXCHANGE_DLX = "servired.dlx"
 EXCHANGE_REINTENTOS = "servired.reintentos"
 TTL_REINTENTO_MS = 10_000
+POLITICA_DLQ = "dlq-sin-limite-de-entregas"
 
 # Sonda de antigüedad (ADR-21): Persistencia la publica cada 2 s y debe llegar a TODAS
 # las colas consumidoras (auditoria.eventos ya la recibe con "#").
@@ -63,6 +69,10 @@ def main():
                       exchange(EXCHANGE_REINTENTOS, "direct")],
         "queues": [],
         "bindings": [],
+        "policies": [{
+            "vhost": VHOST, "name": POLITICA_DLQ, "pattern": r"\.dlq$", "apply-to": "quorum_queues",
+            "priority": 0, "definition": {"delivery-limit": -1},
+        }],
     }
     for q, patrones in COLAS.items():
         d["queues"] += [

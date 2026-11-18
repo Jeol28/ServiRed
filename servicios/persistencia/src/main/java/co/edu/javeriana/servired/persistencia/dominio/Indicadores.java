@@ -43,6 +43,19 @@ public final class Indicadores {
                         Instant resueltoEn, Instant cerradoEn) {
     }
 
+    /**
+     * Comparación de la vista con los datos de origen (R14). {@code distintasPorColumna}
+     * cuenta, por columna, las filas cuyo valor difiere; {@code aplicada} indica si la vista
+     * se reescribió (si no, es solo una verificación).
+     */
+    public record Reconstruccion(long reportesEnOrigen, long filasEnVista, long faltantes, long sobrantes,
+                                 long distintas, java.util.Map<String, Long> distintasPorColumna, boolean aplicada) {
+
+        public boolean alineada() {
+            return faltantes == 0 && sobrantes == 0 && distintas == 0;
+        }
+    }
+
     public record EstadoVista(long reportes, long municipios, Instant primerReporte, Instant ultimoReporte,
                               Instant actualizadoEn) {
     }

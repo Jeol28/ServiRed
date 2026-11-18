@@ -62,6 +62,9 @@ services:
       - "127.0.0.1:15672:15672"   # consola de administración, solo localhost
     volumes:
       - datos-rabbitmq:/var/lib/rabbitmq
+      # Además de los de la imagen (management, prometheus): shovel, para devolver los
+      # mensajes de una cola de fallidos a su cola (infra/operacion/dlq.py, R2).
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 5s

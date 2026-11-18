@@ -54,6 +54,20 @@ public class OperacionesIndicadores {
         return repositorio.hechos(filtro, Math.max(0, desde), Math.clamp(limite, 1, 10_000));
     }
 
+    /**
+     * R14: la vista es una proyección de eventos; si se perdieron eventos (p. ej. mensajes
+     * descartados de una cola de fallidos) o la proyección tuvo un error, se recalcula desde
+     * los datos de origen. Sin {@code aplicar} solo informa las diferencias.
+     */
+    public co.edu.javeriana.servired.persistencia.dominio.Indicadores.Reconstruccion reconstruir(
+            ServicioCliente s, int umbralValidacion, boolean aplicar) {
+        OperacionNegocio.RECONSTRUIR_VISTA.autorizar(s);
+        if (umbralValidacion < 1 || umbralValidacion > 100) {
+            throw new SolicitudRechazada("Umbral de validación fuera de rango");
+        }
+        return transaccion.ejecutar(() -> repositorio.reconstruir(umbralValidacion, aplicar));
+    }
+
     public EstadoVista estado(ServicioCliente s) {
         OperacionNegocio.CONSULTAR_ESTADO_VISTA.autorizar(s);
         return repositorio.estado();

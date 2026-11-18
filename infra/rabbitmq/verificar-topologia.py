@@ -6,8 +6,9 @@ Prueba de humo de la topología de RabbitMQ contra el entorno de Docker Compose.
    definiciones.json (sin tocar las colas reales, que ya tienen consumidores).
 2. La mecánica de enrutamiento topic, DLQ y reintento con TTL funciona, probada
    sobre un juego de colas temporales con los mismos argumentos y los mismos
-   exchanges (servired.eventos, servired.dlx, servired.reintentos). Al final se
-   eliminan.
+   exchanges de rechazo y reintento (servired.dlx, servired.reintentos). La entrada es
+   un exchange topic temporal, no servired.eventos: Auditoría escucha «#» ahí y cada
+   prueba le dejaba un mensaje ilegible en su DLQ. Al final se eliminan.
 
 Uso (desde la raíz, con el compose arriba):
     python3 infra/rabbitmq/verificar-topologia.py
@@ -75,11 +76,17 @@ faltantes = [b for b in esperado["bindings"]
              if (b["source"], b["destination"], b["routing_key"]) not in bindings_vivos]
 comprobar(not faltantes, f"{len(esperado['bindings'])} bindings presentes"
           + (f" (faltan {faltantes})" if faltantes else ""))
+politicas_vivas = {p["name"]: p for p in llamar("GET", "/policies/%2F")}
+for politica in esperado.get("policies", []):
+    viva = politicas_vivas.get(politica["name"])
+    comprobar(viva is not None and viva["definition"] == politica["definition"] and viva["pattern"] == politica["pattern"],
+              f"política {politica['name']} ({politica['definition']})")
 
 # ---------------------------------------------------------------- 2. Mecánica
 base = f"humo.{uuid.uuid4().hex[:8]}"
 clave = f"{base}.prueba.v1"
 cola_principal, cola_reintento, cola_dlq = base, f"{base}.reintento", f"{base}.dlq"
+exchange_humo = f"{base}.eventos"
 
 
 def declarar(nombre, **argumentos):
@@ -111,13 +118,14 @@ try:
     declarar(cola_reintento, **{"x-message-ttl": 1500, "x-dead-letter-exchange": "servired.reintentos",
                                 "x-dead-letter-routing-key": base})
     declarar(cola_dlq)
-    enlazar("servired.eventos", cola_principal, clave)
+    llamar("PUT", f"/exchanges/%2F/{q(exchange_humo)}", {"type": "topic", "durable": False, "auto_delete": False})
+    enlazar(exchange_humo, cola_principal, clave)
     enlazar("servired.dlx", cola_dlq, base)
     enlazar("servired.reintentos", cola_principal, base)
 
     print("2) Enrutamiento topic")
     m = str(uuid.uuid4())
-    publicar("servired.eventos", clave, m)
+    publicar(exchange_humo, clave, m)
     comprobar(tomar(cola_principal, ackmode="ack_requeue_true") == [m], "el evento llega a su cola")
 
     print("3) Rechazo definitivo -> cola de mensajes fallidos")
@@ -131,6 +139,10 @@ try:
     comprobar(tomar(cola_principal, espera_s=0.5) == [], "no está en la principal antes del TTL")
     comprobar(tomar(cola_principal, espera_s=10) == [m2], "vuelve a la principal tras el TTL")
 finally:
+    try:
+        llamar("DELETE", f"/exchanges/%2F/{q(exchange_humo)}")
+    except Exception:  # noqa: BLE001 - limpieza de mejor esfuerzo
+        pass
     for cola in (cola_principal, cola_reintento, cola_dlq):
         try:
             llamar("DELETE", f"/queues/%2F/{q(cola)}")

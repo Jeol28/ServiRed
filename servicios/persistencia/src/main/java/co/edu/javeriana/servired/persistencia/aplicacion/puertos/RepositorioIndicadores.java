@@ -18,4 +18,8 @@ public interface RepositorioIndicadores {
     PaginaHechos hechos(Filtro filtro, int desde, int limite);
 
     EstadoVista estado();
+
+    /** Compara la vista con el origen y, si {@code aplicar}, la reescribe desde el origen (R14). */
+    co.edu.javeriana.servired.persistencia.dominio.Indicadores.Reconstruccion reconstruir(int umbralValidacion,
+                                                                                          boolean aplicar);
 }

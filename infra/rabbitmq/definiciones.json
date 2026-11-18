@@ -335,5 +335,17 @@
       "routing_key": "auditoria.eventos",
       "arguments": {}
     }
+  ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "dlq-sin-limite-de-entregas",
+      "pattern": "\\.dlq$",
+      "apply-to": "quorum_queues",
+      "priority": 0,
+      "definition": {
+        "delivery-limit": -1
+      }
+    }
   ]
 }
