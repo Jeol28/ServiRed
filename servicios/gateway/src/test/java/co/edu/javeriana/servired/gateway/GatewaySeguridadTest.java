@@ -35,7 +35,8 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"management.server.port=0", "servired.limites.autenticacion-por-minuto=1000",
-                "servired.limites.denuncias-por-minuto=4",
+                "servired.limites.denuncias-por-minuto=4", "servired.limites.registros-por-hora=3",
+                "servired.limites.por-cuenta.reportes-por-minuto=3", "servired.limites.por-cuenta.reportes-por-hora=5",
                 // La prueba se conecta desde localhost: hace de proxy de los portales.
                 "servired.limites.proxies-confiables=localhost"})
 @AutoConfigureWebTestClient
@@ -242,5 +243,61 @@ class GatewaySeguridadTest {
         cliente.post().uri(ruta).header("X-Forwarded-For", "203.0.113.8").header("X-Real-IP", "203.0.113.8")
                 .header("Forwarded", "for=203.0.113.8").exchange().expectStatus().isOk();
         assertThat(REENVIADO_RECIBIDO.get(ruta)).isEqualTo("null|null|null");
+    }
+
+    static String tokenDe(UUID cuenta) {
+        try {
+            var claims = new JWTClaimsSet.Builder().issuer("servired-identidad").audience("servired-api")
+                    .subject(cuenta.toString()).claim("rol", "CIUDADANO")
+                    .issueTime(new Date()).expirationTime(Date.from(Instant.now().plusSeconds(600))).build();
+            var jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(CLAVE.getKeyID()).build(), claims);
+            jwt.sign(new RSASSASigner(CLAVE));
+            return "Bearer " + jwt.serialize();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
+    void crearReportesTieneLimitePorCuentaSinAfectarAOtrasCuentasNiALasConsultas() {
+        String ana = tokenDe(UUID.randomUUID());
+        for (int i = 0; i < 3; i++) {
+            cliente.post().uri("/api/v1/reportes").header("Authorization", ana).exchange().expectStatus().isOk();
+        }
+        var r = cliente.post().uri("/api/v1/reportes").header("Authorization", ana).exchange()
+                .returnResult(String.class);
+        assertThat(r.getStatus().value()).isEqualTo(429);
+        assertThat(r.getResponseHeaders().getFirst("Retry-After")).isNotBlank();
+        assertThat(r.getResponseHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PROBLEM_JSON);
+        // Otra cuenta (aunque venga de la misma IP) sigue reportando, y Ana puede seguir consultando.
+        cliente.post().uri("/api/v1/reportes").header("Authorization", tokenDe(UUID.randomUUID())).exchange()
+                .expectStatus().isOk();
+        get("/api/v1/reportes", ana).expectStatus().isOk();
+    }
+
+    @Test
+    void validarTieneSuPropioCupoPorCuenta() {
+        String beto = tokenDe(UUID.randomUUID());
+        for (int i = 0; i < 3; i++) {
+            cliente.post().uri("/api/v1/reportes").header("Authorization", beto).exchange().expectStatus().isOk();
+        }
+        // Agotó el cupo de reportes, pero validar es otra acción con su propio cupo.
+        cliente.post().uri("/api/v1/reportes/" + UUID.randomUUID() + "/validaciones").header("Authorization", beto)
+                .exchange().expectStatus().isOk();
+    }
+
+    @Test
+    void elRegistroTieneUnCupoPorHoraAdemasDelDeAutenticacion() {
+        // Conexión TCP real: el límite del registro es por IP (la del proxy de prueba, localhost).
+        var cliente = WebTestClient.bindToServer().baseUrl("http://localhost:" + puerto).build();
+        int limitadas = 0;
+        for (int i = 0; i < 4; i++) {
+            limitadas += cliente.post().uri("/api/v1/auth/registro").header("X-Forwarded-For", "198.51.100.9")
+                    .exchange().returnResult(String.class).getStatus().value() == 429 ? 1 : 0;
+        }
+        assertThat(limitadas).isEqualTo(1);
+        // Iniciar sesión desde esa IP sigue permitido: el cupo por hora es solo para crear cuentas.
+        cliente.post().uri("/api/v1/auth/login").header("X-Forwarded-For", "198.51.100.9").exchange()
+                .expectStatus().isOk();
     }
 }
