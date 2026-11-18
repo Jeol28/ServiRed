@@ -38,6 +38,40 @@ groups:
         annotations:
           summary: "{{ $value }} mensaje(s) en {{ $labels.queue }}: un consumidor no pudo procesarlos"
 
+      # Antigüedad de los mensajes (RNF-R3, ADR-21). Contar mensajes no dice cuánto esperan:
+      # se mide la edad del más viejo en el outbox (exacta) y en cada cola (cota superior con
+      # la sonda, margen de 2 s). Las tres reglas exigen que la sonda se esté publicando:
+      # si Persistencia está caída ya avisan ServicioSinReplicas y CircuitoPersistenciaAbierto.
+      - alert: ReporteNoVisibleATiempo
+        # RNF-R3: un reporte aceptado debe ser visible para el operador en máximo 10 s.
+        # Espera en el outbox + espera en la cola de Atención (la réplica más al día).
+        expr: |
+          (
+            min(servired_cola_mensaje_mas_viejo_segundos{cola="atencion.eventos-reportes"})
+            + max(servired_outbox_mensaje_mas_viejo_segundos)
+          ) > 10
+          and on() min(servired_sonda_ultima_publicacion_segundos) < 10
+        for: 30s
+        labels: { severity: critica, servicio: atencion }
+        annotations:
+          summary: "Hay reportes esperando {{ $value | humanizeDuration }} para llegar al operador (RNF-R3: máximo 10 s)"
+
+      - alert: MensajeViejoEnCola
+        expr: |
+          min by (cola) (servired_cola_mensaje_mas_viejo_segundos{cola!="atencion.eventos-reportes"}) > 60
+          and on() min(servired_sonda_ultima_publicacion_segundos) < 10
+        for: 1m
+        labels: { severity: media }
+        annotations:
+          summary: "El mensaje más viejo de {{ $labels.cola }} lleva {{ $value | humanizeDuration }} esperando: el consumidor no da abasto o está atascado"
+
+      - alert: EventoViejoEnOutbox
+        expr: max(servired_outbox_mensaje_mas_viejo_segundos) > 10
+        for: 30s
+        labels: { severity: alta, servicio: persistencia }
+        annotations:
+          summary: "Un evento lleva {{ $value | humanizeDuration }} guardado sin publicar: revisar RabbitMQ y el relay del outbox"
+
       - alert: ColaDeEventosAcumulada
         expr: rabbitmq_queue_messages_ready{queue=~"[a-z]+\\.eventos(-[a-z]+)?"} > 500
         for: 5m

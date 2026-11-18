@@ -5,7 +5,9 @@ import co.edu.javeriana.servired.reportes.dominio.IdCorrelacion;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -35,19 +37,28 @@ public class ConsumidorEventosCasos {
     private final SeguimientoDeCasos seguimiento;
     private final ObjectMapper json;
     private final RabbitTemplate rabbit;
+    private final SondaCola sonda;
     private final int maxIntentos;
 
     public ConsumidorEventosCasos(SeguimientoDeCasos seguimiento, ObjectMapper json, RabbitTemplate rabbit,
-                                  @Value("${servired.consumidor.max-intentos:5}") int maxIntentos) {
+                                  @Value("${servired.consumidor.max-intentos:5}") int maxIntentos,
+                                  MeterRegistry metricas) {
         this.seguimiento = seguimiento;
         this.json = json;
         this.rabbit = rabbit;
         this.maxIntentos = maxIntentos;
+        this.sonda = new SondaCola(COLA, metricas, Clock.systemUTC());
     }
 
     @RabbitListener(queues = COLA, ackMode = "MANUAL")
     public void recibir(Message mensaje, Channel canal) throws IOException {
         long etiqueta = mensaje.getMessageProperties().getDeliveryTag();
+        // Sonda de antigüedad (ADR-21): se registra y se confirma; no es un evento de negocio.
+        if (SondaCola.esSonda(mensaje)) {
+            sonda.recibir(mensaje);
+            canal.basicAck(etiqueta, false);
+            return;
+        }
         JsonNode sobre;
         try {
             sobre = json.readTree(mensaje.getBody());

@@ -81,6 +81,7 @@ python3 pruebas/e2e/indicadores.py                   # e2e: indicadores, mapas, 
 python3 pruebas/e2e/auditoria-alertas.py             # e2e: auditoría, alertas y (con el perfil) observabilidad
 python3 pruebas/e2e/identidad-y-acceso.py            # e2e: cuentas, tokens y RBAC
 python3 pruebas/e2e/portales-web.py                  # e2e: portales (cabeceras, proxy, anonimato)
+python3 pruebas/e2e/antiguedad-mensajes.py           # e2e: edad del mensaje más viejo (RNF-R3); detiene contenedores
 docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
 ```

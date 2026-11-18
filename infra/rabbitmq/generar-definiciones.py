@@ -22,6 +22,10 @@ EXCHANGE_DLX = "servired.dlx"
 EXCHANGE_REINTENTOS = "servired.reintentos"
 TTL_REINTENTO_MS = 10_000
 
+# Sonda de antigüedad (ADR-21): Persistencia la publica cada 2 s y debe llegar a TODAS
+# las colas consumidoras (auditoria.eventos ya la recibe con "#").
+SONDA = "sonda.v1"
+
 # Cola de cada consumidor -> patrones de routing key (<agregado>.<evento>.v<N>)
 COLAS = {
     "atencion.eventos-reportes": [
@@ -29,9 +33,10 @@ COLAS = {
         "restablecimiento.registrado.v1",
         "validacion.registrada.v1",
         "denuncia.recibida.v1",
+        SONDA,
     ],
-    "reportes.eventos-casos": ["caso.actualizado.v1", "caso.cerrado.v1"],
-    "indicadores.eventos": ["reporte.#", "restablecimiento.#", "validacion.#", "caso.#"],
+    "reportes.eventos-casos": ["caso.actualizado.v1", "caso.cerrado.v1", SONDA],
+    "indicadores.eventos": ["reporte.#", "restablecimiento.#", "validacion.#", "caso.#", SONDA],
     "auditoria.eventos": ["#"],
 }
 

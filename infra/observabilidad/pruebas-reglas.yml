@@ -1,0 +1,111 @@
+# Pruebas de las alertas de antigüedad de mensajes (RNF-R3, ADR-21).
+#   docker run --rm -v "$PWD/infra/observabilidad:/c" -w /c --entrypoint promtool \
+#     prom/prometheus:v3.5.0 test rules pruebas-reglas.yml
+rule_files:
+  - reglas.yml
+
+evaluation_interval: 15s
+
+tests:
+  # Atención atascada: su cola envejece 1 s por segundo y el outbox está al día.
+  - interval: 15s
+    input_series:
+      - series: 'servired_cola_mensaje_mas_viejo_segundos{job="atencion", instance="a1", cola="atencion.eventos-reportes"}'
+        values: '1 1 16+15x6'
+      - series: 'servired_outbox_mensaje_mas_viejo_segundos{job="persistencia", instance="p1"}'
+        values: '0x8'
+      - series: 'servired_sonda_ultima_publicacion_segundos{job="persistencia", instance="p1"}'
+        values: '1x8'
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: ReporteNoVisibleATiempo
+        exp_alerts: []          # supera 10 s pero aún no lleva 30 s así
+      - eval_time: 75s
+        alertname: ReporteNoVisibleATiempo
+        exp_alerts:
+          - exp_labels: { severity: critica, servicio: atencion }
+            exp_annotations:
+              summary: "Hay reportes esperando 1m 1s para llegar al operador (RNF-R3: máximo 10 s)"
+
+  # La suma cuenta: 6 s en el outbox + 6 s en la cola superan los 10 s.
+  - interval: 15s
+    input_series:
+      - series: 'servired_cola_mensaje_mas_viejo_segundos{job="atencion", instance="a1", cola="atencion.eventos-reportes"}'
+        values: '6x6'
+      - series: 'servired_outbox_mensaje_mas_viejo_segundos{job="persistencia", instance="p1"}'
+        values: '6x6'
+      - series: 'servired_sonda_ultima_publicacion_segundos{job="persistencia", instance="p1"}'
+        values: '1x6'
+    alert_rule_test:
+      - eval_time: 60s
+        alertname: ReporteNoVisibleATiempo
+        exp_alerts:
+          - exp_labels: { severity: critica, servicio: atencion }
+            exp_annotations:
+              summary: "Hay reportes esperando 12s para llegar al operador (RNF-R3: máximo 10 s)"
+      - eval_time: 60s
+        alertname: EventoViejoEnOutbox
+        exp_alerts: []          # 6 s en el outbox solo no basta
+
+  # Dos réplicas de Atención: una caída con un valor viejo, la otra al día. Manda la que está al día.
+  - interval: 15s
+    input_series:
+      - series: 'servired_cola_mensaje_mas_viejo_segundos{job="atencion", instance="a1", cola="atencion.eventos-reportes"}'
+        values: '40x6'
+      - series: 'servired_cola_mensaje_mas_viejo_segundos{job="atencion", instance="a2", cola="atencion.eventos-reportes"}'
+        values: '1x6'
+      - series: 'servired_outbox_mensaje_mas_viejo_segundos{job="persistencia", instance="p1"}'
+        values: '0x6'
+      - series: 'servired_sonda_ultima_publicacion_segundos{job="persistencia", instance="p1"}'
+        values: '1x6'
+    alert_rule_test:
+      - eval_time: 60s
+        alertname: ReporteNoVisibleATiempo
+        exp_alerts: []
+
+  # Sin sondas publicadas (Persistencia caída) no se culpa a las colas.
+  - interval: 15s
+    input_series:
+      - series: 'servired_cola_mensaje_mas_viejo_segundos{job="atencion", instance="a1", cola="atencion.eventos-reportes"}'
+        values: '30+15x6'
+      - series: 'servired_cola_mensaje_mas_viejo_segundos{job="indicadores", instance="i1", cola="indicadores.eventos"}'
+        values: '120+15x6'
+      - series: 'servired_outbox_mensaje_mas_viejo_segundos{job="persistencia", instance="p1"}'
+        values: '0x6'
+      - series: 'servired_sonda_ultima_publicacion_segundos{job="persistencia", instance="p1"}'
+        values: '30+15x6'
+    alert_rule_test:
+      - eval_time: 90s
+        alertname: ReporteNoVisibleATiempo
+        exp_alerts: []
+      - eval_time: 90s
+        alertname: MensajeViejoEnCola
+        exp_alerts: []
+
+  # Indicadores atrasado más de 1 min: alerta media por su cola (no es RNF-R3).
+  - interval: 15s
+    input_series:
+      - series: 'servired_cola_mensaje_mas_viejo_segundos{job="indicadores", instance="i1", cola="indicadores.eventos"}'
+        values: '70+15x6'
+      - series: 'servired_sonda_ultima_publicacion_segundos{job="persistencia", instance="p1"}'
+        values: '1x6'
+    alert_rule_test:
+      - eval_time: 75s
+        alertname: MensajeViejoEnCola
+        exp_alerts:
+          - exp_labels: { severity: media, cola: indicadores.eventos }
+            exp_annotations:
+              summary: "El mensaje más viejo de indicadores.eventos lleva 2m 25s esperando: el consumidor no da abasto o está atascado"
+
+  # Outbox atascado: un evento sin publicar hace más de 10 s.
+  - interval: 15s
+    input_series:
+      - series: 'servired_outbox_mensaje_mas_viejo_segundos{job="persistencia", instance="p1"}'
+        values: '12+15x6'
+    alert_rule_test:
+      - eval_time: 45s
+        alertname: EventoViejoEnOutbox
+        exp_alerts:
+          - exp_labels: { severity: alta, servicio: persistencia }
+            exp_annotations:
+              summary: "Un evento lleva 57s guardado sin publicar: revisar RabbitMQ y el relay del outbox"

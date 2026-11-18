@@ -192,6 +192,14 @@
       "arguments": {}
     },
     {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "atencion.eventos-reportes",
+      "destination_type": "queue",
+      "routing_key": "sonda.v1",
+      "arguments": {}
+    },
+    {
       "source": "servired.dlx",
       "vhost": "/",
       "destination": "atencion.eventos-reportes.dlq",
@@ -221,6 +229,14 @@
       "destination": "reportes.eventos-casos",
       "destination_type": "queue",
       "routing_key": "caso.cerrado.v1",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "reportes.eventos-casos",
+      "destination_type": "queue",
+      "routing_key": "sonda.v1",
       "arguments": {}
     },
     {
@@ -269,6 +285,14 @@
       "destination": "indicadores.eventos",
       "destination_type": "queue",
       "routing_key": "caso.#",
+      "arguments": {}
+    },
+    {
+      "source": "servired.eventos",
+      "vhost": "/",
+      "destination": "indicadores.eventos",
+      "destination_type": "queue",
+      "routing_key": "sonda.v1",
       "arguments": {}
     },
     {

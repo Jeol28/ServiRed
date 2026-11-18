@@ -45,6 +45,11 @@ public class RelayOutbox {
         Gauge.builder("servired.outbox.pendientes", this, RelayOutbox::contarPendientes)
                 .description("Eventos guardados que aún no se han publicado")
                 .register(metricas);
+        // RNF-R3: no basta contar; importa cuánto lleva esperando el más viejo (ADR-21).
+        Gauge.builder("servired.outbox.mensaje.mas.viejo", this, RelayOutbox::edadDelMasViejo)
+                .baseUnit("segundos")
+                .description("Edad del evento guardado más viejo que aún no se ha publicado (0 si no hay)")
+                .register(metricas);
     }
 
     @Scheduled(fixedDelayString = "${servired.outbox.intervalo-ms:500}")
@@ -108,6 +113,18 @@ public class RelayOutbox {
                 .param("error", String.valueOf(e.getMessage()))
                 .param("id", idEvento)
                 .update();
+    }
+
+    private double edadDelMasViejo() {
+        try {
+            return jdbc.sql("""
+                            SELECT COALESCE(EXTRACT(EPOCH FROM now() - min(creado_en)), 0)
+                            FROM infraestructura.outbox WHERE publicado_en IS NULL
+                            """)
+                    .query(Double.class).single();
+        } catch (RuntimeException e) {
+            return Double.NaN;
+        }
     }
 
     private double contarPendientes() {

@@ -76,6 +76,7 @@ public sealed class ConsumidorEventos(
         var consumidor = new AsyncEventingBasicConsumer(canal);
         consumidor.ReceivedAsync += (_, entrega) => ProcesarAsync(canal, entrega, detener);
         await canal.BasicConsumeAsync(opciones.Cola, autoAck: false, consumidor, detener);
+        SondaCola.Registrar(opciones.Cola);
 
         estado.Activo = true;
         log.LogInformation("consumiendo {Cola}", opciones.Cola);
@@ -84,6 +85,14 @@ public sealed class ConsumidorEventos(
 
     private async Task ProcesarAsync(IChannel canal, BasicDeliverEventArgs entrega, CancellationToken ct)
     {
+        // Sonda de antigüedad (ADR-21): se registra y se confirma; no es un evento de negocio.
+        if (SondaCola.EsSonda(entrega))
+        {
+            SondaCola.Recibir(opciones.Cola, entrega);
+            await canal.BasicAckAsync(entrega.DeliveryTag, false, ct);
+            return;
+        }
+
         SobreEvento? sobre;
         try
         {

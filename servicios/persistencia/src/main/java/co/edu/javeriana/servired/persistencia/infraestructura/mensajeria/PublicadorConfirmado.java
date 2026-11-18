@@ -58,6 +58,34 @@ public class PublicadorConfirmado {
         }
     }
 
+    /**
+     * Mensaje sonda (ADR-21): viaja por el mismo exchange que los eventos y llega a cada
+     * cola consumidora (routing key {@code sonda.v1}). Cada consumidor registra cuándo se
+     * publicó la última que recibió; así se acota la edad del mensaje más viejo de su cola.
+     */
+    public void publicarSonda(long publicadaEnMs) {
+        MessageProperties propiedades = new MessageProperties();
+        propiedades.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        propiedades.setDeliveryMode(MessageDeliveryMode.NON_PERSISTENT);
+        String id = "sonda-" + UUID.randomUUID();
+        propiedades.setMessageId(id);
+        propiedades.setType(SONDA);
+        propiedades.setAppId("persistencia");
+        propiedades.setHeader(CABECERA_SONDA, publicadaEnMs);
+        Message mensaje = new Message("{}".getBytes(StandardCharsets.UTF_8), propiedades);
+        rabbit.invoke(operaciones -> {
+            operaciones.send(exchange, SONDA, mensaje);
+            operaciones.waitForConfirmsOrDie(esperaConfirmacionMs);
+            return null;
+        });
+        if (devueltos.remove(id)) {
+            throw new IllegalStateException("Ninguna cola recibió la sonda: falta el binding " + SONDA);
+        }
+    }
+
+    public static final String SONDA = "sonda.v1";
+    public static final String CABECERA_SONDA = "x-sonda-publicada-ms";
+
     public record EventoPendiente(UUID idEvento, String tipo, int version, String routingKey,
                                   UUID correlationId, String servicioOrigen, String sobre) {
     }
