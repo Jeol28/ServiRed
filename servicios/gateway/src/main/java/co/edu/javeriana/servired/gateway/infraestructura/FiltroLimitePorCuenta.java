@@ -25,10 +25,11 @@ import reactor.core.publisher.Mono;
  * inundar el sistema. Corre después de Spring Security (orden -100), así que ya conoce la
  * cuenta (el subject del JWT): una solicitud sin token ni siquiera llega aquí.
  * <p>
- * Dos ventanas por acción: por minuto (ráfagas) y por hora (goteo sostenido). La cuenta
- * solo vive en memoria como clave del contador. Varias cuentas de una misma persona no
- * se frenan aquí: para eso, el límite del registro por IP y la regla de antigüedad de las
- * validaciones (ADR-22).
+ * Se cuenta por cuenta (el sub del JWT) y no por IP: muchos usuarios móviles comparten
+ * IP detrás del NAT del operador (compensación T4). Dos ventanas por acción: por hora
+ * (el límite) y por minuto (ráfagas). La cuenta solo vive en memoria como clave del
+ * contador. Varias cuentas de una misma persona no se frenan aquí: contra el fraude en la
+ * validación está la regla de antigüedad de las cuentas (ADR-22).
  */
 @Component
 @Order(0)
@@ -40,12 +41,12 @@ public class FiltroLimitePorCuenta implements WebFilter {
     private final List<Regla> reglas;
 
     public FiltroLimitePorCuenta(
-            @Value("${servired.limites.por-cuenta.reportes-por-minuto:6}") int reportesPorMinuto,
-            @Value("${servired.limites.por-cuenta.reportes-por-hora:30}") int reportesPorHora,
-            @Value("${servired.limites.por-cuenta.validaciones-por-minuto:20}") int validacionesPorMinuto,
-            @Value("${servired.limites.por-cuenta.validaciones-por-hora:120}") int validacionesPorHora,
+            @Value("${servired.limites.por-cuenta.reportes-por-minuto:5}") int reportesPorMinuto,
+            @Value("${servired.limites.por-cuenta.reportes-por-hora:10}") int reportesPorHora,
+            @Value("${servired.limites.por-cuenta.validaciones-por-minuto:10}") int validacionesPorMinuto,
+            @Value("${servired.limites.por-cuenta.validaciones-por-hora:30}") int validacionesPorHora,
             @Value("${servired.limites.por-cuenta.fotos-por-minuto:10}") int fotosPorMinuto,
-            @Value("${servired.limites.por-cuenta.fotos-por-hora:60}") int fotosPorHora) {
+            @Value("${servired.limites.por-cuenta.fotos-por-hora:30}") int fotosPorHora) {
         Clock reloj = Clock.systemUTC();
         this.reglas = List.of(
                 regla("reportes", "/api/v1/reportes", reportesPorMinuto, reportesPorHora, reloj),

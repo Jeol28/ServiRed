@@ -4,15 +4,21 @@
 Aceptada.
 
 ## Contexto
-El gateway solo limitaba `/auth` (fuerza bruta) y las denuncias anónimas (spam), en ambos
-casos por IP (RNF-SEG5). Las escrituras de los ciudadanos no tenían límite, y el registro
-es libre. Eso dejaba dos abusos posibles:
+El gateway solo limitaba `/auth` (20 por minuto) y las denuncias anónimas (5 por
+minuto), en ambos casos por IP (RNF-SEG5). Crear reportes y validar no tenían límite, y el
+registro es libre. Alguien con varias cuentas y un script podía mandar cientos de reportes
+por minuto:
 
-- **Inundar:** una cuenta puede crear reportes, votos o fotos sin freno y saturar
-  Persistencia, el almacén y los operadores.
-- **Inflar validaciones:** un corte queda validado con 3 confirmaciones netas de
-  ciudadanos distintos a menos de 1 km (ADR-08), y la validación sube su prioridad. Con 3
-  cuentas recién creadas basta.
+- **Contamina los datos:** los reportes falsos inflan los indicadores y los mapas que ven la
+  SSPD y el público.
+- **Satura al operador** con casos que no existen.
+- **Facilita el fraude en la validación comunitaria (R13):** bastan 3 confirmaciones netas
+  de cuentas distintas (ADR-08), y con cinco cuentas eso se consigue fácil. El caso no se
+  cierra solo, pero el reporte queda marcado como validado.
+- **Abre otra vía al pico de carga del escenario E7,** esta vez provocado a propósito.
+
+Un límite **por IP** no sirve aquí: en Colombia muchos usuarios móviles comparten IP detrás
+del NAT del operador (compensación T4), y frenaría a vecinos legítimos justo en un pico.
 
 Un límite por cuenta resuelve lo primero, pero no lo segundo: inflar no exige muchas
 solicitudes por cuenta, sino muchas cuentas con un voto cada una. Para eso hace falta una
@@ -27,20 +33,23 @@ el `sub` del JWT. Cada acción tiene dos ventanas fijas, por minuto (ráfagas) y
 
 | Acción | Por minuto | Por hora |
 |---|---|---|
-| `POST /api/v1/reportes` | 6 | 30 |
-| `POST /api/v1/reportes/{id}/validaciones` | 20 | 120 |
-| `POST /api/v1/reportes/{id}/evidencias` | 10 | 60 |
+| `POST /api/v1/reportes` | 5 | **10** |
+| `POST /api/v1/reportes/{id}/validaciones` | 10 | **30** |
+| `POST /api/v1/reportes/{id}/evidencias` | 10 | 30 (3 fotos por cada uno de los 10 reportes) |
+
+El límite es el de la hora; el del minuto solo frena ráfagas.
 
 - **Al pasarse:** responde `429` problem+json con `Retry-After`.
 - **Qué no se limita:** las consultas, y las otras cuentas no se ven afectadas aunque
   compartan IP.
 - **Configuración:** los valores se ajustan en `servired.limites.por-cuenta.*`.
 
-### Límite de registro por IP
-- `POST /api/v1/auth/registro` tiene, además del límite de `/auth` (20 por minuto), un cupo
-  de **30 cuentas nuevas por hora por IP** (`LIMITE_REGISTROS_POR_HORA`).
-- Es generoso a propósito, porque muchos usuarios móviles comparten IP (CGNAT).
-- La IP sigue sin guardarse: solo su SHA-256 con sal en memoria, como hasta ahora.
+### Sin límites nuevos por IP
+- No se agrega ningún límite por IP, ni siquiera al registro, para respetar T4. Un cupo de
+  cuentas nuevas por IP bloquearía a los vecinos que se registran a la vez desde el mismo
+  NAT durante un pico.
+- Siguen los límites por IP que ya existían: `/auth`, 20 por minuto, y denuncias, 5 por
+  minuto.
 
 ### Antigüedad mínima para validar
 - **Claim nuevo:** Identidad incluye en el JWT el claim `creada`, con la fecha de creación
@@ -61,6 +70,8 @@ el `sub` del JWT. Cada acción tiene dos ventanas fijas, por minuto (ráfagas) y
   a vecinos que comparten red o el CGNAT del operador móvil.
 - **Solo límites de frecuencia:** frenan a una cuenta, pero no a muchas cuentas con un
   voto cada una.
+- **Cupo de cuentas nuevas por IP:** se implementó con 30 por hora y se retiró. Contradice
+  T4: en un pico, muchos vecinos legítimos se registran a la vez detrás del mismo NAT.
 - **Verificar el teléfono o el correo:** sube mucho la barrera de entrada y tiene costo
   (SMS). Queda como mejora si el abuso persiste.
 
@@ -68,8 +79,12 @@ el `sub` del JWT. Cada acción tiene dos ventanas fijas, por minuto (ráfagas) y
 - **Ciudadano nuevo:** el primer día su voto no ayuda a validar. Lo sabe por
   `cuentaParaUmbral`, y las apps pueden mostrarlo. Sus reportes cuentan desde el primer
   minuto.
-- **Atacante:** para inflar validaciones debe crear las cuentas con un día de anticipación
-  y a lo sumo 30 por hora por IP. No es imposible, pero ya no es inmediato.
+- **Atacante:**
+  - **Inundar:** cada cuenta puede crear a lo sumo 10 reportes por hora.
+  - **Inflar validaciones:** debe crear las cuentas con un día de anticipación. No es
+    imposible, pero ya no es inmediato.
+  - **Crear cuentas:** solo lo frena el límite de `/auth` por IP. Si se observa creación
+    masiva, la mejora es verificar el correo o el teléfono, no un límite por IP.
 - **Varias réplicas del gateway:** los contadores viven en memoria y cada réplica tiene los
   suyos, así que con N réplicas el límite efectivo es hasta N veces el configurado. Un
   contador compartido (Redis) queda como mejora si el gateway se escala.

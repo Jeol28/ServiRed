@@ -83,17 +83,15 @@ servired:
   limites:
     autenticacion-por-minuto: 20
     denuncias-por-minuto: 5
-    # Cuentas nuevas por IP y por hora (además del límite de /auth). Generoso: muchos
-    # usuarios móviles comparten IP (CGNAT). Ver ADR-22.
-    registros-por-hora: ${LIMITE_REGISTROS_POR_HORA:30}
-    # Escrituras de cada cuenta: por minuto (ráfagas) y por hora (goteo sostenido).
+    # Escrituras de cada cuenta (sub del JWT, no IP: compensación T4). Por hora es el límite;
+    # por minuto frena ráfagas. Ver ADR-22.
     por-cuenta:
-      reportes-por-minuto: 6
-      reportes-por-hora: 30
-      validaciones-por-minuto: 20
-      validaciones-por-hora: 120
+      reportes-por-minuto: 5
+      reportes-por-hora: 10
+      validaciones-por-minuto: 10
+      validaciones-por-hora: 30
       fotos-por-minuto: 10
-      fotos-por-hora: 60
+      fotos-por-hora: 30
     # Proxies propios (nginx de los portales) cuyo X-Forwarded-For se acepta
     # para el límite por cliente. Nombres de host separados por coma.
     proxies-confiables: ${PROXIES_CONFIABLES:}

@@ -35,7 +35,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"management.server.port=0", "servired.limites.autenticacion-por-minuto=1000",
-                "servired.limites.denuncias-por-minuto=4", "servired.limites.registros-por-hora=3",
+                "servired.limites.denuncias-por-minuto=4",
                 "servired.limites.por-cuenta.reportes-por-minuto=3", "servired.limites.por-cuenta.reportes-por-hora=5",
                 // La prueba se conecta desde localhost: hace de proxy de los portales.
                 "servired.limites.proxies-confiables=localhost"})
@@ -286,18 +286,4 @@ class GatewaySeguridadTest {
                 .exchange().expectStatus().isOk();
     }
 
-    @Test
-    void elRegistroTieneUnCupoPorHoraAdemasDelDeAutenticacion() {
-        // Conexión TCP real: el límite del registro es por IP (la del proxy de prueba, localhost).
-        var cliente = WebTestClient.bindToServer().baseUrl("http://localhost:" + puerto).build();
-        int limitadas = 0;
-        for (int i = 0; i < 4; i++) {
-            limitadas += cliente.post().uri("/api/v1/auth/registro").header("X-Forwarded-For", "198.51.100.9")
-                    .exchange().returnResult(String.class).getStatus().value() == 429 ? 1 : 0;
-        }
-        assertThat(limitadas).isEqualTo(1);
-        // Iniciar sesión desde esa IP sigue permitido: el cupo por hora es solo para crear cuentas.
-        cliente.post().uri("/api/v1/auth/login").header("X-Forwarded-For", "198.51.100.9").exchange()
-                .expectStatus().isOk();
-    }
 }

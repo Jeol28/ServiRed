@@ -96,7 +96,7 @@ paths:
         indicadores, auditoría) se enteran por eventos y su falla no impide
         el registro (RNF-DC2). La fotografía se adjunta después con
         `POST /api/v1/reportes/{idReporte}/evidencias`. Solo CIUDADANO.
-        Límite por cuenta: 6 por minuto y 30 por hora (429 con Retry-After, ADR-22).
+        Límite por cuenta: 10 por hora y 5 por minuto (429 con Retry-After, ADR-22).
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
       requestBody:
@@ -207,7 +207,7 @@ paths:
 
         Antigüedad mínima (ADR-22): el voto de una cuenta creada hace menos de 24 h
         se registra (no puede repetirse) pero no suma; `cuentaParaUmbral` es false.
-        Límite por cuenta: 20 por minuto y 120 por hora (429 con Retry-After).
+        Límite por cuenta: 30 por hora y 10 por minuto (429 con Retry-After).
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
         - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
@@ -242,7 +242,7 @@ paths:
         Solo el autor. JPEG o PNG (tipo detectado por contenido), máximo 5 MB y
         40 megapíxeles, hasta 3 por reporte. La imagen se vuelve a codificar:
         se eliminan EXIF, GPS y demás metadatos (y la orientación EXIF; envíela
-        ya orientada). Límite por cuenta: 10 por minuto y 60 por hora.
+        ya orientada). Límite por cuenta: 30 por hora y 10 por minuto.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
         - { name: idReporte, in: path, required: true, schema: { type: string, format: uuid } }
@@ -879,7 +879,7 @@ paths:
       summary: Registrar una cuenta de ciudadano (RF-11)
       description: |
         Pública. Exige autorizar el tratamiento de datos personales (Ley 1581 de 2012).
-        Límite por cliente: el de /auth (20 por minuto) y además 30 cuentas nuevas por hora (ADR-22).
+        Límite por cliente: el de /auth (20 por minuto).
       security: []
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"

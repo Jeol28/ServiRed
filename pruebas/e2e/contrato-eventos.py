@@ -71,6 +71,17 @@ def personal(admin, rol, empresa=None):
     return http("POST", "/api/v1/auth/login", {"correo": correo, "clave": CLAVE})[2]["tokenAcceso"]
 
 
+def denunciar(cuerpo, tipo):
+    """Las denuncias tienen límite por IP (5 por minuto) compartido con otras suites: ante
+    un 429 se espera el Retry-After y se reintenta."""
+    for _ in range(4):
+        estado, cabeceras, respuesta = http_crudo("POST", "/api/v1/denuncias", cuerpo, tipo)
+        if estado != 429:
+            return estado, cabeceras, respuesta
+        time.sleep(int(cabeceras.get("Retry-After", "10")) + 1)
+    return estado, cabeceras, respuesta
+
+
 def caso_de(token, id_reporte, filtro=""):
     return buscar_caso(token, id_reporte, filtro)
 
@@ -131,11 +142,11 @@ try:
                 "descripcion": "Conexión directa al poste (contrato de eventos)"}
     cuerpo, tipo = multipart([("denuncia", None, "application/json", json.dumps(denuncia).encode()),
                               ("foto", "f.png", "image/png", png_con_metadatos())])
-    estado, _, d = http_crudo("POST", "/api/v1/denuncias", cuerpo, tipo)           # denuncia.recibida con foto
+    estado, _, d = denunciar(cuerpo, tipo)                                           # denuncia.recibida con foto
     comprobar(estado == 202, f"denuncia con foto recibida ({estado})")
     id_denuncia = json.loads(d)["idDenuncia"]
     cuerpo, tipo = multipart([("denuncia", None, "application/json", json.dumps(denuncia).encode())])
-    comprobar(http_crudo("POST", "/api/v1/denuncias", cuerpo, tipo)[0] == 202, "denuncia sin foto recibida")
+    comprobar(denunciar(cuerpo, tipo)[0] == 202, "denuncia sin foto recibida")
 
     def moderable():
         return http("GET", f"/api/v1/moderacion/denuncias/{id_denuncia}", token=operador)[0] == 200

@@ -209,9 +209,6 @@ services:
       OTLP_TRAZAS_URL: http://jaeger:4318/v1/traces
       # Solo de estos proxies se acepta X-Forwarded-For (límite de abuso por cliente).
       PROXIES_CONFIABLES: portal-publico,portal-operador
-      # Cuentas nuevas por IP y por hora (ADR-22). Súbalo solo en entornos de prueba que
-      # registran muchas cuentas desde una misma máquina.
-      LIMITE_REGISTROS_POR_HORA: ${LIMITE_REGISTROS_POR_HORA:-30}
     ports:
       - "8080:8080"
     depends_on:

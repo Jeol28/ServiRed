@@ -2,8 +2,9 @@
 """
 Abuso con varias cuentas (RNF-SEG5, ADR-22) contra el compose:
 
-  1. Una cuenta no puede inundar el sistema: crear reportes tiene cupo por cuenta (6 por
-     minuto); al pasarse recibe 429 con Retry-After, y otra cuenta sigue reportando.
+  1. Una cuenta no puede inundar el sistema: crear reportes tiene cupo por cuenta (10 por
+     hora, 5 por minuto); al pasarse recibe 429 con Retry-After, y otra cuenta sigue
+     reportando aunque comparta la IP (compensación T4).
   2. Cuentas recién creadas no inflan una validación: sus votos se registran pero no suman
      (cuentaParaUmbral = false), y con 3 de ellas el corte NO queda validado.
   3. Tres ciudadanos establecidos (cuentas de más de 24 h) sí lo validan.
@@ -35,11 +36,11 @@ def votar(token, id_reporte):
 
 print("1. Una cuenta no puede inundar con reportes")
 inundadora = registrar_y_entrar()[0]["tokenAcceso"]
-estados = [reporte(inundadora, reintentar_429=False) for _ in range(7)]
+estados = [reporte(inundadora, reintentar_429=False) for _ in range(6)]
 codigos = [e for e, _, _ in estados]
-comprobar(codigos[:6] == [201] * 6, f"los 6 primeros reportes del minuto se aceptan ({codigos[:6]})")
-estado, cabeceras, cuerpo = estados[6]
-comprobar(estado == 429 and cabeceras.get("Retry-After"), f"el 7.º recibe 429 con Retry-After ({estado})")
+comprobar(codigos[:5] == [201] * 5, f"los 5 primeros reportes del minuto se aceptan ({codigos[:5]})")
+estado, cabeceras, cuerpo = estados[5]
+comprobar(estado == 429 and cabeceras.get("Retry-After"), f"el 6.º recibe 429 con Retry-After ({estado})")
 comprobar((cuerpo or {}).get("status") == 429, "como problem+json")
 otra = registrar_y_entrar()[0]["tokenAcceso"]
 comprobar(reporte(otra, reintentar_429=False)[0] == 201, "otra cuenta sigue reportando")

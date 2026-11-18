@@ -99,10 +99,6 @@ docker compose up -d --build --wait --scale persistencia=2 --scale reportes=2
 python3 pruebas/e2e/replicas-y-circuito.py           # e2e: caída de réplicas, circuito y outbox
 ```
 
-Las suites e2e registran decenas de cuentas desde la misma máquina, y el registro tiene un
-cupo de 30 cuentas nuevas por IP y por hora (ADR-22). Para correrlas todas seguidas, suba el
-cupo solo en el entorno de pruebas: `LIMITE_REGISTROS_POR_HORA=1000 docker compose up -d`.
-
 Las pruebas e2e leen `.env`. Con `SERVIRED_ENV=<archivo>` usan otro, y con
 `COMPOSE_ENV_FILES=<archivo>` también Docker Compose. Así puede probar contra la base
 local mientras `.env` apunta a Supabase.

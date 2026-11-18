@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -24,9 +23,9 @@ import reactor.core.publisher.Mono;
 
 /**
  * Límite de abuso (RNF-SEG5) en las rutas públicas sensibles: autenticación
- * (fuerza bruta), registro de cuentas (creación masiva, además del límite de
- * autenticación) y denuncias anónimas (spam). Las escrituras con cuenta se
- * limitan por cuenta en {@link FiltroLimitePorCuenta}. La IP nunca se guarda ni se
+ * (fuerza bruta) y denuncias anónimas (spam). Es el único límite por IP: muchos
+ * usuarios móviles comparten IP detrás del NAT del operador (compensación T4), así
+ * que las escrituras con cuenta se limitan por cuenta en {@link FiltroLimitePorCuenta}. La IP nunca se guarda ni se
  * registra: solo su SHA-256 con una sal aleatoria por proceso, en memoria.
  * Detrás de los portales web la IP real llega en X-Forwarded-For, que solo se
  * acepta si la conexión viene de un proxy configurado (ver {@link OrigenCliente}).
@@ -37,20 +36,17 @@ public class FiltroLimiteSolicitudes implements WebFilter {
 
     private final LimitadorVentanaFija autenticacion;
     private final LimitadorVentanaFija denuncias;
-    private final LimitadorVentanaFija registros;
     private final byte[] sal = new byte[32];
     private final ProxiesConfiables proxies;
 
     public FiltroLimiteSolicitudes(
             @Value("${servired.limites.autenticacion-por-minuto:20}") int autenticacionPorMinuto,
             @Value("${servired.limites.denuncias-por-minuto:5}") int denunciasPorMinuto,
-            @Value("${servired.limites.registros-por-hora:30}") int registrosPorHora,
             ProxiesConfiables proxies) {
         this.proxies = proxies;
         Clock reloj = Clock.systemUTC();
         this.autenticacion = new LimitadorVentanaFija(autenticacionPorMinuto, Duration.ofMinutes(1), reloj);
         this.denuncias = new LimitadorVentanaFija(denunciasPorMinuto, Duration.ofMinutes(1), reloj);
-        this.registros = new LimitadorVentanaFija(registrosPorHora, Duration.ofHours(1), reloj);
         new SecureRandom().nextBytes(sal);
     }
 
@@ -62,14 +58,7 @@ public class FiltroLimiteSolicitudes implements WebFilter {
         if (limitador == null) {
             return chain.filter(exchange);
         }
-        String cliente = huellaCliente(exchange);
-        var resultado = limitador.intentar(cliente);
-        // Crear cuentas tiene además un cupo por hora: con el registro libre, cada cuenta nueva
-        // es un actor más (ADR-22).
-        if (resultado.permitido() && HttpMethod.POST.equals(exchange.getRequest().getMethod())
-                && ruta.equals("/api/v1/auth/registro")) {
-            resultado = registros.intentar(cliente);
-        }
+        var resultado = limitador.intentar(huellaCliente(exchange));
         if (resultado.permitido()) {
             return chain.filter(exchange);
         }

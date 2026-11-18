@@ -85,8 +85,15 @@ fila = next((x for x in t["territorios"] if x["codigo"] == codigo), None) if est
 comprobar(fila is not None and fila["indicadores"]["reportes"] == 4, "aparece en la distribución territorial")
 
 print("3) Mapa público por celdas (RF-8)")
-estado, _, mapa = http("GET", "/api/v1/mapas/publico?tipoServicio=ACUEDUCTO")
-cerca = [c for c in mapa["celdas"] if abs(c["latitud"] - lat) < 0.02 and abs(c["longitud"] - lon) < 0.02]
+
+
+def celdas_cercanas():
+    estado, _, m = http("GET", "/api/v1/mapas/publico?tipoServicio=ACUEDUCTO")
+    return estado, m, [c for c in m["celdas"] if abs(c["latitud"] - lat) < 0.02 and abs(c["longitud"] - lon) < 0.02]
+
+
+esperar(lambda: sum(c["reportes"] for c in celdas_cercanas()[2]) >= 4, 30)
+estado, mapa, cerca = celdas_cercanas()
 comprobar(estado == 200 and sum(c["reportes"] for c in cerca) >= 4, "las celdas cercanas suman los 4 reportes")
 comprobar(all(set(c) == {"latitud", "longitud", "reportes"} for c in mapa["celdas"]), "las celdas no traen ids")
 comprobar(mapa["celdaGrados"] == 0.01, "celdas de 0,01° (~1,1 km)")
