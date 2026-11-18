@@ -24,7 +24,8 @@ actor ReportesFalso: RepositorioReportes {
     func ponerMios(_ m: [Reporte]) { mios = m }
     func misReportes() async -> [Reporte] { mios }
     func pendientes() async -> [ReportePendiente] { [] }
-    func actualizar() async throws {}
+    var actualizaciones = 0
+    func actualizar() async throws { actualizaciones += 1 }
     func obtener(_ id: String) async throws -> Reporte { throw ErrorApp.sinConexion }
     func crear(_ nuevo: NuevoReporte, fotos: [String]) async throws -> Bool { creados.append(nuevo); return enviar }
     func enviarPendientes() async -> Bool { true }
@@ -58,8 +59,7 @@ struct ModelosVistaTests {
 
     @Test func elRegistroExigeCorreoValidoClaveAdecuadaYAutorizacionDeDatos() async {
         let sesion = SesionFalsa()
-        let m = IngresoModelo(sesion: sesion)
-        m.alternarModo()
+        let m = IngresoModelo(sesion: sesion, registro: true)
         m.correo = "ana@correo.co"
         m.clave = "una clave larga"
         await m.enviar()
@@ -131,6 +131,17 @@ struct ModelosVistaTests {
         #expect(m.cercanos.map(\.id) == ["c1", "c2"])
         #expect(m.zonas.first?.reportes == 7)
         #expect(!m.cargando)
+    }
+
+    @Test func sinCuentaElMapaMuestraLasZonasDelPaisPeroNoLosCortesExactos() async {
+        let repo = ReportesFalso()
+        await repo.ponerCercanos([cercano("c1")])
+        let m = MapaModelo(repo: repo, ubicacion: UbicacionFija(u: aqui), ahora: { self.ahora }, anonimo: true)
+        await m.refrescar()
+        #expect(m.ubicacion == aqui)
+        #expect(m.zonas.first?.reportes == 7)
+        #expect(m.cercanos.isEmpty, "los cortes exactos son solo para quien tiene cuenta (RNF-DAT2)")
+        #expect(await repo.actualizaciones == 0)
     }
 
     @Test func sinUbicacionElMapaLoAvisaYNoBuscaCortesCercanos() async {

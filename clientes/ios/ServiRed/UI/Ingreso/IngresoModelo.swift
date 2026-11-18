@@ -15,7 +15,10 @@ final class IngresoModelo {
 
     private let sesion: RepositorioSesion
 
-    init(sesion: RepositorioSesion) { self.sesion = sesion }
+    init(sesion: RepositorioSesion, registro: Bool = false) {
+        self.sesion = sesion
+        self.registro = registro
+    }
 
     func alternarModo() {
         registro.toggle()

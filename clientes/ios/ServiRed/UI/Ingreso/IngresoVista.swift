@@ -8,7 +8,9 @@ struct IngresoVista: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("SERVI-RED").font(.largeTitle.bold()).foregroundStyle(Color.accentColor)
-                Text("Reporte los cortes de energía, gas, agua, alcantarillado y aseo, y siga su atención.")
+                Text(modelo.registro
+                     ? "Con su cuenta puede reportar cortes, confirmar los de sus vecinos y avisar cuando vuelva el servicio."
+                     : "Reporte los cortes de energía, gas, agua, alcantarillado y aseo, y siga su atención.")
                 Text(modelo.registro ? "Crear cuenta" : "Ingresar").font(.title2.weight(.semibold)).padding(.top, 8)
                 TextField("Correo", text: $modelo.correo)
                     .textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never)

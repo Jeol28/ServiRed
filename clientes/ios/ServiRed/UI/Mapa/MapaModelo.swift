@@ -9,6 +9,8 @@ enum Seleccion: Equatable {
 
 /// Pantalla principal de la app (igual que en Android): el mapa con los cortes
 /// cercanos para confirmarlos, los reportes propios y las zonas con cortes del país.
+/// Sin cuenta (`anonimo`) solo muestra las zonas agregadas: los cortes exactos son
+/// para quien tiene cuenta (RNF-DAT2).
 @MainActor
 @Observable
 final class MapaModelo {
@@ -31,11 +33,13 @@ final class MapaModelo {
     private let repo: RepositorioReportes
     private let proveedor: ProveedorUbicacion
     private let ahora: () -> Date
+    let anonimo: Bool
 
-    init(repo: RepositorioReportes, ubicacion: ProveedorUbicacion, ahora: @escaping () -> Date = Date.init) {
+    init(repo: RepositorioReportes, ubicacion: ProveedorUbicacion, ahora: @escaping () -> Date = Date.init, anonimo: Bool = false) {
         self.repo = repo
         proveedor = ubicacion
         self.ahora = ahora
+        self.anonimo = anonimo
     }
 
     /// Reportes propios con el servicio todavía caído.
@@ -69,7 +73,7 @@ final class MapaModelo {
         let u = await proveedor.actual() ?? ubicacion
         ubicacion = u
         sinUbicacion = u == nil
-        if let u {
+        if let u, !anonimo {
             do {
                 cercanos = try await repo.cercanos(desde: u)
                 error = nil
@@ -78,8 +82,10 @@ final class MapaModelo {
                 self.error = e.tipo == .sinConexion ? "Sin conexión: mostramos lo último que tenemos." : e.mensaje
             }
         }
-        await repo.enviarPendientes()
-        try? await repo.actualizar()
+        if !anonimo {
+            await repo.enviarPendientes()
+            try? await repo.actualizar()
+        }
         if let z = try? await repo.zonasPublicas() { zonas = z }
         await cargarLocal()
     }

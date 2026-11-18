@@ -52,6 +52,13 @@ final class RecorridoCapturasUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--sesion-limpia"]
         app.launch()
+        XCTAssertTrue(app.buttons["ingresar"].waitForExistence(timeout: 15))
+        capturar("i0-mapa-sin-cuenta", esperar: 6)
+        app.buttons["reportar"].tap()
+        capturar("i0b-invitacion", esperar: 2)
+        app.swipeDown(velocity: .fast)
+        sleep(1)
+        app.buttons["ingresar"].tap()
         capturar("i1-ingreso")
         app.textFields["correo"].tap()
         app.textFields["correo"].typeText(correo)

@@ -10,9 +10,13 @@ struct MapaVista: View {
     let c: Contenedor
     let alAbrirMenu: () -> Void
     let alVerDetalle: (String) -> Void
+    /// Sin cuenta: ir al ingreso (`true` abre directamente el registro).
+    var alIngresar: (Bool) -> Void = { _ in }
+    var alDenunciar: () -> Void = {}
 
     @State private var reporte: NuevoReporteModelo?
     @State private var hojaVisible = false
+    @State private var invitacionVisible = false
     @State private var eligiendo = false
     @State private var centroMapa: Ubicacion?
 
@@ -67,6 +71,9 @@ struct MapaVista: View {
                 .presentationDragIndicator(.visible)
             }
         }
+        .sheet(isPresented: $invitacionVisible) {
+            invitacion.presentationDetents([.medium]).presentationDragIndicator(.visible)
+        }
         .onChange(of: reporte?.resultado) { _, resultado in
             guard let resultado else { return }
             hojaVisible = false
@@ -89,11 +96,38 @@ struct MapaVista: View {
             .padding(.horizontal, 16).padding(.vertical, 8)
             .background(.regularMaterial, in: Capsule())
             .shadow(radius: 3)
-            BotonRedondo(sistema: "location.fill", etiqueta: "Centrar en mi ubicación") { Task { await modelo.volverACentrar() } }
+            if modelo.anonimo {
+                Button("Ingresar") { alIngresar(false) }
+                    .font(.headline).padding(.horizontal, 16).frame(height: 48)
+                    .background(.regularMaterial, in: Capsule()).shadow(radius: 3)
+                    .accessibilityIdentifier("ingresar")
+            } else {
+                BotonRedondo(sistema: "location.fill", etiqueta: "Centrar en mi ubicación") { Task { await modelo.volverACentrar() } }
+            }
         }
     }
 
+    /// Sin cuenta, «Reportar» invita a crearla (o a la denuncia anónima, que no la necesita).
+    private var invitacion: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Para reportar un corte, cree su cuenta").font(.title3.bold())
+            Text("Toma menos de un minuto. Con ella sigue la atención de su reporte, confirma los cortes de sus vecinos y avisa cuando vuelva el servicio.")
+            Button { invitacionVisible = false; alIngresar(true) } label: {
+                Text("Crear mi cuenta").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent).controlSize(.large).accessibilityIdentifier("crear-cuenta")
+            Button { invitacionVisible = false; alIngresar(false) } label: {
+                Text("Ya tengo cuenta: ingresar").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered).controlSize(.large)
+            Text("¿Es una conexión ilegal o un fraude?").font(.subheadline.weight(.semibold)).padding(.top, 4)
+            Button("Hacer una denuncia anónima, sin cuenta") { invitacionVisible = false; alDenunciar() }
+        }
+        .padding(24)
+    }
+
     private var estadoCercanos: String {
+        if modelo.anonimo { return "Explore los cortes del país" }
         if modelo.sinUbicacion { return "Active la ubicación para ver su zona" }
         if modelo.ubicacion == nil { return "Buscando su ubicación…" }
         switch modelo.cercanos.count {
@@ -122,6 +156,7 @@ struct MapaVista: View {
         if let propio = modelo.propioSeleccionado { tarjetaPropia(propio) }
         if let r = modelo.preguntaVolvio { tarjetaPregunta(r) }
         Button {
+            if modelo.anonimo { invitacionVisible = true; return }
             reporte = NuevoReporteModelo(repo: c.reportes, ubicacion: c.ubicacion, descartarFoto: c.fotos.descartar)
             reporte?.ubicacion = modelo.ubicacion
             hojaVisible = true
