@@ -54,6 +54,7 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
         Agregar("estado", f.Estado);
         Agregar("tipoServicio", f.TipoServicio);
         Agregar("codigoMunicipio", f.CodigoMunicipio);
+        Agregar("codigoDepartamento", f.CodigoDepartamento);
         Agregar("prioridad", f.Prioridad);
         Agregar("idEmpresa", f.IdEmpresa);
         Agregar("asignadoA", f.AsignadoA);

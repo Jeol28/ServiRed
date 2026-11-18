@@ -2,7 +2,10 @@ using ServiRed.Atencion.Dominio;
 
 namespace ServiRed.Atencion.Aplicacion.Puertos;
 
-/// <summary>Filtros de la bandeja de casos; null = sin filtro.</summary>
+/// <summary>
+/// Filtros de la bandeja de casos; null = sin filtro. El departamento son los dos
+/// primeros dígitos del código DIVIPOLA del municipio.
+/// </summary>
 public sealed record FiltroCasos(
     EstadoCaso? Estado = null,
     TipoServicio? TipoServicio = null,
@@ -13,7 +16,8 @@ public sealed record FiltroCasos(
     Guid? AsignadoA = null,
     Guid? IdReporte = null,
     int Pagina = 0,
-    int Tamano = 20);
+    int Tamano = 20,
+    string? CodigoDepartamento = null);
 
 /// <summary>Página de resultados; se serializa como {elementos, total, pagina, tamano}, igual que los servicios Java.</summary>
 public sealed record Pagina<T>(IReadOnlyList<T> Elementos, long Total,

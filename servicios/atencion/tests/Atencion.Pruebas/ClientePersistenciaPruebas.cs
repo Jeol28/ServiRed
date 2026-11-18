@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using ServiRed.Atencion.Aplicacion;
+using ServiRed.Atencion.Aplicacion.Puertos;
 using ServiRed.Atencion.Dominio;
 using ServiRed.Atencion.Infraestructura.Persistencia;
 
@@ -55,6 +56,17 @@ public class ClientePersistenciaPruebas
         Assert.Equal(correlacion.Valor, manejador.Ultima.Headers.GetValues(IdCorrelacion.Cabecera).Single());
         Assert.Contains("\"tipoServicio\":\"ENERGIA\"", manejador.Cuerpo);
         Assert.Contains("\"codigoMunicipio\":\"11001\"", manejador.Cuerpo);
+    }
+
+    [Fact]
+    public async Task LaBandejaPasaElFiltroDeDepartamentoAPersistencia()
+    {
+        var (cliente, manejador) = Cliente(HttpStatusCode.OK, """{"elementos":[],"total":0,"pagina":0,"tamano":20}""");
+
+        await cliente.ListarAsync(new FiltroCasos(CodigoDepartamento: "05"), IdCorrelacion.Nuevo(), CancellationToken.None);
+
+        Assert.Equal("/interno/v1/casos", manejador.Ultima!.RequestUri!.AbsolutePath);
+        Assert.Contains("codigoDepartamento=05", manejador.Ultima.RequestUri.Query);
     }
 
     [Theory]

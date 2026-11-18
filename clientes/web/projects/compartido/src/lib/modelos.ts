@@ -99,6 +99,7 @@ export interface FiltroCasos {
   tipoServicio?: TipoServicio;
   prioridad?: Prioridad;
   codigoMunicipio?: string;
+  codigoDepartamento?: string;
   sinEmpresa?: boolean;
   mios?: boolean;
   pagina?: number;

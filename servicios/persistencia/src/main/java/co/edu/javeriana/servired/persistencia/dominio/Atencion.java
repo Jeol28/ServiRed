@@ -13,8 +13,12 @@ public final class Atencion {
     public record Empresa(UUID idEmpresa, String nombre) {
     }
 
-    /** Filtros de la bandeja de casos; null = sin filtro. */
-    public record FiltroCasos(String estado, String tipoServicio, String codigoMunicipio, String prioridad,
+    /**
+     * Filtros de la bandeja de casos; null = sin filtro. El departamento son los dos
+     * primeros dígitos del código DIVIPOLA del municipio.
+     */
+    public record FiltroCasos(String estado, String tipoServicio, String codigoMunicipio, String codigoDepartamento,
+                              String prioridad,
                               UUID idEmpresa, boolean soloSinEmpresa, UUID asignadoA, UUID idReporte, int pagina,
                               int tamano) {
     }

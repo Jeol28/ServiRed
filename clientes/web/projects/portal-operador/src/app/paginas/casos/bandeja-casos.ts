@@ -3,7 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
   ApiCasos, COLOR_PRIORIDAD, Caso, ESTADOS_CASO, FechaCortaPipe, FiltroCasos, NOMBRE_ESTADO, NOMBRE_MAGNITUD,
-  NOMBRE_PRIORIDAD, NOMBRE_SERVICIO, PRIORIDADES, Pagina, ServicioSesion, TIPOS_SERVICIO, mensajeDeError,
+  NOMBRE_PRIORIDAD, NOMBRE_SERVICIO, PRIORIDADES, Pagina, SelectorTerritorio, ServicioSesion, TIPOS_SERVICIO,
+  mensajeDeError,
 } from 'compartido';
 import { nombreEmpresa } from '../../empresas';
 
@@ -12,10 +13,10 @@ const TAMANO = 20;
 /** Bandeja de casos (RF-6): filtros, orden por prioridad y paginación. */
 @Component({
   selector: 'app-bandeja-casos',
-  imports: [FormsModule, RouterLink, FechaCortaPipe],
+  imports: [FormsModule, RouterLink, FechaCortaPipe, SelectorTerritorio],
   template: `
     <h1>Casos</h1>
-    <form class="sr-tarjeta sr-fila" (ngSubmit)="buscar(0)" aria-label="Filtros">
+    <form class="sr-tarjeta sr-filtros" (ngSubmit)="buscar(0)" aria-label="Filtros">
       <label>Estado
         <select name="estado" [(ngModel)]="filtro.estado">
           <option [ngValue]="undefined">Todos</option>
@@ -34,10 +35,7 @@ const TAMANO = 20;
           @for (p of prioridades; track p) { <option [ngValue]="p">{{ nombrePrioridad[p] }}</option> }
         </select>
       </label>
-      <label>Municipio (DIVIPOLA)
-        <input name="municipio" [(ngModel)]="filtro.codigoMunicipio" inputmode="numeric" pattern="[0-9]{5}"
-               maxlength="5" placeholder="11001" size="7" />
-      </label>
+      <sr-selector-territorio [f]="territorio" />
       @if (esOperador()) {
         <label class="sr-en-linea"><input type="checkbox" name="mios" [(ngModel)]="filtro.mios" /> Solo los míos</label>
       }
@@ -112,6 +110,8 @@ export class BandejaCasos {
   protected readonly esAdmin = computed(() => this.sesion.rol() === 'ADMINISTRADOR');
 
   protected filtro: FiltroCasos = {};
+  /** Departamento y municipio elegidos en las listas ('' = todos). */
+  protected territorio = { codigoDepartamento: '', codigoMunicipio: '' };
   protected readonly pagina = signal<Pagina<Caso> | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly paginas = computed(() => {
@@ -125,8 +125,13 @@ export class BandejaCasos {
 
   protected buscar(pagina: number): void {
     this.error.set(null);
-    const municipio = this.filtro.codigoMunicipio?.trim();
-    this.api.listar({ ...this.filtro, codigoMunicipio: municipio || undefined, pagina, tamano: TAMANO }).subscribe({
+    this.api.listar({
+      ...this.filtro,
+      codigoDepartamento: this.territorio.codigoDepartamento || undefined,
+      codigoMunicipio: this.territorio.codigoMunicipio || undefined,
+      pagina,
+      tamano: TAMANO,
+    }).subscribe({
       next: (p) => this.pagina.set(p),
       error: (e: unknown) => this.error.set(mensajeDeError(e)),
     });

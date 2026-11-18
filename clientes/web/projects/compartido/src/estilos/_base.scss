@@ -66,6 +66,17 @@ h3 { font-size: 1.05rem; }
   margin-bottom: 1rem;
 }
 
+// Formulario de filtros: columnas iguales, todos los campos del mismo ancho y alto
+// (fecha, lista o texto). Las casillas ocupan su propia celda.
+.sr-filtros {
+  display: grid; gap: .75rem; align-items: end;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.sr-filtros label { min-width: 0; }
+.sr-filtros input:not([type='checkbox']), .sr-filtros select { width: 100%; min-width: 0; height: 2.4rem; }
+.sr-filtros label.sr-en-linea { min-height: 2.4rem; }
+.sr-filtros button { justify-content: center; height: 2.4rem; }
+
 .sr-fila { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
 .sr-rejilla { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 

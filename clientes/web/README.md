@@ -45,8 +45,10 @@ npx ng serve portal-operador --port 4200 --proxy-config proxy.conf.json
 
 ## Catálogo de departamentos y municipios
 
-Los filtros de territorio usan dos listas desplegables: al elegir el departamento solo se
-ofrecen sus municipios, con su nombre oficial del DANE (p. ej. «Santiago de Cali»).
+Los filtros de territorio (Indicadores, Datos abiertos y la bandeja de Casos) usan dos
+listas desplegables: al elegir el departamento solo se ofrecen sus municipios, con su
+nombre oficial del DANE (p. ej. «Santiago de Cali»). La bandeja de casos filtra también
+solo por departamento (`codigoDepartamento` en `GET /casos`).
 
 - **Origen:** `compartido/src/lib/territorio/divipola.ts` se genera desde la misma semilla
   DIVIPOLA de la base (`V3__semilla_divipola.sql`), así que no hace falta otra API.

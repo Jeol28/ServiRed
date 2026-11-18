@@ -101,6 +101,7 @@ public class RepositorioAtencionJdbc implements RepositorioAtencion {
                  WHERE (CAST(:estado AS text) IS NULL OR c.estado = :estado)
                    AND (CAST(:servicio AS text) IS NULL OR c.tipo_servicio = :servicio)
                    AND (CAST(:municipio AS text) IS NULL OR c.codigo_municipio = :municipio)
+                   AND (CAST(:departamento AS text) IS NULL OR left(c.codigo_municipio, 2) = :departamento)
                    AND (CAST(:prioridad AS text) IS NULL OR c.prioridad = :prioridad)
                    AND (CAST(:empresa AS uuid) IS NULL OR c.id_empresa = :empresa)
                    AND (NOT :sinEmpresa OR c.id_empresa IS NULL)
@@ -121,7 +122,8 @@ public class RepositorioAtencionJdbc implements RepositorioAtencion {
 
     private static JdbcClient.StatementSpec parametros(JdbcClient.StatementSpec sql, FiltroCasos f) {
         return sql.param("estado", f.estado()).param("servicio", f.tipoServicio())
-                .param("municipio", f.codigoMunicipio()).param("prioridad", f.prioridad())
+                .param("municipio", f.codigoMunicipio()).param("departamento", f.codigoDepartamento())
+                .param("prioridad", f.prioridad())
                 .param("empresa", f.idEmpresa()).param("sinEmpresa", f.soloSinEmpresa())
                 .param("asignado", f.asignadoA()).param("reporte", f.idReporte());
     }

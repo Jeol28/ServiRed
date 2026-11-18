@@ -329,6 +329,7 @@ paths:
         - { name: estado, in: query, schema: { $ref: "#/components/schemas/EstadoCaso" } }
         - { name: tipoServicio, in: query, schema: { $ref: "#/components/schemas/TipoServicio" } }
         - { name: codigoMunicipio, in: query, schema: { type: string, pattern: "^[0-9]{5}$" } }
+        - { name: codigoDepartamento, in: query, schema: { type: string, pattern: "^[0-9]{2}$" } }
         - { name: prioridad, in: query, schema: { $ref: "#/components/schemas/Prioridad" } }
         - { name: idEmpresa, in: query, schema: { type: string, format: uuid } }
         - { name: sinEmpresa, in: query, schema: { type: boolean } }

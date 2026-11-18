@@ -72,13 +72,18 @@ class AtencionIntegracionTest {
     }
 
     private UUID abrirCaso(String prioridad, String empresa) throws Exception {
+        return abrirCaso(prioridad, empresa, "11001");
+    }
+
+    private UUID abrirCaso(String prioridad, String empresa, String municipio) throws Exception {
         UUID idCaso = UUID.randomUUID();
         enviar(ATENCION, "/interno/v1/casos/abrir", """
-                {"idCaso":"%s","idReporte":"%s","tipoServicio":"ENERGIA","codigoMunicipio":"11001",
+                {"idCaso":"%s","idReporte":"%s","tipoServicio":"ENERGIA","codigoMunicipio":"%s",
                  "magnitud":"BARRIO","abiertoEn":"2026-11-17T10:00:00Z",%s"prioridad":"%s",
                  "latitud":4.6,"longitud":-74.1,"descripcion":"Sin luz","inicioEstimado":"2026-11-17T09:00:00Z"}"""
-                .formatted(idCaso, UUID.randomUUID(), empresa == null ? "" : "\"idEmpresa\":\"" + empresa + "\",",
-                        prioridad)).andExpect(status().isCreated());
+                .formatted(idCaso, UUID.randomUUID(), municipio,
+                        empresa == null ? "" : "\"idEmpresa\":\"" + empresa + "\",", prioridad))
+                .andExpect(status().isCreated());
         return idCaso;
     }
 
@@ -121,6 +126,18 @@ class AtencionIntegracionTest {
         UUID sinEmpresa = abrirCaso("MEDIA", null);
         String r = consultar("/interno/v1/casos?sinEmpresa=true&tamano=100").andReturn().getResponse().getContentAsString();
         assertThat(r).contains(sinEmpresa.toString()).doesNotContain(critica.toString());
+    }
+
+    @Test
+    void filtraLaBandejaPorDepartamento() throws Exception {
+        UUID medellin = abrirCaso("MEDIA", null, "05001");
+        UUID bogota = abrirCaso("MEDIA", null, "11001");
+        String antioquia = consultar("/interno/v1/casos?codigoDepartamento=05&tamano=100")
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(antioquia).contains(medellin.toString()).doesNotContain(bogota.toString());
+        String conMunicipio = consultar("/interno/v1/casos?codigoDepartamento=05&codigoMunicipio=05001&tamano=100")
+                .andReturn().getResponse().getContentAsString();
+        assertThat(conMunicipio).contains(medellin.toString());
     }
 
     @Test

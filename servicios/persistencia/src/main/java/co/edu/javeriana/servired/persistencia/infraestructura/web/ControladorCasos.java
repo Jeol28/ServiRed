@@ -82,6 +82,7 @@ public class ControladorCasos {
                               @RequestParam(required = false) String estado,
                               @RequestParam(required = false) String tipoServicio,
                               @RequestParam(required = false) String codigoMunicipio,
+                              @RequestParam(required = false) String codigoDepartamento,
                               @RequestParam(required = false) String prioridad,
                               @RequestParam(required = false) UUID idEmpresa,
                               @RequestParam(defaultValue = "false") boolean sinEmpresa,
@@ -89,7 +90,7 @@ public class ControladorCasos {
                               @RequestParam(required = false) UUID idReporte,
                               @RequestParam(defaultValue = "0") int pagina,
                               @RequestParam(defaultValue = "20") int tamano) {
-        return atencion.listar(s, new FiltroCasos(estado, tipoServicio, codigoMunicipio, prioridad, idEmpresa,
+        return atencion.listar(s, new FiltroCasos(estado, tipoServicio, codigoMunicipio, codigoDepartamento, prioridad, idEmpresa,
                 sinEmpresa, asignadoA, idReporte, pagina, tamano));
     }
 
