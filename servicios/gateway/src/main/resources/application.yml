@@ -11,6 +11,12 @@ spring:
         webflux:
           # Minimización (RNF-SEG4): la IP del cliente no viaja a los servicios.
           # El gateway no agrega X-Forwarded-*/Forwarded y descarta los que lleguen.
+          # Sin timeout de respuesta, una solicitud en curso hacia una réplica que muere de
+          # golpe (su IP desaparece y nadie cierra la conexión) quedaba colgada. Con el timeout,
+          # el Retry de más abajo repite el GET en otra réplica (ADR-20).
+          httpclient:
+            connect-timeout: 2000
+            response-timeout: 10s
           x-forwarded:
             enabled: false
           forwarded:
@@ -19,6 +25,21 @@ spring:
             - RemoveRequestHeader=X-Forwarded-For
             - RemoveRequestHeader=X-Real-IP
             - RemoveRequestHeader=Forwarded
+            # Con varias réplicas (ADR-20): si la conexión con una réplica falla, un GET se
+            # repite (la siguiente conexión va a otra). Solo errores de conexión: un 5xx de
+            # un servicio NO se reintenta (sumaría carga a una caída); la serie INFORMATIONAL
+            # anula el reintento por estado, que por defecto aplica a los 5xx.
+            - name: Retry
+              args:
+                retries: 2
+                methods: GET
+                series: INFORMATIONAL
+                exceptions: java.io.IOException, java.util.concurrent.TimeoutException
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 200ms
+                  factor: 2
+                  basedOnPreviousValue: false
           # Los clientes solo conocen /api/v1/**. Persistencia NUNCA se enruta;
           # de auditoría solo se expone la consulta (GET /api/v1/auditoria/**).
           routes:

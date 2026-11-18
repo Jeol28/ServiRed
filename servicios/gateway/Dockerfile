@@ -20,4 +20,5 @@ COPY --from=compilacion /fuente/app.jar app.jar
 EXPOSE 8080 8081
 HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=5 \
     CMD curl -fsS http://localhost:8081/actuator/health/readiness || exit 1
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+# DNS en caché solo 5 s (no 30): con varias réplicas, una que se retira sale pronto de la rotación (ADR-20).
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Dsun.net.inetaddr.ttl=5", "-jar", "app.jar"]

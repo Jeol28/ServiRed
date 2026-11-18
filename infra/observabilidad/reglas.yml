@@ -10,6 +10,27 @@ groups:
         annotations:
           summary: "{{ $labels.job }} no responde a Prometheus desde hace 1 minuto"
 
+      # Con descubrimiento por DNS, una réplica que muere deja de ser objetivo: si mueren
+      # todas, up == 0 no se dispara. Esta alerta cubre «ninguna réplica viva» (ADR-20).
+      - alert: ServicioSinReplicas
+        expr: |
+          absent(up{job="persistencia"} == 1) or absent(up{job="reportes"} == 1)
+          or absent(up{job="identidad"} == 1) or absent(up{job="atencion"} == 1)
+          or absent(up{job="indicadores"} == 1) or absent(up{job="auditoria"} == 1)
+        for: 1m
+        labels: { severity: critica }
+        annotations:
+          summary: "{{ $labels.job }} no tiene ninguna réplica viva desde hace 1 minuto"
+
+      - alert: CircuitoPersistenciaAbierto
+        expr: |
+          resilience4j_circuitbreaker_state{name="persistencia", state="open"} == 1
+          or servired_circuito_persistencia_estado == 1
+        for: 1m
+        labels: { severity: critica }
+        annotations:
+          summary: "{{ $labels.job }} tiene abierto el circuito hacia Persistencia: falla rápido sus solicitudes"
+
       - alert: MensajesEnColaDeFallidos
         expr: rabbitmq_queue_messages_ready{queue=~".+\\.dlq"} > 0
         for: 1m

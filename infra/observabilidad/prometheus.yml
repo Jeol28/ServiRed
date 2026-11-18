@@ -12,28 +12,30 @@ alerting:
     - static_configs:
         - targets: ["alertmanager:9093"]
 
+# Los servicios se descubren por DNS: con `docker compose up --scale` cada réplica es
+# un objetivo propio (instance = IP:puerto). Ver ADR-20.
 scrape_configs:
   - job_name: gateway                      # actuator en el puerto de gestión (no publicado)
     metrics_path: /actuator/prometheus
     static_configs: [{ targets: ["gateway:8081"] }]
   - job_name: identidad
     metrics_path: /actuator/prometheus
-    static_configs: [{ targets: ["identidad:8080"] }]
+    dns_sd_configs: [{ names: ["identidad"], type: A, port: 8080 }]
   - job_name: reportes
     metrics_path: /actuator/prometheus
-    static_configs: [{ targets: ["reportes:8080"] }]
+    dns_sd_configs: [{ names: ["reportes"], type: A, port: 8080 }]
   - job_name: persistencia
     metrics_path: /actuator/prometheus
-    static_configs: [{ targets: ["persistencia:8080"] }]
+    dns_sd_configs: [{ names: ["persistencia"], type: A, port: 8080 }]
   - job_name: atencion
     metrics_path: /metrics
-    static_configs: [{ targets: ["atencion:8080"] }]
+    dns_sd_configs: [{ names: ["atencion"], type: A, port: 8080 }]
   - job_name: indicadores
     metrics_path: /metrics
-    static_configs: [{ targets: ["indicadores:8080"] }]
+    dns_sd_configs: [{ names: ["indicadores"], type: A, port: 8080 }]
   - job_name: auditoria
     metrics_path: /metrics
-    static_configs: [{ targets: ["auditoria:8080"] }]
+    dns_sd_configs: [{ names: ["auditoria"], type: A, port: 8080 }]
   - job_name: rabbitmq                     # métricas por cola (DLQ, reintentos)
     metrics_path: /metrics/per-object
     static_configs: [{ targets: ["rabbitmq:15692"] }]

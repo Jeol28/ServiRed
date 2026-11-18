@@ -85,6 +85,20 @@ docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
 ```
 
+**Réplicas y circuit breaker** ([ADR-20](docs/adr/ADR-20-replicas-y-circuit-breaker.md)):
+Persistencia y Reportes pueden correr con varias réplicas. Los servicios llegan a ellas por
+el DNS de Docker, y cada cliente de Persistencia tiene un circuit breaker. La prueba hace
+caer réplicas, así que úsela solo en un entorno de pruebas:
+
+```bash
+docker compose up -d --build --wait --scale persistencia=2 --scale reportes=2
+python3 pruebas/e2e/replicas-y-circuito.py           # e2e: caída de réplicas, circuito y outbox
+```
+
+Las pruebas e2e leen `.env`. Con `SERVIRED_ENV=<archivo>` usan otro, y con
+`COMPOSE_ENV_FILES=<archivo>` también Docker Compose. Así puede probar contra la base
+local mientras `.env` apunta a Supabase.
+
 - Consola de RabbitMQ: http://127.0.0.1:15672 (usuario y clave de `.env`).
 - Primer administrador: `IDENTIDAD_ADMIN_CORREO` / `IDENTIDAD_ADMIN_CLAVE` de `.env`.
 - Clave de firma de los JWT: `echo "IDENTIDAD_JWT_CLAVE_PRIVADA=$(sh infra/generar-clave-jwt.sh)"`

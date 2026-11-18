@@ -16,8 +16,10 @@ RABBIT_API = "http://127.0.0.1:15672/api"
 
 
 def leer_env():
+    """El .env de la raíz, u otro con SERVIRED_ENV (p. ej. la base local mientras .env apunta a Supabase)."""
     valores = {}
-    for linea in (RAIZ / ".env").read_text(encoding="utf-8").splitlines():
+    archivo = RAIZ / os.environ.get("SERVIRED_ENV", ".env")
+    for linea in archivo.read_text(encoding="utf-8").splitlines():
         if "=" in linea and not linea.lstrip().startswith("#"):
             clave, valor = linea.split("=", 1)
             valor = valor.strip()

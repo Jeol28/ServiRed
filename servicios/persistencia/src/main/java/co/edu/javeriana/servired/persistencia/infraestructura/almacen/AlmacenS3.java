@@ -14,6 +14,8 @@ import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
+import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -47,19 +49,29 @@ public class AlmacenS3 implements AlmacenEvidencias {
                 .build();
     }
 
-    /** Crea el bucket si no existe (solo entorno local; en Supabase se crea desde el panel). */
+    /**
+     * Crea el bucket si no existe (solo entorno local; en Supabase se crea desde el panel).
+     * Con varias réplicas arrancando a la vez, otra puede crearlo primero: no es un error.
+     */
     public void asegurarBucket() {
         try {
             s3.headBucket(b -> b.bucket(bucket));
         } catch (NoSuchBucketException e) {
-            s3.createBucket(b -> b.bucket(bucket));
-            log.info("bucket de evidencias creado: {}", bucket);
+            crearBucket();
         } catch (S3Exception e) {
             if (e.statusCode() != 404) {
                 throw e;
             }
+            crearBucket();
+        }
+    }
+
+    private void crearBucket() {
+        try {
             s3.createBucket(b -> b.bucket(bucket));
             log.info("bucket de evidencias creado: {}", bucket);
+        } catch (BucketAlreadyOwnedByYouException | BucketAlreadyExistsException e) {
+            log.info("el bucket de evidencias ya lo creó otra réplica: {}", bucket);
         }
     }
 

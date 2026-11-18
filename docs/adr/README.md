@@ -21,3 +21,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-17](ADR-17-portales-web.md) | Portales web: sesión en el navegador, proxy y anonimato | Aceptada |
 | [ADR-18](ADR-18-app-movil-ciudadano.md) | Apps móviles del ciudadano (Android e iOS): sin conexión, sesión segura y mapas | Aceptada |
 | [ADR-19](ADR-19-servidor-de-pruebas.md) | Servidor de pruebas fuera de local, sin costo | Aceptada |
+| [ADR-20](ADR-20-replicas-y-circuit-breaker.md) | Réplicas y circuit breaker hacia Persistencia | Aceptada |
