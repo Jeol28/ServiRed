@@ -84,10 +84,10 @@ public class RepositorioReportesJdbc implements RepositorioReportes {
     /** Reporte con su municipio y el conteo de validaciones por objeto. */
     static final String CONSULTA_REPORTE = """
             SELECT r.*, m.nombre AS nombre_municipio,
-                   count(*) FILTER (WHERE v.objeto = 'CORTE' AND v.sentido = 'CONFIRMA') AS corte_confirma,
-                   count(*) FILTER (WHERE v.objeto = 'CORTE' AND v.sentido = 'CONTROVIERTE') AS corte_controvierte,
-                   count(*) FILTER (WHERE v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONFIRMA') AS rest_confirma,
-                   count(*) FILTER (WHERE v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONTROVIERTE') AS rest_controvierte
+                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'CORTE' AND v.sentido = 'CONFIRMA') AS corte_confirma,
+                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'CORTE' AND v.sentido = 'CONTROVIERTE') AS corte_controvierte,
+                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONFIRMA') AS rest_confirma,
+                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONTROVIERTE') AS rest_controvierte
             FROM reportes.reportes r
             JOIN catalogo.municipios m ON m.codigo = r.codigo_municipio
             LEFT JOIN reportes.validaciones v ON v.id_reporte = r.id

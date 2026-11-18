@@ -26,13 +26,15 @@ public final class Vistas {
                                  Reporte.Conteo validacionCorte, Reporte.Conteo validacionRestablecimiento) {
     }
 
+    /** @param cuenta si suma al conteo (antigüedad de la cuenta, ADR-22) */
     public record Voto(ObjetoValidacion objeto, SentidoValidacion sentido, UUID idCiudadano, Instant fecha,
-                       int versionEsperada) {
+                       int versionEsperada, boolean cuenta) {
     }
 
     /** @param nuevo false si el ciudadano ya había votado (respuesta idempotente) */
+    /** @param cuentaParaUmbral false si la cuenta es demasiado nueva: el voto quedó, pero no suma */
     public record ResultadoValidacion(UUID idReporte, ObjetoValidacion objeto, Reporte.Conteo conteo, boolean validado,
-                                      boolean nuevo) {
+                                      boolean nuevo, boolean cuentaParaUmbral) {
     }
 
     public record ImagenSaneada(String tipoContenido, byte[] contenido, int ancho, int alto) {

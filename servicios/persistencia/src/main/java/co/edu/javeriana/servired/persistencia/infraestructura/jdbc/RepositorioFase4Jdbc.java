@@ -82,8 +82,8 @@ public class RepositorioFase4Jdbc implements RepositorioFase4 {
     @Override
     public boolean insertarVoto(UUID idReporte, VotoNuevo v) {
         return jdbc.sql("""
-                        INSERT INTO reportes.validaciones (id_reporte, objeto, id_ciudadano, sentido, fecha)
-                        VALUES (:reporte, :objeto, :ciudadano, :sentido, :fecha)
+                        INSERT INTO reportes.validaciones (id_reporte, objeto, id_ciudadano, sentido, fecha, cuenta)
+                        VALUES (:reporte, :objeto, :ciudadano, :sentido, :fecha, :cuenta)
                         ON CONFLICT DO NOTHING
                         """)
                 .param("reporte", idReporte)
@@ -91,6 +91,7 @@ public class RepositorioFase4Jdbc implements RepositorioFase4 {
                 .param("ciudadano", v.idCiudadano())
                 .param("sentido", v.sentido())
                 .param("fecha", Timestamp.from(v.fecha()))
+                .param("cuenta", v.cuenta())
                 .update() == 1;
     }
 
@@ -131,10 +132,10 @@ public class RepositorioFase4Jdbc implements RepositorioFase4 {
                                        power(sin(radians(r.latitud - :lat) / 2), 2) +
                                        cos(radians(:lat)) * cos(radians(r.latitud)) *
                                        power(sin(radians(r.longitud - :lon) / 2), 2)))) AS distancia,
-                                   count(*) FILTER (WHERE v.objeto = 'CORTE' AND v.sentido = 'CONFIRMA') AS cc,
-                                   count(*) FILTER (WHERE v.objeto = 'CORTE' AND v.sentido = 'CONTROVIERTE') AS cv,
-                                   count(*) FILTER (WHERE v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONFIRMA') AS rc,
-                                   count(*) FILTER (WHERE v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONTROVIERTE') AS rv
+                                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'CORTE' AND v.sentido = 'CONFIRMA') AS cc,
+                                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'CORTE' AND v.sentido = 'CONTROVIERTE') AS cv,
+                                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONFIRMA') AS rc,
+                                   count(*) FILTER (WHERE v.cuenta AND v.objeto = 'RESTABLECIMIENTO' AND v.sentido = 'CONTROVIERTE') AS rv
                             FROM reportes.reportes r
                             LEFT JOIN reportes.validaciones v ON v.id_reporte = r.id
                             WHERE r.estado <> 'CERRADO'

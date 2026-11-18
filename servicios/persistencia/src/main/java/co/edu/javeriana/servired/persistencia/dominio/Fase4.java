@@ -13,7 +13,9 @@ public final class Fase4 {
     }
 
     /** @param versionEsperada versión de validaciones que leyó Reportes al calcular el resultado */
-    public record VotoNuevo(String objeto, String sentido, UUID idCiudadano, Instant fecha, int versionEsperada) {
+    /** cuenta = false: el voto se guarda pero no suma (cuenta demasiado nueva, ADR-22). */
+    public record VotoNuevo(String objeto, String sentido, UUID idCiudadano, Instant fecha, int versionEsperada,
+                            boolean cuenta) {
     }
 
     public record ArchivoNuevo(UUID idEvidencia, String tipoContenido, byte[] contenido) {

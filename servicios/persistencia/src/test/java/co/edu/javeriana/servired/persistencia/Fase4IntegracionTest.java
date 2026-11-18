@@ -90,11 +90,33 @@ class Fase4IntegracionTest {
 
     private ResultActions votar(UUID reporte, UUID ciudadano, String objeto, String sentido, int version)
             throws Exception {
+        return votar(reporte, ciudadano, objeto, sentido, version, "");
+    }
+
+    private ResultActions votar(UUID reporte, UUID ciudadano, String objeto, String sentido, int version,
+                                String extra) throws Exception {
         String c = UUID.randomUUID().toString();
         return enviar("/interno/v1/reportes/" + reporte + "/validaciones", """
                 {"objeto":"%s","sentido":"%s","idCiudadano":"%s","fecha":"2026-11-16T10:00:00Z",
-                 "versionEsperada":%d,"evento":%s}""".formatted(objeto, sentido, ciudadano, version,
-                evento("validacion.registrada", c)), c);
+                 "versionEsperada":%d,"evento":%s%s}""".formatted(objeto, sentido, ciudadano, version,
+                evento("validacion.registrada", c), extra), c);
+    }
+
+    @Test
+    void elVotoDeUnaCuentaNuevaSeGuardaPeroNoSuma() throws Exception {
+        UUID id = crearReporte(UUID.randomUUID(), 4.62, -74.06);
+        UUID nueva = UUID.randomUUID();
+
+        votar(id, nueva, "CORTE", "CONFIRMA", 0, ",\"cuenta\":false").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.validacionCorte.confirmaciones").value(0));
+        // Ya votó: no puede repetir aunque su cuenta envejezca.
+        votar(id, nueva, "CORTE", "CONFIRMA", 1).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.motivo").value("YA_VOTO"));
+        // Una cuenta establecida sí suma (y "cuenta" ausente = true, compatible).
+        votar(id, UUID.randomUUID(), "CORTE", "CONFIRMA", 1).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.validacionCorte.confirmaciones").value(1));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM reportes.validaciones WHERE id_reporte = ? AND NOT cuenta",
+                Integer.class, id)).isEqualTo(1);
     }
 
     @Test

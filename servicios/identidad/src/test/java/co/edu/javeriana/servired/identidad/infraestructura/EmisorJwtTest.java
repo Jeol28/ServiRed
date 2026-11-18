@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 
 class EmisorJwtTest {
 
+    private static final java.time.Instant CREADA = java.time.Instant.parse("2026-11-01T10:00:00Z");
+
     private final PropiedadesJwt propiedades = new PropiedadesJwt("servired-identidad", "servired-api",
             Duration.ofMinutes(15), Duration.ofDays(14), null);
 
@@ -27,7 +29,7 @@ class EmisorJwtTest {
         UUID cuenta = UUID.randomUUID();
         UUID empresa = UUID.randomUUID();
 
-        String token = new EmisorJwt(claves, propiedades, Clock.systemUTC()).emitir(cuenta, Rol.OPERADOR, empresa).valor();
+        String token = new EmisorJwt(claves, propiedades, Clock.systemUTC()).emitir(cuenta, Rol.OPERADOR, empresa, CREADA).valor();
 
         SignedJWT jwt = SignedJWT.parse(token);
         RSAKey publica = (RSAKey) claves.jwksPublico().getKeyByKeyId(jwt.getHeader().getKeyID());
@@ -35,6 +37,8 @@ class EmisorJwtTest {
         assertThat(jwt.verify(new RSASSAVerifier(publica))).isTrue();
         var claims = jwt.getJWTClaimsSet();
         assertThat(claims.getSubject()).isEqualTo(cuenta.toString());
+        assertThat(claims.getLongClaim(EmisorJwt.CLAIM_CREADA)).as("antigüedad de la cuenta (ADR-22)")
+                .isEqualTo(CREADA.getEpochSecond());
         assertThat(claims.getIssuer()).isEqualTo("servired-identidad");
         assertThat(claims.getAudience()).containsExactly("servired-api");
         assertThat(claims.getStringClaim("rol")).isEqualTo("OPERADOR");

@@ -119,10 +119,22 @@ public class PersistenciaEnMemoria implements RepositorioReportes, CatalogoTerri
         if (!votos.add(id + "|" + v.objeto() + "|" + v.idCiudadano())) {
             throw new VotoRepetido();
         }
-        var nuevo = conVoto(r, v.objeto(), v.sentido() == co.edu.javeriana.servired.reportes.dominio.SentidoValidacion.CONFIRMA);
+        votosRecibidos.add(v);
+        // Como Persistencia: el voto que no cuenta se guarda (y avanza la versión) pero no suma.
+        var conVotoContado = conVoto(r, v.objeto(), v.sentido() == co.edu.javeriana.servired.reportes.dominio.SentidoValidacion.CONFIRMA);
+        var nuevo = v.cuenta() ? conVotoContado : conVersion(r, conVotoContado.versionValidaciones());
         reportes.put(id, nuevo);
         registrar(evento);
         return nuevo;
+    }
+
+    public final java.util.List<Voto> votosRecibidos = new java.util.ArrayList<>();
+
+    private static Reporte conVersion(Reporte r, int version) {
+        return new Reporte(r.idReporte(), r.idCiudadano(), r.tipoServicio(), r.ubicacion(), r.municipio(),
+                r.inicioEstimado(), r.magnitud(), r.descripcion(), r.estado(), r.fechaRegistro(),
+                r.fechaRestablecimiento(), r.duracionMinutos(), version, r.validacionCorte(),
+                r.validacionRestablecimiento(), r.historia(), r.evidencias());
     }
 
     private static Reporte conVoto(Reporte r, ObjetoValidacion objeto, boolean confirma) {

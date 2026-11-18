@@ -23,6 +23,8 @@ public class EmisorJwt implements EmisorTokens {
 
     public static final String CLAIM_ROL = "rol";
     public static final String CLAIM_EMPRESA = "emp";
+    /** Creación de la cuenta (segundos epoch, como iat): ADR-22. */
+    public static final String CLAIM_CREADA = "creada";
 
     private final ClavesFirma claves;
     private final PropiedadesJwt propiedades;
@@ -35,7 +37,7 @@ public class EmisorJwt implements EmisorTokens {
     }
 
     @Override
-    public TokenAcceso emitir(UUID idCuenta, Rol rol, UUID idEmpresa) {
+    public TokenAcceso emitir(UUID idCuenta, Rol rol, UUID idEmpresa, Instant cuentaCreadaEn) {
         Instant ahora = reloj.instant();
         Instant expira = ahora.plus(propiedades.duracionAcceso());
         var claims = new JWTClaimsSet.Builder()
@@ -49,6 +51,9 @@ public class EmisorJwt implements EmisorTokens {
                 .jwtID(UUID.randomUUID().toString());
         if (idEmpresa != null) {
             claims.claim(CLAIM_EMPRESA, idEmpresa.toString());
+        }
+        if (cuentaCreadaEn != null) {
+            claims.claim(CLAIM_CREADA, cuentaCreadaEn.getEpochSecond());
         }
         var cabecera = new JWSHeader.Builder(JWSAlgorithm.RS256)
                 .keyID(claves.jwk().getKeyID()).type(JOSEObjectType.JWT).build();

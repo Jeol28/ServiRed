@@ -71,7 +71,7 @@ public class PersistenciaEnMemoria implements RepositorioCuentas, RepositorioSes
     public Optional<Credenciales> credenciales(Correo correo, IdCorrelacion correlacion) {
         return cuentas.values().stream().filter(f -> f.cuenta().correo().equals(correo)).findFirst()
                 .map(f -> new Credenciales(f.cuenta().idCuenta(), f.hash(), f.cuenta().rol(), f.cuenta().idEmpresa(),
-                        f.cuenta().nombre(), f.cuenta().activa()));
+                        f.cuenta().nombre(), f.cuenta().activa(), f.cuenta().creadaEn()));
     }
 
     @Override

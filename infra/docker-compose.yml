@@ -155,6 +155,8 @@ services:
       <<: *entorno-rabbit
       PERSISTENCIA_URL: http://persistencia:8080
       PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_REPORTES:?definir en .env}
+      # Antigüedad mínima de la cuenta para que su voto sume a la validación (ADR-22).
+      VALIDACION_ANTIGUEDAD_MINIMA_CUENTA: ${VALIDACION_ANTIGUEDAD_MINIMA_CUENTA:-24h}
     depends_on:
       <<: *depende-rabbit
       persistencia:
@@ -207,6 +209,9 @@ services:
       OTLP_TRAZAS_URL: http://jaeger:4318/v1/traces
       # Solo de estos proxies se acepta X-Forwarded-For (límite de abuso por cliente).
       PROXIES_CONFIABLES: portal-publico,portal-operador
+      # Cuentas nuevas por IP y por hora (ADR-22). Súbalo solo en entornos de prueba que
+      # registran muchas cuentas desde una misma máquina.
+      LIMITE_REGISTROS_POR_HORA: ${LIMITE_REGISTROS_POR_HORA:-30}
     ports:
       - "8080:8080"
     depends_on:

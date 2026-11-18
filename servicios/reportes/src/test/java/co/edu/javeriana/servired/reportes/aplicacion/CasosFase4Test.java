@@ -69,6 +69,26 @@ class CasosFase4Test {
     }
 
     @Test
+    void elVotoDeUnaCuentaNuevaQuedaRegistradoPeroNoSuma() {
+        var conAntiguedad = new ParticipacionCiudadana(persistencia,
+                new ReglasValidacion(3, 1000, java.time.Duration.ofHours(24)), reloj);
+        Instant haceUnaHora = reloj.instant().minus(java.time.Duration.ofHours(1));
+        Instant haceDosDias = reloj.instant().minus(java.time.Duration.ofDays(2));
+
+        var nueva = conAntiguedad.validar(UUID.randomUUID(), haceUnaHora, reporte.idReporte(), ObjetoValidacion.CORTE,
+                SentidoValidacion.CONFIRMA, LUGAR, IdCorrelacion.nuevo());
+        var establecida = conAntiguedad.validar(UUID.randomUUID(), haceDosDias, reporte.idReporte(),
+                ObjetoValidacion.CORTE, SentidoValidacion.CONFIRMA, LUGAR, IdCorrelacion.nuevo());
+
+        assertThat(nueva.nuevo()).as("el voto quedó registrado").isTrue();
+        assertThat(nueva.cuentaParaUmbral()).isFalse();
+        assertThat(nueva.conteo().netas()).isZero();
+        assertThat(persistencia.votosRecibidos.get(0).cuenta()).as("Persistencia recibe cuenta=false").isFalse();
+        assertThat(establecida.cuentaParaUmbral()).isTrue();
+        assertThat(establecida.conteo().netas()).as("solo suma la cuenta establecida").isEqualTo(1);
+    }
+
+    @Test
     void recalculaSiOtroVotoEntraEnMedioYElEventoRefleaElTotalReal() {
         persistencia.conflictosDeVersion = 1;
         participacion.validar(UUID.randomUUID(), reporte.idReporte(), ObjetoValidacion.CORTE,

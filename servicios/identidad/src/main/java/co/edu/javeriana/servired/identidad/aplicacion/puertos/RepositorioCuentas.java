@@ -6,6 +6,7 @@ import co.edu.javeriana.servired.identidad.dominio.Cuenta;
 import co.edu.javeriana.servired.identidad.dominio.IdCorrelacion;
 import co.edu.javeriana.servired.identidad.dominio.NuevaCuenta;
 import co.edu.javeriana.servired.identidad.dominio.Rol;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,7 +43,8 @@ public interface RepositorioCuentas {
         return eliminar(idCuenta, correlacion);
     }
 
-    record Credenciales(UUID idCuenta, String hashClave, Rol rol, UUID idEmpresa, String nombre, boolean activa) {
+    record Credenciales(UUID idCuenta, String hashClave, Rol rol, UUID idEmpresa, String nombre, boolean activa,
+                        Instant creadaEn) {
     }
 
     /** Cambios parciales; null = sin cambio. */

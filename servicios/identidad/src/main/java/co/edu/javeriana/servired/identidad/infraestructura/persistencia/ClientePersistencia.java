@@ -103,7 +103,7 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
                 .header(IdCorrelacion.CABECERA, correlacion.valor())
                 .body(Map.of("correo", correo.valor())).retrieve().body(CredencialesDto.class)))
                 .map(d -> new Credenciales(d.idCuenta(), d.hashClave(), Rol.valueOf(d.rol()), d.idEmpresa(),
-                        d.nombre(), d.activa()));
+                        d.nombre(), d.activa(), d.creadaEn()));
     }
 
     @Override
@@ -308,7 +308,7 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
     }
 
     record CredencialesDto(UUID idCuenta, String hashClave, String rol, UUID idEmpresa, String nombre,
-                           boolean activa) {
+                           boolean activa, Instant creadaEn) {
     }
 
     record PaginaDto(List<CuentaDto> elementos, long total, int pagina, int tamano) {

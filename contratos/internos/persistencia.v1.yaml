@@ -167,6 +167,10 @@ paths:
                 idCiudadano: { type: string, format: uuid }
                 fecha: { type: string, format: date-time }
                 versionEsperada: { type: integer, minimum: 0 }
+                cuenta:
+                  type: boolean
+                  default: true
+                  description: "false: el voto se guarda pero no suma a los conteos (cuenta demasiado nueva, ADR-22)"
                 evento: { $ref: "#/components/schemas/EventoSaliente" }
       responses:
         "201": { description: Voto guardado, content: { application/json: { schema: { $ref: "#/components/schemas/ReporteGuardado" } } } }
@@ -319,6 +323,7 @@ paths:
                   idEmpresa: { type: string, format: uuid }
                   nombre: { type: string }
                   activa: { type: boolean }
+                  creadaEn: { type: string, format: date-time, description: "Va en el JWT (claim creada): ADR-22" }
         "404": { description: No existe (o fue eliminada) }
 
   /interno/v1/cuentas:

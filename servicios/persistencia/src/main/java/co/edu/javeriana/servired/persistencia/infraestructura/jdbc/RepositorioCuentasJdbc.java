@@ -56,13 +56,13 @@ public class RepositorioCuentasJdbc implements RepositorioCuentas {
     @Override
     public Optional<Credenciales> credencialesPorCorreo(String correo) {
         return jdbc.sql("""
-                        SELECT id, hash_clave, rol, id_empresa, nombre, activa FROM identidad.cuentas
+                        SELECT id, hash_clave, rol, id_empresa, nombre, activa, creada_en FROM identidad.cuentas
                         WHERE correo = :correo AND eliminada_en IS NULL
                         """)
                 .param("correo", correo)
                 .query((rs, n) -> new Credenciales(rs.getObject("id", UUID.class), rs.getString("hash_clave"),
                         rs.getString("rol"), rs.getObject("id_empresa", UUID.class), rs.getString("nombre"),
-                        rs.getBoolean("activa")))
+                        rs.getBoolean("activa"), instante(rs, "creada_en")))
                 .optional();
     }
 

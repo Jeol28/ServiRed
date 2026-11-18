@@ -55,6 +55,26 @@ class ReglasFase4Test {
     }
 
     @Test
+    void elVotoDeUnaCuentaNuevaNoSumaYAlCumplirLaAntiguedadSi() {
+        var conAntiguedad = new ReglasValidacion(3, 1000, Duration.ofHours(24));
+        var dos = reporte(EstadoReporte.RECIBIDO, new Reporte.Conteo(2, 0));
+        var cerca = new Ubicacion(4.6300, -74.0650);
+
+        var nueva = conAntiguedad.evaluar(dos, UUID.randomUUID(), ObjetoValidacion.CORTE, SentidoValidacion.CONFIRMA,
+                cerca, AHORA.minus(Duration.ofHours(23)), AHORA);
+        assertThat(nueva.cuenta()).isFalse();
+        assertThat(nueva.conteo().netas()).as("no suma: sigue en 2").isEqualTo(2);
+        assertThat(nueva.validado()).isFalse();
+
+        var justa = conAntiguedad.evaluar(dos, UUID.randomUUID(), ObjetoValidacion.CORTE, SentidoValidacion.CONFIRMA,
+                cerca, AHORA.minus(Duration.ofHours(24)), AHORA);
+        assertThat(justa.cuenta()).isTrue();
+        assertThat(justa.validado()).as("con 24 h justas ya suma y valida").isTrue();
+
+        assertThat(conAntiguedad.cuentaParaUmbral(null, AHORA)).as("token sin el dato: suma").isTrue();
+    }
+
+    @Test
     void validaConTresConfirmacionesNetas() {
         var dos = reporte(EstadoReporte.RECIBIDO, new Reporte.Conteo(3, 1));
 

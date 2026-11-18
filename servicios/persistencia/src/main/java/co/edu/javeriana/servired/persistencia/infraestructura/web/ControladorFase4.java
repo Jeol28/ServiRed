@@ -93,7 +93,8 @@ public class ControladorFase4 {
             @RequestHeader(IdCorrelacion.CABECERA) String correlacion, @PathVariable UUID idReporte,
             @Valid @RequestBody SolicitudValidacion v) {
         var reporte = operaciones.registrarValidacion(s, new IdCorrelacion(correlacion), idReporte,
-                new VotoNuevo(v.objeto(), v.sentido(), v.idCiudadano(), v.fecha(), v.versionEsperada()),
+                new VotoNuevo(v.objeto(), v.sentido(), v.idCiudadano(), v.fecha(), v.versionEsperada(),
+                        v.cuenta() == null || v.cuenta()),
                 solicitudes.evento(v.evento()));
         return ResponseEntity.status(HttpStatus.CREATED).body(reporte);
     }
@@ -173,7 +174,8 @@ public class ControladorFase4 {
     public record SolicitudValidacion(@NotNull @Pattern(regexp = "CORTE|RESTABLECIMIENTO") String objeto,
                                       @NotNull @Pattern(regexp = "CONFIRMA|CONTROVIERTE") String sentido,
                                       @NotNull UUID idCiudadano, @NotNull Instant fecha, @Min(0) int versionEsperada,
-                                      @NotNull @Valid EventoDto evento) {
+                                      @NotNull @Valid EventoDto evento,
+                                      /* Ausente = cuenta (compatible con clientes anteriores). */ Boolean cuenta) {
     }
 
     public record DenunciaDto(@NotNull UUID idDenuncia,

@@ -1,5 +1,6 @@
 package co.edu.javeriana.servired.reportes.infraestructura.web;
 
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -14,10 +15,23 @@ import org.springframework.stereotype.Component;
 public class CiudadanoActual {
 
     public UUID id() {
+        return UUID.fromString(jwt().getSubject());
+    }
+
+    /**
+     * Creación de la cuenta (claim "creada" que firma Identidad, segundos epoch). Vacío si el
+     * token no lo trae (emitido antes de la regla de antigüedad, ADR-22).
+     */
+    public Instant cuentaCreadaEn() {
+        Object creada = jwt().getClaims().get("creada");
+        return creada instanceof Number n ? Instant.ofEpochSecond(n.longValue()) : null;
+    }
+
+    private Jwt jwt() {
         var autenticacion = SecurityContextHolder.getContext().getAuthentication();
         if (autenticacion == null || !(autenticacion.getPrincipal() instanceof Jwt jwt)) {
             throw new IllegalStateException("Petición sin JWT validado");
         }
-        return UUID.fromString(jwt.getSubject());
+        return jwt;
     }
 }

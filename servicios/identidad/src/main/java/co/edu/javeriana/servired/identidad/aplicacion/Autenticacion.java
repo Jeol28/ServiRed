@@ -85,7 +85,7 @@ public class Autenticacion {
         sesiones.abrir(UUID.randomUUID(), cred.idCuenta(), refresco.hash(),
                 reloj.instant().plus(duracionRefresco), correlacion);
         auditar(AccionAuditada.acceso("INICIO_SESION", true, cred.idCuenta(), cred.rol(), Map.of()), correlacion);
-        return new Sesion(emisor.emitir(cred.idCuenta(), cred.rol(), cred.idEmpresa()), refresco.valor(),
+        return new Sesion(emisor.emitir(cred.idCuenta(), cred.rol(), cred.idEmpresa(), cred.creadaEn()), refresco.valor(),
                 cred.idCuenta(), cred.rol(), cred.nombre(), cred.idEmpresa());
     }
 
@@ -101,7 +101,7 @@ public class Autenticacion {
                     Map.of("consecuencia", "sesiones de la cuenta revocadas")), correlacion);
         }
         Cuenta cuenta = rotacion.cuenta().orElseThrow(SesionInvalida::new);
-        return new Sesion(emisor.emitir(cuenta.idCuenta(), cuenta.rol(), cuenta.idEmpresa()), nuevo.valor(),
+        return new Sesion(emisor.emitir(cuenta.idCuenta(), cuenta.rol(), cuenta.idEmpresa(), cuenta.creadaEn()), nuevo.valor(),
                 cuenta.idCuenta(), cuenta.rol(), cuenta.nombre(), cuenta.idEmpresa());
     }
 

@@ -89,9 +89,11 @@ public class ControladorReportes {
         Ubicacion u = cuerpo.ubicacion() == null || cuerpo.ubicacion().latitud() == null
                 || cuerpo.ubicacion().longitud() == null ? null
                 : new Ubicacion(cuerpo.ubicacion().latitud(), cuerpo.ubicacion().longitud());
-        var r = participacion.validar(ciudadano.id(), idReporte, cuerpo.objeto(), cuerpo.sentido(), u, correlacion());
+        var r = participacion.validar(ciudadano.id(), ciudadano.cuentaCreadaEn(), idReporte, cuerpo.objeto(),
+                cuerpo.sentido(), u, correlacion());
         log.atInfo().addKeyValue("idReporte", idReporte).addKeyValue("objeto", r.objeto())
-                .addKeyValue("validado", r.validado()).log("validación comunitaria registrada");
+                .addKeyValue("validado", r.validado()).addKeyValue("cuentaParaUmbral", r.cuentaParaUmbral())
+                .log("validación comunitaria registrada");
         return ResponseEntity.status(r.nuevo() ? HttpStatus.CREATED : HttpStatus.OK).body(ValidacionDto.de(r));
     }
 
@@ -142,11 +144,12 @@ public class ControladorReportes {
     public record NuevaValidacionDto(ObjetoValidacion objeto, SentidoValidacion sentido, UbicacionDto ubicacion) {
     }
 
+    /** cuentaParaUmbral = false: el voto quedó registrado, pero la cuenta es muy nueva para sumar (ADR-22). */
     public record ValidacionDto(UUID idReporte, ObjetoValidacion objeto, int confirmaciones, int controversias,
-                                int confirmacionesNetas, boolean validado) {
+                                int confirmacionesNetas, boolean validado, boolean cuentaParaUmbral) {
         static ValidacionDto de(Vistas.ResultadoValidacion r) {
             return new ValidacionDto(r.idReporte(), r.objeto(), r.conteo().confirmaciones(),
-                    r.conteo().controversias(), r.conteo().netas(), r.validado());
+                    r.conteo().controversias(), r.conteo().netas(), r.validado(), r.cuentaParaUmbral());
         }
     }
 

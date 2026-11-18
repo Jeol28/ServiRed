@@ -32,7 +32,7 @@ class AutenticacionTest {
     };
 
     private final AtomicInteger emitidos = new AtomicInteger();
-    private final EmisorTokens emisor = (id, rol, empresa) ->
+    private final EmisorTokens emisor = (id, rol, empresa, creada) ->
             new EmisorTokens.TokenAcceso("token-" + emitidos.incrementAndGet() + "-" + rol, Instant.now().plusSeconds(900));
     private final PersistenciaEnMemoria persistencia = new PersistenciaEnMemoria();
     private final Autenticacion auth = new Autenticacion(persistencia, persistencia, CIFRADOR, emisor,

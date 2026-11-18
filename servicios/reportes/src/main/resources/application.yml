@@ -56,6 +56,8 @@ servired:
     # Validación comunitaria (RF-4, ADR-08)
     umbral: 3
     radio-metros: 1000
+    # El voto de una cuenta más nueva que esto queda registrado pero no suma (ADR-22).
+    antiguedad-minima-cuenta: ${VALIDACION_ANTIGUEDAD_MINIMA_CUENTA:24h}
   jwt:
     # Revalida el token emitido por Identidad (decisión F).
     jwks-url: ${IDENTIDAD_JWKS_URL:http://identidad:8080/.well-known/jwks.json}

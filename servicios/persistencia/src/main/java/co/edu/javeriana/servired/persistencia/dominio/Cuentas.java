@@ -22,8 +22,9 @@ public final class Cuentas {
                          Instant creadaEn) {
     }
 
+    /** creadaEn va en el JWT (claim "creada"): la antigüedad de la cuenta cuenta para validar (ADR-22). */
     public record Credenciales(UUID idCuenta, String hashClave, String rol, UUID idEmpresa, String nombre,
-                               boolean activa) {
+                               boolean activa, Instant creadaEn) {
     }
 
     /** Cambios parciales: los campos nulos no se modifican. */

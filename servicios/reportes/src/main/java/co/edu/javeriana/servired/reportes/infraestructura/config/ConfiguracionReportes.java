@@ -70,8 +70,9 @@ public class ConfiguracionReportes {
 
     @Bean
     ReglasValidacion reglasValidacion(@Value("${servired.validacion.umbral:3}") int umbral,
+                                      @Value("${servired.validacion.antiguedad-minima-cuenta:24h}") java.time.Duration antiguedad,
                                       @Value("${servired.validacion.radio-metros:1000}") int radioMetros) {
-        return new ReglasValidacion(umbral, radioMetros);
+        return new ReglasValidacion(umbral, radioMetros, antiguedad);
     }
 
     @Bean

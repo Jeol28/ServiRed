@@ -15,6 +15,7 @@ import co.edu.javeriana.servired.reportes.dominio.ReporteNoEncontrado;
 import co.edu.javeriana.servired.reportes.dominio.SentidoValidacion;
 import co.edu.javeriana.servired.reportes.dominio.Ubicacion;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -65,11 +66,18 @@ public class ParticipacionCiudadana {
      */
     public ResultadoValidacion validar(UUID ciudadano, UUID idReporte, ObjetoValidacion objeto,
                                        SentidoValidacion sentido, Ubicacion ubicacion, IdCorrelacion correlacion) {
+        return validar(ciudadano, null, idReporte, objeto, sentido, ubicacion, correlacion);
+    }
+
+    /** @param cuentaCreadaEn del JWT: si la cuenta es demasiado nueva, el voto queda pero no suma (ADR-22) */
+    public ResultadoValidacion validar(UUID ciudadano, Instant cuentaCreadaEn, UUID idReporte, ObjetoValidacion objeto,
+                                       SentidoValidacion sentido, Ubicacion ubicacion, IdCorrelacion correlacion) {
         for (int intento = 1; ; intento++) {
             Reporte reporte = repositorio.buscar(idReporte, correlacion)
                     .orElseThrow(() -> new ReporteNoEncontrado(idReporte));
-            var resultado = reglas.evaluar(reporte, ciudadano, objeto, sentido, ubicacion);
-            var voto = new Voto(objeto, sentido, ciudadano, reloj.instant(), reporte.versionValidaciones());
+            var resultado = reglas.evaluar(reporte, ciudadano, objeto, sentido, ubicacion, cuentaCreadaEn, reloj.instant());
+            var voto = new Voto(objeto, sentido, ciudadano, reloj.instant(), reporte.versionValidaciones(),
+                    resultado.cuenta());
             // Cada intento es una escritura distinta: correlación derivada para no chocar con la idempotencia.
             IdCorrelacion correlacionIntento = intento == 1 ? correlacion : IdCorrelacion.nuevo();
             try {
@@ -77,10 +85,12 @@ public class ParticipacionCiudadana {
                         EventosReporte.validacionRegistrada(idReporte, resultado, correlacionIntento, reloj.instant()),
                         correlacionIntento);
                 var conteo = guardado.conteo(objeto);
-                return new ResultadoValidacion(idReporte, objeto, conteo, reglas.validado(conteo), true);
+                return new ResultadoValidacion(idReporte, objeto, conteo, reglas.validado(conteo), true,
+                        resultado.cuenta());
             } catch (VotoRepetido e) {
                 var conteo = reporte.conteo(objeto);
-                return new ResultadoValidacion(idReporte, objeto, conteo, reglas.validado(conteo), false);
+                return new ResultadoValidacion(idReporte, objeto, conteo, reglas.validado(conteo), false,
+                        resultado.cuenta());
             } catch (ConflictoDeVersion e) {
                 if (intento >= INTENTOS_POR_CONCURRENCIA) {
                     throw e;

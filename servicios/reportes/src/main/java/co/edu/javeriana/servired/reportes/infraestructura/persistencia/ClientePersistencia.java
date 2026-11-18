@@ -155,7 +155,7 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
                     .header(CABECERA_CORRELACION, correlacion.valor())
                     .body(Map.of("objeto", v.objeto().name(), "sentido", v.sentido().name(),
                             "idCiudadano", v.idCiudadano(), "fecha", v.fecha(),
-                            "versionEsperada", v.versionEsperada(), "evento", evento))
+                            "versionEsperada", v.versionEsperada(), "evento", evento, "cuenta", v.cuenta()))
                     .retrieve()
                     .body(ReporteGuardadoDto.class)).aDominio();
         } catch (HttpClientErrorException.Conflict e) {
