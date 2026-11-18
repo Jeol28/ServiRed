@@ -102,6 +102,20 @@ pantalla principal y reportar lleva tres toques. Es un diseño visual propio de 
 - Los íconos se dibujan como imágenes (círculo del color del servicio y su emoji) en una
   capa de símbolos de MapLibre; el estilo raster de OpenStreetMap no tiene tipografías.
 
+## Actualización: explorar sin cuenta
+La app ya no empieza en el ingreso: abre siempre en el mapa. Sin cuenta:
+- se ven las zonas con cortes del país (`GET /mapas/publico`, el mismo dato abierto del
+  portal público: agregado y con k ≥ 3);
+- **no** se ven los cortes exactos cercanos ni se valida: esos datos son de ciudadanos
+  identificados (RNF-DAT2), y `GET /reportes/cercanos` sigue exigiendo sesión;
+- la denuncia anónima (RF-5) está en el menú y en la invitación de «Reportar»;
+- «Reportar» abre una invitación: «Crear mi cuenta», «Ya tengo cuenta: ingresar» o la
+  denuncia anónima. Ingresar también está en la barra superior y en el menú.
+
+Al abrir la sesión, la navegación se descarta y el mapa vuelve con todo. Con cuenta, la
+denuncia anónima sigue en el menú: sigue sin enviar ningún dato de la cuenta (RNF-SEG4).
+No cambia el servidor ni sus contratos.
+
 ## Consecuencias
 - Si la clave del Keystore se pierde (por ejemplo, al restaurar el sistema), la app
   pide ingresar de nuevo: el cofre se lee como vacío.
