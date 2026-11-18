@@ -7,7 +7,9 @@ Prueba de punta a punta de la fase 2 contra el entorno de Docker Compose:
 
 Verifica:
   1. Crear un reporte (201, Location, X-Correlation-Id propagado, municipio DIVIPOLA).
-  2. Idempotencia: repetir con el mismo X-Correlation-Id devuelve el mismo reporte.
+  2. Idempotencia: repetir con el mismo X-Correlation-Id devuelve el mismo reporte; si lo
+     envía OTRA cuenta no es un reintento: 409 CORRELACION_AJENA, sin devolver el reporte
+     ajeno ni crear otro (ADR-23).
   3. Consultar el reporte con su historia.
   4. Validación RNF-DAT1 en problem+json.
   5. reporte.creado publicado y consumido: Atención abre el caso.
@@ -65,6 +67,14 @@ estado, _, repetido = http("POST", "/api/v1/reportes", nuevo_reporte(), correlac
 comprobar(estado == 201 and repetido.get("idReporte") == id_reporte, "el reintento devuelve el mismo reporte")
 comprobar(sql(f"SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = '{correlacion}'") == "1",
           "un solo evento en el outbox")
+otra_cuenta = registrar_y_entrar()[0]["tokenAcceso"]
+estado, _, ajena = http("POST", "/api/v1/reportes", nuevo_reporte(), correlacion, otra_cuenta)
+comprobar(estado == 409 and (ajena or {}).get("motivo") == "CORRELACION_AJENA",
+          f"otra cuenta con el mismo X-Correlation-Id recibe 409 CORRELACION_AJENA ({estado})")
+comprobar(reporte["idReporte"] not in str(ajena) and "Sin luz" not in str(ajena),
+          "sin ver el reporte ajeno")
+comprobar(sql(f"SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = '{correlacion}'") == "1",
+          "ni crear otro reporte")
 
 print("3) Consultar el reporte")
 estado, _, consultado = http("GET", f"/api/v1/reportes/{id_reporte}", token=token)
