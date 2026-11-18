@@ -8,7 +8,14 @@ con el **gateway** a través de `/api/` en su mismo origen (ver
 |---|---|---|
 | `portal-publico` | Ciudadanía (sin cuenta) | Mapa de zonas con reportes (celdas de ~1 km, k ≥ 3), indicadores por servicio y territorio y datos abiertos (CSV/JSON). Reportes y denuncias se hacen solo desde las apps móviles |
 | `portal-operador` | Operador, regulador, administrador | Ingreso, bandeja de casos con filtros, detalle (atender, asignar, prioridad, resolver, cerrar, enrutar), mapa operativo, moderación de denuncias, exportación regulatoria, auditoría y alertas (verificación de integridad), cuentas |
-| `compartido` | Ambos | Modelos del contrato, sesión y guardias, interceptores (JWT, `X-Correlation-Id`), servicios de API, mapa Leaflet, estilos |
+| `compartido` | Ambos | Modelos del contrato, sesión y guardias, interceptores (JWT, `X-Correlation-Id`), servicios de API, mapa Leaflet con íconos por servicio, menú lateral, estilos |
+
+Los dos portales usan el estilo de las apps móviles:
+- una barra flotante con ☰ y un menú lateral;
+- el mapa a pantalla completa, con chips de servicio (⚡ 💧 🔥 🌊 🗑️) y tarjetas abajo.
+
+El portal público abre en el mapa. En el de operación, el mapa operativo ocupa toda la
+ventana; las bandejas y tablas siguen igual.
 
 Menú por rol en el portal de operación:
 

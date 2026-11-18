@@ -48,6 +48,26 @@ límite de abuso por cliente detrás de un proxy.
   personal entra por «Acceso del personal». En local, el portal público está en `:4300`
   (y `/operacion/` dentro de él); `127.0.0.1:4200` queda para diagnóstico.
 
+## Actualización: el mismo estilo de las apps
+Los portales adoptan la apariencia de las apps móviles (ADR-18):
+- **Barra flotante:** botón ☰, píldora con la marca y la sección, y una acción a la
+  derecha («Acceso del personal» en el público, el rol en el de operación). Las secciones
+  pasan a un **menú lateral** compartido (`sr-menu-lateral`). Cerrado queda `inert`, se
+  cierra con Escape y, al abrirlo, el foco pasa a la primera sección.
+- **Portal público:** abre en el mapa a pantalla completa, con:
+  - chips de servicio con el emoji de las apps (⚡ 💧 🔥 🌊 🗑️);
+  - una tarjeta inferior con el resumen del periodo (24 h, 7 o 30 días);
+  - una tarjeta al tocar una zona.
+  Las zonas siguen siendo celdas agregadas con k ≥ 3: no cambia lo que se publica.
+  Indicadores y Datos abiertos siguen como páginas, desde el menú.
+- **Portal de operación:** las bandejas y tablas no cambian, solo la barra y el menú. El
+  **mapa operativo** pasa a pantalla completa:
+  - íconos por servicio, más grandes según la prioridad;
+  - chips de servicio, periodo y situación;
+  - una tarjeta con el estado, la prioridad y la empresa del punto tocado.
+- Los íconos del mapa se crean con `textContent` (nunca HTML) y se pueden enfocar con el
+  teclado. Ambos mapas se refrescan cada minuto.
+
 ## Consecuencias
 - Recargar la pestaña conserva la sesión; abrir otra pestaña pide ingresar de
   nuevo (aceptable para personal y más seguro).

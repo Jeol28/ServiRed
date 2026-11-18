@@ -15,5 +15,6 @@ export * from './lib/api/api-auditoria';
 export * from './lib/api/api-indicadores';
 export * from './lib/mapa/mapa';
 export * from './lib/ui/etiquetas';
+export * from './lib/ui/menu-lateral';
 export * from './lib/ui/pipes';
 export * from './lib/ui/filtro-periodo';

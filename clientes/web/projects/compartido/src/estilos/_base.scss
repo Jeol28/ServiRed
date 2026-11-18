@@ -133,19 +133,104 @@ table.sr-tabla { width: 100%; border-collapse: collapse; font-size: .92rem; }
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
 
-// Barra superior de navegación
-.sr-barra {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem;
-  background: var(--sr-superficie); border-bottom: 1px solid var(--sr-borde);
-  padding: .6rem 1rem;
-}
-.sr-barra .marca { font-weight: 700; color: var(--sr-primario); text-decoration: none; margin-right: .5rem; }
-.sr-barra nav { display: flex; flex-wrap: wrap; gap: .25rem; }
-.sr-barra nav a { text-decoration: none; color: var(--sr-texto); padding: .35rem .6rem; border-radius: 6px; }
-.sr-barra nav a.activo { background: color-mix(in srgb, var(--sr-primario) 14%, transparent); color: var(--sr-primario); }
-.sr-barra .derecha { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
 
 @media (max-width: 600px) {
   .sr-contenedor { padding: .75rem; }
   .sr-ocultar-movil { display: none; }
+}
+
+// ------------------------------------------------------------------ estilo de las apps
+// Mapa a pantalla completa con controles flotantes (barra en píldora, menú ☰,
+// chips de servicio y tarjetas abajo), igual que las apps móviles.
+
+:root {
+  --sr-ambar: #f59e0b;
+  --sr-ambar-texto: #1c1917;
+  --sr-radio-grande: 24px;
+  --sr-flotante: color-mix(in srgb, var(--sr-superficie) 90%, transparent);
+  --sr-sombra-flotante: 0 4px 16px rgb(15 23 42 / 22%);
+}
+
+// Barra superior flotante: ☰, píldora con la marca y una acción a la derecha.
+.sr-barra-flotante {
+  position: fixed; top: 12px; left: 12px; right: 12px; z-index: 1100;
+  display: flex; align-items: center; gap: .6rem; pointer-events: none;
+}
+.sr-barra-flotante > * { pointer-events: auto; }
+
+.sr-redondo, .sr-pildora, .sr-flotante {
+  background: var(--sr-flotante);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--sr-sombra-flotante);
+  border: 1px solid color-mix(in srgb, var(--sr-borde) 60%, transparent);
+}
+.sr-redondo {
+  width: 48px; height: 48px; min-height: 48px; padding: 0; justify-content: center; flex: none;
+  border-radius: 50%; font-size: 1.3rem; color: var(--sr-texto);
+}
+.sr-pildora {
+  display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 1; max-width: 460px;
+  border-radius: 999px; padding: .35rem 1.1rem; min-height: 48px; text-decoration: none; color: var(--sr-texto);
+}
+.sr-pildora .marca { font-weight: 800; color: var(--sr-primario); line-height: 1.2; }
+.sr-pildora .sub { font-size: .8rem; color: var(--sr-texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr-barra-flotante .derecha { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
+.sr-barra-flotante .sr-boton.sr-flotante, .sr-barra-flotante button.sr-flotante {
+  border-radius: 999px; min-height: 48px; padding: 0 1.1rem; font-weight: 600; white-space: nowrap;
+}
+
+// Página bajo la barra flotante (todas menos el mapa).
+.sr-bajo-barra { padding-top: 80px; }
+
+// Mapa que ocupa toda la ventana, detrás de los controles.
+.sr-pantalla-mapa { position: fixed; inset: 0; }
+.sr-pantalla-mapa > sr-mapa { position: absolute; inset: 0; }
+.sr-pantalla-mapa .sr-mapa { border-radius: 0 !important; }
+
+// Fila de chips bajo la barra (servicio, periodo): se desliza en horizontal.
+.sr-chips {
+  display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; padding: 2px;
+}
+.sr-chips::-webkit-scrollbar { display: none; }
+.sr-chips.flotantes { position: fixed; top: 72px; left: 12px; right: 12px; z-index: 1050; }
+button.sr-chip-filtro {
+  flex: none; border-radius: 999px; min-height: 2.25rem; padding: 0 .9rem; font-weight: 500; white-space: nowrap;
+  background: var(--sr-flotante); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 18%);
+}
+button.sr-chip-filtro[aria-pressed='true'] {
+  background: var(--sr-primario); border-color: var(--sr-primario); color: var(--sr-primario-texto);
+}
+
+// Zona inferior: tarjetas apiladas, centradas y con ancho de teléfono en escritorio.
+.sr-inferior {
+  position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 1050;
+  display: flex; flex-direction: column; gap: .6rem; max-width: 440px; max-height: calc(100vh - 150px); overflow-y: auto;
+  pointer-events: none;
+}
+.sr-inferior > * { pointer-events: auto; }
+.sr-hoja {
+  background: var(--sr-superficie); border-radius: var(--sr-radio-grande); box-shadow: var(--sr-sombra-flotante);
+  padding: 1rem 1.1rem; border: 1px solid var(--sr-borde);
+}
+.sr-hoja.borde { border-width: 2px; }
+.sr-encabezado-tarjeta { display: flex; align-items: flex-start; gap: .75rem; }
+.sr-encabezado-tarjeta .emoji { font-size: 2rem; line-height: 1; }
+.sr-encabezado-tarjeta .titulos { flex: 1; min-width: 0; }
+.sr-encabezado-tarjeta strong { display: block; font-size: 1.05rem; }
+.sr-cerrar { border: 0; background: transparent; min-height: 2rem; padding: 0 .4rem; font-size: 1.1rem; color: var(--sr-texto-suave); }
+
+// Ícono redondo de las marcas del mapa (lo crea el componente Mapa).
+.sr-icono-mapa-contenedor { background: transparent; border: 0; }
+.sr-icono-mapa {
+  display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  border: 2.5px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / 35%);
+  color: #fff; font-weight: 700; line-height: 1; font-family: var(--sr-fuente);
+}
+.sr-icono-mapa.resaltada { border-color: #111827; border-width: 3.5px; }
+.leaflet-marker-icon:focus-visible .sr-icono-mapa { outline: 3px solid var(--sr-primario); outline-offset: 2px; }
+
+@media (max-width: 600px) {
+  .sr-inferior { max-width: none; }
 }

@@ -16,7 +16,7 @@ describe('App (menú por rol)', () => {
     });
     const f = TestBed.createComponent(App);
     f.detectChanges();
-    return [...f.nativeElement.querySelectorAll('nav a')].map((a: Element) => a.textContent!.trim());
+    return [...f.nativeElement.querySelectorAll('nav a .texto')].map((a: Element) => a.textContent!.trim());
   }
 
   it('cada rol ve solo sus secciones', () => {

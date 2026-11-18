@@ -21,6 +21,16 @@ export const COLOR_SERVICIO: Record<TipoServicio, string> = {
   ENERGIA: '#d97706', GAS: '#dc2626', ACUEDUCTO: '#2563eb', ALCANTARILLADO: '#7c3aed', ASEO: '#059669',
 };
 
+/** Símbolo de cada servicio, el mismo de las apps móviles. */
+export const EMOJI_SERVICIO: Record<TipoServicio, string> = {
+  ENERGIA: '⚡', GAS: '🔥', ACUEDUCTO: '💧', ALCANTARILLADO: '🌊', ASEO: '🗑️',
+};
+
+/** Nombre corto, como lo dice el ciudadano (igual que en las apps). */
+export const CORTO_SERVICIO: Record<TipoServicio, string> = {
+  ENERGIA: 'Luz', GAS: 'Gas', ACUEDUCTO: 'Agua', ALCANTARILLADO: 'Alcantarillado', ASEO: 'Basura',
+};
+
 export const COLOR_PRIORIDAD: Record<Prioridad, string> = {
   BAJA: '#64748b', MEDIA: '#2563eb', ALTA: '#d97706', CRITICA: '#dc2626',
 };
