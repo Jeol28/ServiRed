@@ -45,7 +45,8 @@ public class GuardarReporte {
         evento.validarPara(servicio, correlacion, Set.of("reporte.creado"));
 
         return transaccion.ejecutar(() -> {
-            var previo = idempotencia.reclamar(correlacion, OPERACION, servicio);
+            // El idReporte lo genera Reportes en cada intento: el titular es solo la cuenta.
+            var previo = idempotencia.reclamar(correlacion, OPERACION, servicio, "ciudadano:" + reporte.idCiudadano());
             if (previo.isPresent()) {
                 return new Resultado(cargar(previo.get()), false);
             }

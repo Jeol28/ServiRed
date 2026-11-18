@@ -107,7 +107,7 @@ class GestionEvidenciasTest {
             return true;
         });
         when(reportes.buscar(idReporte)).thenReturn(Optional.of(mock(ReporteGuardado.class)));
-        when(idempotencia.reclamar(any(), any(), any())).thenReturn(Optional.empty());
+        when(idempotencia.reclamar(any(), any(), any(), any())).thenReturn(Optional.empty());
     }
 
     private void guardarFoto() {
@@ -147,7 +147,7 @@ class GestionEvidenciasTest {
 
     @Test
     void unReintentoIdempotenteNoBorraLaFotoQueYaQuedoGuardada() {
-        when(idempotencia.reclamar(any(), any(), any())).thenReturn(Optional.of(idReporte));
+        when(idempotencia.reclamar(any(), any(), any(), any())).thenReturn(Optional.of(idReporte));
         when(repositorio.existeClaveEvidencia(anyString())).thenReturn(true);
 
         guardarFoto();
@@ -159,7 +159,7 @@ class GestionEvidenciasTest {
 
     @Test
     void unReintentoIdempotenteConOtraFotoBorraLaQueNoSeUso() {
-        when(idempotencia.reclamar(any(), any(), any())).thenReturn(Optional.of(idReporte));
+        when(idempotencia.reclamar(any(), any(), any(), any())).thenReturn(Optional.of(idReporte));
         when(repositorio.existeClaveEvidencia(anyString())).thenReturn(false);
 
         guardarFoto();

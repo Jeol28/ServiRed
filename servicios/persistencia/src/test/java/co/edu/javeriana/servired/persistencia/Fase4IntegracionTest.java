@@ -141,6 +141,28 @@ class Fase4IntegracionTest {
     }
 
     @Test
+    void unVotoQueReusaLaCorrelacionSobreOtroReporteNoSeDescartaEnSilencio() throws Exception {
+        UUID uno = crearReporte(UUID.randomUUID(), 4.63, -74.05);
+        UUID otro = crearReporte(UUID.randomUUID(), 4.64, -74.04);
+        UUID beto = UUID.randomUUID();
+        String c = UUID.randomUUID().toString();
+        String cuerpo = """
+                {"objeto":"CORTE","sentido":"CONFIRMA","idCiudadano":"%s","fecha":"2026-11-16T10:00:00Z",
+                 "versionEsperada":0,"evento":%s}""";
+
+        enviar("/interno/v1/reportes/" + uno + "/validaciones", cuerpo.formatted(beto, evento("validacion.registrada", c)), c)
+                .andExpect(status().isCreated());
+        // Reintento legítimo (mismo voto): devuelve el resultado sin votar dos veces.
+        enviar("/interno/v1/reportes/" + uno + "/validaciones", cuerpo.formatted(beto, evento("validacion.registrada", c)), c)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.validacionCorte.confirmaciones").value(1));
+        // Misma correlación sobre OTRO reporte: antes respondía el otro reporte sin registrar el voto.
+        enviar("/interno/v1/reportes/" + otro + "/validaciones", cuerpo.formatted(beto, evento("validacion.registrada", c)), c)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.motivo").value("CORRELACION_AJENA"));
+    }
+
+    @Test
     void cuentaLosVotosConConcurrenciaOptimistaYUnVotoPorCiudadano() throws Exception {
         UUID id = crearReporte(UUID.randomUUID(), 4.61, -74.07);
         UUID ana = UUID.randomUUID();

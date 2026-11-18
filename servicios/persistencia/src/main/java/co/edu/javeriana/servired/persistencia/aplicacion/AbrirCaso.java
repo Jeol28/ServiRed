@@ -37,7 +37,8 @@ public class AbrirCaso {
         OPERACION.autorizar(servicio);
 
         return transaccion.ejecutar(() -> {
-            boolean nuevo = idempotencia.reclamar(correlacion, OPERACION, servicio).isEmpty();
+            boolean nuevo = idempotencia.reclamar(correlacion, OPERACION, servicio,
+                    "reporte:" + caso.idReporte()).isEmpty();
             if (nuevo) {
                 if (!catalogo.existeMunicipio(caso.codigoMunicipio())) {
                     throw new SolicitudRechazada("Municipio inexistente: " + caso.codigoMunicipio());

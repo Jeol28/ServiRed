@@ -47,7 +47,7 @@ class GuardarReporteTest {
     };
 
     private final RegistroIdempotencia idempotencia = new RegistroIdempotencia() {
-        public Optional<UUID> reclamar(IdCorrelacion c, OperacionNegocio o, ServicioCliente s) {
+        public Optional<UUID> reclamar(IdCorrelacion c, OperacionNegocio o, ServicioCliente s, String titular) {
             return Optional.ofNullable(procesadas.get(c.valor() + o.nombre()));
         }
 

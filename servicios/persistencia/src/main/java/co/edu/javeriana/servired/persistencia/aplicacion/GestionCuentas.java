@@ -51,7 +51,9 @@ public class GestionCuentas {
         OperacionNegocio.REGISTRAR_CUENTA.autorizar(servicio);
         validar(servicio, correlacion, eventos);
         return transaccion.ejecutar(() -> {
-            var previo = idempotencia.reclamar(correlacion, OperacionNegocio.REGISTRAR_CUENTA, servicio);
+            // Sin cuenta todavía: el titular es el correo (se guarda solo su huella).
+            var previo = idempotencia.reclamar(correlacion, OperacionNegocio.REGISTRAR_CUENTA, servicio,
+                    "correo:" + cuenta.correo().toLowerCase(java.util.Locale.ROOT));
             if (previo.isPresent()) {
                 return new Resultado(cargar(previo.get()), false);
             }

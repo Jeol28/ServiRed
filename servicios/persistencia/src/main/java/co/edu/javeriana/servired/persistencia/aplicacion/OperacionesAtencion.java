@@ -73,7 +73,8 @@ public class OperacionesAtencion {
         operacion.autorizar(s);
         eventos.forEach(e -> e.validarPara(s, correlacion, Set.of("caso.actualizado", "caso.cerrado")));
         return transaccion.ejecutar(() -> {
-            if (idempotencia.reclamar(correlacion, operacion, s).isPresent()) {
+            if (idempotencia.reclamar(correlacion, operacion, s,
+                    "caso:" + idCaso + "|autor:" + cambios.autor()).isPresent()) {
                 return cargar(idCaso);
             }
             if (!repositorio.actualizar(idCaso, cambios)) {

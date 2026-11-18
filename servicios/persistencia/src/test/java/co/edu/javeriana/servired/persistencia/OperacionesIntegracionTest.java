@@ -89,6 +89,10 @@ class OperacionesIntegracionTest {
     }
 
     private static String cuerpoGuardar(UUID idReporte, String correlacion, String municipio) {
+        return cuerpoGuardar(idReporte, UUID.randomUUID(), correlacion, municipio);
+    }
+
+    private static String cuerpoGuardar(UUID idReporte, UUID idCiudadano, String correlacion, String municipio) {
         return """
                 {"reporte":{"idReporte":"%s","idCiudadano":"%s","tipoServicio":"ENERGIA",
                   "latitud":4.6287,"longitud":-74.0648,"codigoMunicipio":"%s",
@@ -97,7 +101,7 @@ class OperacionesIntegracionTest {
                  "evento":{"idEvento":"%s","tipo":"reporte.creado","version":1,
                   "fechaOcurrencia":"2026-11-14T10:05:00Z","correlationId":"%s","origen":"reportes",
                   "datos":{"idReporte":"%s","codigoMunicipio":"%s"}}}
-                """.formatted(idReporte, UUID.randomUUID(), municipio, UUID.randomUUID(), correlacion,
+                """.formatted(idReporte, idCiudadano, municipio, UUID.randomUUID(), correlacion,
                 idReporte, municipio);
     }
 
@@ -136,16 +140,39 @@ class OperacionesIntegracionTest {
     @Test
     void esIdempotentePorCorrelationId() throws Exception {
         UUID original = UUID.randomUUID();
+        UUID ana = UUID.randomUUID();
         String correlacion = UUID.randomUUID().toString();
-        mvc.perform(guardar(CLAVE_REPORTES, correlacion, cuerpoGuardar(original, correlacion, "11001")))
+        mvc.perform(guardar(CLAVE_REPORTES, correlacion, cuerpoGuardar(original, ana, correlacion, "11001")))
                 .andExpect(status().isCreated());
 
-        mvc.perform(guardar(CLAVE_REPORTES, correlacion, cuerpoGuardar(UUID.randomUUID(), correlacion, "11001")))
+        // El reintento de la misma cuenta (Reportes genera otro idReporte) devuelve el original.
+        mvc.perform(guardar(CLAVE_REPORTES, correlacion, cuerpoGuardar(UUID.randomUUID(), ana, correlacion, "11001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.idReporte").value(original.toString()));
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = ?::uuid",
                 Integer.class, correlacion)).isEqualTo(1);
+    }
+
+    @Test
+    void elCorrelationIdDeOtraCuentaEsUnaSolicitudAjenaNoUnReintento() throws Exception {
+        UUID original = UUID.randomUUID();
+        String correlacion = UUID.randomUUID().toString();
+        mvc.perform(guardar(CLAVE_REPORTES, correlacion, cuerpoGuardar(original, UUID.randomUUID(), correlacion, "11001")))
+                .andExpect(status().isCreated());
+
+        // Otra cuenta con la misma correlación: 409, sin devolver el reporte ajeno ni crear otro.
+        String respuesta = mvc.perform(guardar(CLAVE_REPORTES, correlacion,
+                        cuerpoGuardar(UUID.randomUUID(), UUID.randomUUID(), correlacion, "11001")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.motivo").value("CORRELACION_AJENA"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(respuesta).doesNotContain(original.toString()).doesNotContain("Sin luz");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = ?::uuid",
+                Integer.class, correlacion)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT huella FROM infraestructura.solicitudes_procesadas "
+                        + "WHERE correlation_id = ?::uuid", String.class, correlacion))
+                .as("se guarda la huella, no el id de la cuenta").hasSize(64).doesNotContain("-");
     }
 
     @Test

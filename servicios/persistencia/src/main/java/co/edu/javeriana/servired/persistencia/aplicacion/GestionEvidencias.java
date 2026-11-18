@@ -79,7 +79,8 @@ public class GestionEvidencias {
         String clave = "reportes/" + idReporte + "/" + archivo.idEvidencia() + extension(archivo);
         String huella = sha256(archivo.contenido());
         return subirYRegistrar(clave, archivo, () -> {
-            if (idempotencia.reclamar(correlacion, operacion, servicio).isPresent()) {
+            // El idEvidencia lo genera Reportes en cada intento: el titular es el reporte.
+            if (idempotencia.reclamar(correlacion, operacion, servicio, "reporte:" + idReporte).isPresent()) {
                 return cargar(idReporte);
             }
             if (!repositorio.bloquearReporte(idReporte)) {
@@ -111,7 +112,8 @@ public class GestionEvidencias {
                 : "denuncias/" + d.idDenuncia() + "/" + foto.idEvidencia() + extension(foto);
         String huella = foto == null ? null : sha256(foto.contenido());
         Supplier<DenunciaGuardada> registrar = () -> {
-            var previo = idempotencia.reclamar(correlacion, operacion, servicio);
+            // Anónima: sin titular (no hay cuenta, y la correlación la genera el gateway).
+            var previo = idempotencia.reclamar(correlacion, operacion, servicio, null);
             if (previo.isPresent()) {
                 return repositorio.buscarDenuncia(previo.get()).orElseThrow();
             }

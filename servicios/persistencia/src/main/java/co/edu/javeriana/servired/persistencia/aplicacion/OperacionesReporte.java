@@ -49,7 +49,8 @@ public class OperacionesReporte {
         operacion.autorizar(servicio);
         evento.validarPara(servicio, correlacion, Set.of("restablecimiento.registrado"));
         return transaccion.ejecutar(() -> {
-            if (idempotencia.reclamar(correlacion, operacion, servicio).isPresent()) {
+            // Reportes ya comprobó que lo pide el autor: el titular es el reporte.
+            if (idempotencia.reclamar(correlacion, operacion, servicio, "reporte:" + idReporte).isPresent()) {
                 return cargar(idReporte);
             }
             if (!repositorio.registrarRestablecimiento(idReporte, r)) {
@@ -77,7 +78,8 @@ public class OperacionesReporte {
         operacion.autorizar(servicio);
         evento.validarPara(servicio, correlacion, Set.of("validacion.registrada"));
         return transaccion.ejecutar(() -> {
-            if (idempotencia.reclamar(correlacion, operacion, servicio).isPresent()) {
+            if (idempotencia.reclamar(correlacion, operacion, servicio,
+                    "ciudadano:" + voto.idCiudadano() + "|reporte:" + idReporte + "|objeto:" + voto.objeto()).isPresent()) {
                 return cargar(idReporte);
             }
             if (!repositorio.avanzarVersionValidaciones(idReporte, voto.versionEsperada())) {
@@ -106,7 +108,7 @@ public class OperacionesReporte {
         operacion.autorizar(servicio);
         var clave = new IdCorrelacion(e.idEvento().toString());
         return transaccion.ejecutar(() -> {
-            if (idempotencia.reclamar(clave, operacion, servicio).isEmpty()) {
+            if (idempotencia.reclamar(clave, operacion, servicio, "reporte:" + idReporte).isEmpty()) {
                 if (!repositorio.existeReporte(idReporte)) {
                     throw new RecursoNoEncontrado("Reporte inexistente");
                 }
