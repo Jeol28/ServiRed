@@ -23,7 +23,7 @@ import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from comun import (ENV, RABBIT_API, comprobar, compose, psql, correo_nuevo, entrar_como_admin, esperar, http, http_crudo,
+from comun import (ENV, RABBIT_API, buscar_caso, comprobar, compose, psql, correo_nuevo, entrar_como_admin, esperar, http, http_crudo,
                    registrar_y_entrar, sql, terminar)
 
 CLAVE = "una clave larga de prueba"
@@ -88,8 +88,7 @@ comprobar(MARCA not in json.dumps(registros(admin, recursoId=reporte["idReporte"
 
 
 def caso():
-    p = http("GET", "/api/v1/casos?tamano=100", token=operador)[2]
-    return next((c for c in p["elementos"] if c["idReporte"] == reporte["idReporte"]), None)
+    return buscar_caso(operador, reporte["idReporte"])
 
 
 comprobar(esperar(lambda: caso() is not None), "Atención abre el caso")

@@ -83,6 +83,7 @@ python3 pruebas/e2e/identidad-y-acceso.py            # e2e: cuentas, tokens y RB
 python3 pruebas/e2e/portales-web.py                  # e2e: portales (cabeceras, proxy, anonimato)
 python3 pruebas/e2e/antiguedad-mensajes.py           # e2e: edad del mensaje más viejo (RNF-R3); detiene contenedores
 python3 pruebas/e2e/contrato-eventos.py              # e2e: cada evento real cumple el AsyncAPI y su JSON Schema
+python3 pruebas/e2e/abuso-por-cuenta.py              # e2e: límites por cuenta y votos de cuentas nuevas (ADR-22)
 sh pruebas/contratos/verificar-contratos.sh          # contrato de eventos consistente y ejemplos válidos
 docker compose logs -f reportes                      # logs JSON de un servicio
 docker compose down                                  # detener (agregue -v para borrar datos)
@@ -97,6 +98,10 @@ caer réplicas, así que úsela solo en un entorno de pruebas:
 docker compose up -d --build --wait --scale persistencia=2 --scale reportes=2
 python3 pruebas/e2e/replicas-y-circuito.py           # e2e: caída de réplicas, circuito y outbox
 ```
+
+Las suites e2e registran decenas de cuentas desde la misma máquina, y el registro tiene un
+cupo de 30 cuentas nuevas por IP y por hora (ADR-22). Para correrlas todas seguidas, suba el
+cupo solo en el entorno de pruebas: `LIMITE_REGISTROS_POR_HORA=1000 docker compose up -d`.
 
 Las pruebas e2e leen `.env`. Con `SERVIRED_ENV=<archivo>` usan otro, y con
 `COMPOSE_ENV_FILES=<archivo>` también Docker Compose. Así puede probar contra la base

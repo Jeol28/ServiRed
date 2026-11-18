@@ -119,15 +119,34 @@ def mensajes_en_cola(cola):
         return len(json.loads(r.read()))
 
 
+def buscar_caso(token, id_reporte, filtro=""):
+    """El caso de un reporte en la bandeja, recorriendo todas sus páginas: con muchos casos
+    acumulados en la base de pruebas, uno de prioridad baja no queda en la primera."""
+    for pagina in range(50):
+        estado, _, p = http("GET", f"/api/v1/casos?tamano=100&pagina={pagina}{filtro}", token=token)
+        if estado != 200:
+            return None
+        caso = next((c for c in p["elementos"] if c["idReporte"] == id_reporte), None)
+        if caso is not None or (pagina + 1) * p["tamano"] >= p["total"]:
+            return caso
+    return None
+
+
 def correo_nuevo(prefijo="ciudadano"):
     return f"{prefijo}.{uuid.uuid4().hex[:10]}@ejemplo.co"
 
 
-def registrar_y_entrar(correo=None, clave="una clave larga de prueba"):
-    """Registra un ciudadano y devuelve (sesión, correo)."""
+def registrar_y_entrar(correo=None, clave="una clave larga de prueba", nueva=False):
+    """Registra un ciudadano y devuelve (sesión, correo).
+
+    Por defecto la cuenta se «envejece» 2 días antes de iniciar sesión: las pruebas modelan
+    ciudadanos establecidos, cuyo voto suma a la validación (ADR-22). Con nueva=True queda
+    recién creada, como un registro real de hoy."""
     correo = correo or correo_nuevo()
     http("POST", "/api/v1/auth/registro", {"correo": correo, "clave": clave, "nombre": "Prueba e2e",
                                            "aceptaTratamientoDatos": True})
+    if not nueva:
+        sql(f"UPDATE identidad.cuentas SET creada_en = now() - interval '2 days' WHERE correo = '{correo}'")
     estado, _, sesion = http("POST", "/api/v1/auth/login", {"correo": correo, "clave": clave})
     if estado != 200:
         raise SystemExit(f"No se pudo iniciar sesión ({estado}): {sesion}")

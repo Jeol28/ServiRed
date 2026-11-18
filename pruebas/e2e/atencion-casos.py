@@ -20,7 +20,7 @@ Uso (desde la raíz, con el compose arriba):  python3 pruebas/e2e/atencion-casos
 import json
 from datetime import datetime, timedelta, timezone
 
-from comun import (comprobar, correo_nuevo, entrar_como_admin, esperar, http, http_crudo, mensajes_en_cola,
+from comun import (buscar_caso, comprobar, correo_nuevo, entrar_como_admin, esperar, http, http_crudo, mensajes_en_cola,
                    multipart, png_con_metadatos, registrar_y_entrar, terminar)
 
 ENERGIA_ANDINA = "a0000000-0000-4000-8000-000000000001"   # ENERGIA en Bogotá, Medellín, Bucaramanga
@@ -46,10 +46,7 @@ def personal(admin, rol, empresa=None):
 
 
 def caso_de(token, id_reporte, extra=""):
-    estado, _, pagina = http("GET", f"/api/v1/casos?tamano=100{extra}", token=token)
-    if estado != 200:
-        return None
-    return next((c for c in pagina["elementos"] if c["idReporte"] == id_reporte), None)
+    return buscar_caso(token, id_reporte, extra)
 
 
 def reporte(token, servicio, ubicacion, magnitud):

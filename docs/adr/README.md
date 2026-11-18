@@ -23,3 +23,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-19](ADR-19-servidor-de-pruebas.md) | Servidor de pruebas fuera de local, sin costo | Aceptada |
 | [ADR-20](ADR-20-replicas-y-circuit-breaker.md) | Réplicas y circuit breaker hacia Persistencia | Aceptada |
 | [ADR-21](ADR-21-antiguedad-de-mensajes.md) | Antigüedad de los mensajes (RNF-R3): outbox y sonda en las colas | Aceptada |
+| [ADR-22](ADR-22-abuso-con-varias-cuentas.md) | Abuso con varias cuentas: límites por cuenta y antigüedad para validar | Aceptada |

@@ -26,7 +26,7 @@ import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from comun import (ENV, RABBIT_API, RAIZ, comprobar, correo_nuevo, entrar_como_admin, esperar, http, http_crudo,
+from comun import (ENV, RABBIT_API, RAIZ, buscar_caso, comprobar, correo_nuevo, entrar_como_admin, esperar, http, http_crudo,
                    multipart, png_con_metadatos, registrar_y_entrar, terminar)
 
 ENERGIA_ANDINA = "a0000000-0000-4000-8000-000000000001"
@@ -72,8 +72,7 @@ def personal(admin, rol, empresa=None):
 
 
 def caso_de(token, id_reporte, filtro=""):
-    estado, _, pagina = http("GET", f"/api/v1/casos?tamano=100{filtro}", token=token)
-    return next((c for c in pagina["elementos"] if c["idReporte"] == id_reporte), None) if estado == 200 else None
+    return buscar_caso(token, id_reporte, filtro)
 
 
 print("1. Cola de escucha")
