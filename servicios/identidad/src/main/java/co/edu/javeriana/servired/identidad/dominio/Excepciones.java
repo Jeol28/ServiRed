@@ -19,6 +19,13 @@ public final class Excepciones {
         }
     }
 
+    /** El X-Correlation-Id ya lo usó otra solicitud (ADR-23): no es un reintento. */
+    public static class CorrelacionAjena extends RuntimeException {
+        public CorrelacionAjena() {
+            super("El X-Correlation-Id ya se usó en otra solicitud: envíe uno nuevo");
+        }
+    }
+
     public static class CorreoYaRegistrado extends RuntimeException {
         public CorreoYaRegistrado() {
             super("El correo ya está registrado");

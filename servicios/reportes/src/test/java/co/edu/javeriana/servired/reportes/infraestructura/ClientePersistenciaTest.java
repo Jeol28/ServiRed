@@ -167,4 +167,36 @@ class ClientePersistenciaTest {
         assertThat(r.tieneEvidencia()).isTrue();
         servidor.verify();
     }
+
+    @Test
+    void laCorrelacionDeOtraSolicitudNoSeDisfrazaDeOtroConflicto() {
+        String ajena = "{\"motivo\":\"CORRELACION_AJENA\",\"detail\":\"El X-Correlation-Id ya se usó\"}";
+        UUID id = UUID.randomUUID();
+        servidor.expect(requestTo(URL + "/interno/v1/reportes/" + id + "/restablecimiento"))
+                .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(ajena));
+        servidor.expect(requestTo(URL + "/interno/v1/reportes/" + id + "/validaciones"))
+                .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(ajena));
+
+        // Antes: «ya restablecido» y «conflicto de versión» (que además reintentaba con otra correlación).
+        assertThatThrownBy(() -> cliente.registrarRestablecimiento(id,
+                new co.edu.javeriana.servired.reportes.dominio.Reporte.Restablecimiento(Instant.now(), 30, null),
+                EventosReporte.restablecimientoRegistrado(id,
+                        new co.edu.javeriana.servired.reportes.dominio.Reporte.Restablecimiento(Instant.now(), 30, null),
+                        correlacion, Instant.now()), correlacion))
+                .isInstanceOfSatisfying(co.edu.javeriana.servired.reportes.dominio.ReglaIncumplida.class,
+                        e -> assertThat(e.motivo()).isEqualTo("CORRELACION_AJENA"));
+        var voto = new co.edu.javeriana.servired.reportes.aplicacion.Vistas.Voto(
+                co.edu.javeriana.servired.reportes.dominio.ObjetoValidacion.CORTE,
+                co.edu.javeriana.servired.reportes.dominio.SentidoValidacion.CONFIRMA, UUID.randomUUID(), Instant.now(), 0,
+                true);
+        assertThatThrownBy(() -> cliente.registrarValidacion(id, voto, EventosReporte.validacionRegistrada(id,
+                new co.edu.javeriana.servired.reportes.dominio.ReglasValidacion.Resultado(
+                        co.edu.javeriana.servired.reportes.dominio.ObjetoValidacion.CORTE,
+                        co.edu.javeriana.servired.reportes.dominio.SentidoValidacion.CONFIRMA,
+                        new co.edu.javeriana.servired.reportes.dominio.Reporte.Conteo(1, 0), false),
+                correlacion, Instant.now()), correlacion))
+                .isInstanceOfSatisfying(co.edu.javeriana.servired.reportes.dominio.ReglaIncumplida.class,
+                        e -> assertThat(e.motivo()).isEqualTo("CORRELACION_AJENA"));
+        servidor.verify();
+    }
 }

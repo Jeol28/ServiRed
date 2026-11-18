@@ -108,4 +108,14 @@ class ClientePersistenciaTest {
                 Instant.now(), correlacion)).isInstanceOf(PersistenciaNoDisponible.class);
         srv.verify();
     }
+
+    @Test
+    void laCorrelacionDeOtraSolicitudNoSeDisfrazaDeCorreoRepetido() {
+        servidor.expect(once(), requestTo(URL + "/interno/v1/cuentas/registrar"))
+                .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                        .body("{\"motivo\":\"CORRELACION_AJENA\",\"detail\":\"El X-Correlation-Id ya se usó\"}"));
+
+        assertThatThrownBy(() -> cliente.registrar(nueva(), "h", correlacion))
+                .isInstanceOf(co.edu.javeriana.servired.identidad.dominio.Excepciones.CorrelacionAjena.class);
+    }
 }

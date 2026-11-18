@@ -58,6 +58,7 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
     private final PropiedadesPersistencia propiedades;
     private final ObjectMapper json;
     private final CircuitBreaker circuito;
+    static final String CORRELACION_AJENA = "CORRELACION_AJENA";
 
     public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades, ObjectMapper json) {
         this(constructor, propiedades, json, CircuitoPersistencia.crear(PropiedadesCircuito.porDefecto()));
@@ -274,6 +275,12 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
                         propiedades.intentos(), e.getMessage());
                 esperar(intento);
             } catch (HttpClientErrorException e) {
+                // ADR-23: antes que cualquier 409 de la operación (que lo leería como «ya votó»,
+                // «ya restablecido»…), la correlación de otra solicitud se informa como tal.
+                if (e.getStatusCode() == HttpStatus.CONFLICT && e.getResponseBodyAsString().contains(CORRELACION_AJENA)) {
+                    throw new ReglaIncumplida(CORRELACION_AJENA,
+                            "El X-Correlation-Id ya se usó en otra solicitud: envíe uno nuevo");
+                }
                 if (e.getStatusCode() == HttpStatus.NOT_FOUND || e.getStatusCode() == HttpStatus.CONFLICT) {
                     throw e;
                 }

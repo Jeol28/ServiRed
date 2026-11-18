@@ -47,6 +47,13 @@ public class ManejadorErrores {
                 .body(problema(HttpStatus.UNAUTHORIZED, "No autenticado", e.getMessage()));
     }
 
+    @ExceptionHandler(co.edu.javeriana.servired.identidad.dominio.Excepciones.CorrelacionAjena.class)
+    ProblemDetail correlacionAjena(RuntimeException e) {
+        ProblemDetail p = problema(HttpStatus.CONFLICT, "Conflicto", e.getMessage());
+        p.setProperty("motivo", "CORRELACION_AJENA");
+        return p;
+    }
+
     @ExceptionHandler(CorreoYaRegistrado.class)
     ProblemDetail correoRepetido(CorreoYaRegistrado e) {
         return problema(HttpStatus.CONFLICT, "Conflicto", e.getMessage());

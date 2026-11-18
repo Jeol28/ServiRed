@@ -278,6 +278,11 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
                     esperar(intento);
                 }
             } catch (HttpClientErrorException e) {
+                // ADR-23: antes que cualquier 409 de la operación (que lo leería como «correo ya
+                // registrado» o «empresa inexistente»), la correlación de otra solicitud.
+                if (e.getStatusCode() == HttpStatus.CONFLICT && e.getResponseBodyAsString().contains("CORRELACION_AJENA")) {
+                    throw new co.edu.javeriana.servired.identidad.dominio.Excepciones.CorrelacionAjena();
+                }
                 if (e.getStatusCode() == HttpStatus.NOT_FOUND || e.getStatusCode() == HttpStatus.CONFLICT) {
                     throw e;
                 }

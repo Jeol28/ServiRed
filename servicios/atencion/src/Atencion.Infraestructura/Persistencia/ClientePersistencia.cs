@@ -162,6 +162,9 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
         if (respuesta.StatusCode == HttpStatusCode.Conflict)
         {
             var cuerpo = await respuesta.Content.ReadAsStringAsync(ct);
+            // ADR-23: la correlación de otra solicitud no es un reintento ni un conflicto de versión.
+            if (cuerpo.Contains("\"CORRELACION_AJENA\""))
+                throw new ReglaIncumplida("CORRELACION_AJENA", "El X-Correlation-Id ya se usó en otra solicitud: envíe uno nuevo");
             if (cuerpo.Contains("\"VERSION\"")) throw new ConflictoDeVersion();
             throw new FallaPermanente("Persistencia rechazó la operación (409)");
         }

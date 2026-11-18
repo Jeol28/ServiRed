@@ -80,6 +80,17 @@ public class ClientePersistenciaPruebas
     }
 
     [Fact]
+    public async Task LaCorrelacionDeOtraSolicitudNoSeTomaPorConflictoDeVersion()
+    {
+        var (cliente, _) = Cliente(HttpStatusCode.Conflict, "{\"motivo\":\"CORRELACION_AJENA\"}");
+        var cambios = new CambiosCaso(0, "x", null, DateTimeOffset.UtcNow, Estado: EstadoCaso.EN_ATENCION);
+
+        var e = await Assert.ThrowsAsync<ReglaIncumplida>(() =>
+            cliente.ActualizarAsync(Caso.IdCaso, cambios, [], IdCorrelacion.Nuevo(), CancellationToken.None));
+        Assert.Equal("CORRELACION_AJENA", e.Motivo);
+    }
+
+    [Fact]
     public async Task UnConflictoDeVersionSeDistingue()
     {
         var (cliente, _) = Cliente(HttpStatusCode.Conflict, "{\"motivo\":\"VERSION\"}");
