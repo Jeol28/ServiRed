@@ -188,6 +188,12 @@ public class RepositorioFase4Jdbc implements RepositorioFase4 {
     }
 
     @Override
+    public boolean existeClaveEvidencia(String clave) {
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM reportes.evidencias WHERE clave_objeto = :clave)")
+                .param("clave", clave).query(Boolean.class).single();
+    }
+
+    @Override
     public void insertarDenuncia(DenunciaNueva d) {
         jdbc.sql("""
                         INSERT INTO reportes.denuncias

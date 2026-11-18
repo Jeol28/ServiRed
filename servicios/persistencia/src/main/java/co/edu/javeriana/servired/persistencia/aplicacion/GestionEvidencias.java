@@ -26,11 +26,19 @@ import java.util.HexFormat;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * Gestor de transacciones con Storage: guarda el archivo y su referencia juntos.
- * El archivo se sube dentro de la transacción; si la escritura en la base de
- * datos falla, el objeto se borra (compensación).
+ * <p>
+ * El archivo se sube <b>antes</b> de abrir la transacción, y la transacción solo
+ * escribe filas (idempotencia, límite, referencia). Así ninguna conexión del pool
+ * ni el bloqueo del reporte quedan tomados mientras dura la subida: con un pico de
+ * reportes con foto, las subidas lentas no agotan el pool (ADR-13).
+ * <p>
+ * Compensación: si la transacción falla, o si un reintento idempotente terminó
+ * sin usar el objeto recién subido, el objeto se borra. Nunca se borra un objeto
+ * que una evidencia guardada referencia.
  */
 public class GestionEvidencias {
 
@@ -62,7 +70,15 @@ public class GestionEvidencias {
                                             ArchivoNuevo archivo) {
         var operacion = OperacionNegocio.GUARDAR_EVIDENCIA;
         operacion.autorizar(servicio);
-        return transaccion.ejecutar(() -> {
+        // Lectura previa sin transacción: no se sube nada para un reporte que no existe.
+        // El límite de fotos se decide dentro de la transacción (con el reporte bloqueado),
+        // para que un reintento de la tercera foto devuelva el resultado y no un conflicto.
+        if (!repositorio.existeReporte(idReporte)) {
+            throw new RecursoNoEncontrado("Reporte inexistente");
+        }
+        String clave = "reportes/" + idReporte + "/" + archivo.idEvidencia() + extension(archivo);
+        String huella = sha256(archivo.contenido());
+        return subirYRegistrar(clave, archivo, () -> {
             if (idempotencia.reclamar(correlacion, operacion, servicio).isPresent()) {
                 return cargar(idReporte);
             }
@@ -72,10 +88,8 @@ public class GestionEvidencias {
             if (repositorio.contarEvidencias(idReporte) >= MAXIMO_POR_REPORTE) {
                 throw new Conflicto("LIMITE", "El reporte ya tiene " + MAXIMO_POR_REPORTE + " evidencias");
             }
-            String clave = "reportes/" + idReporte + "/" + archivo.idEvidencia() + extension(archivo);
-            subirYRegistrar(clave, archivo, () -> repositorio.insertarEvidencia(archivo.idEvidencia(), idReporte,
-                    null, clave, archivo.tipoContenido(), archivo.contenido().length, sha256(archivo.contenido()),
-                    reloj.instant()));
+            repositorio.insertarEvidencia(archivo.idEvidencia(), idReporte, null, clave, archivo.tipoContenido(),
+                    archivo.contenido().length, huella, reloj.instant());
             idempotencia.registrarResultado(correlacion, operacion, idReporte);
             return cargar(idReporte);
         });
@@ -93,7 +107,10 @@ public class GestionEvidencias {
         var operacion = OperacionNegocio.GUARDAR_DENUNCIA;
         operacion.autorizar(servicio);
         evento.validarPara(servicio, correlacion, Set.of("denuncia.recibida"));
-        return transaccion.ejecutar(() -> {
+        String clave = foto == null ? null
+                : "denuncias/" + d.idDenuncia() + "/" + foto.idEvidencia() + extension(foto);
+        String huella = foto == null ? null : sha256(foto.contenido());
+        Supplier<DenunciaGuardada> registrar = () -> {
             var previo = idempotencia.reclamar(correlacion, operacion, servicio);
             if (previo.isPresent()) {
                 return repositorio.buscarDenuncia(previo.get()).orElseThrow();
@@ -103,25 +120,34 @@ public class GestionEvidencias {
             }
             repositorio.insertarDenuncia(d);
             if (foto != null) {
-                String clave = "denuncias/" + d.idDenuncia() + "/" + foto.idEvidencia() + extension(foto);
-                subirYRegistrar(clave, foto, () -> repositorio.insertarEvidencia(foto.idEvidencia(), null,
-                        d.idDenuncia(), clave, foto.tipoContenido(), foto.contenido().length, sha256(foto.contenido()),
-                        reloj.instant()));
+                repositorio.insertarEvidencia(foto.idEvidencia(), null, d.idDenuncia(), clave, foto.tipoContenido(),
+                        foto.contenido().length, huella, reloj.instant());
             }
             outbox.agregar(evento);
             idempotencia.registrarResultado(correlacion, operacion, d.idDenuncia());
             return repositorio.buscarDenuncia(d.idDenuncia()).orElseThrow();
-        });
+        };
+        return foto == null ? transaccion.ejecutar(registrar) : subirYRegistrar(clave, foto, registrar);
     }
 
-    private void subirYRegistrar(String clave, ArchivoNuevo archivo, Runnable registrar) {
+    /**
+     * Sube el objeto sin transacción ni conexión abiertas y luego ejecuta la
+     * transacción corta que guarda su referencia. Compensa borrando el objeto si
+     * la transacción falla o si terminó sin referenciarlo (reintento idempotente).
+     */
+    private <T> T subirYRegistrar(String clave, ArchivoNuevo archivo, Supplier<T> registrar) {
         almacen.guardar(clave, archivo.tipoContenido(), archivo.contenido());
+        T resultado;
         try {
-            registrar.run();
+            resultado = transaccion.ejecutar(registrar);
         } catch (RuntimeException e) {
             almacen.borrar(clave);
             throw e;
         }
+        if (!repositorio.existeClaveEvidencia(clave)) {
+            almacen.borrar(clave);
+        }
+        return resultado;
     }
 
     private ReporteGuardado cargar(UUID id) {

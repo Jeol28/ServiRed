@@ -25,10 +25,20 @@ carga de archivos peligrosos y ADR-09 eliminar los metadatos EXIF.
   Storage (`https://<proyecto>.supabase.co/storage/v1/s3`); en local,
   **SeaweedFS 3.97** con una identidad obligatoria tomada de `.env`. Se cambia
   solo con `ALMACEN_S3_*`.
-- **Consistencia:** el objeto se sube dentro de la transacción de base de datos;
-  si la escritura de la referencia falla, el objeto se borra (compensación). La
-  clave del objeto es `reportes/<id>/<idEvidencia>.<ext>` o
+- **Consistencia:** el objeto se sube **antes** de abrir la transacción, y la
+  transacción solo escribe filas: idempotencia, bloqueo del reporte, límite de 3 y la
+  referencia. La clave del objeto es `reportes/<id>/<idEvidencia>.<ext>` o
   `denuncias/<id>/<idEvidencia>.<ext>` y se guarda también su SHA-256.
+  - **Compensación:** si la transacción falla, el objeto se borra. También se borra
+    si un reintento idempotente terminó sin referenciarlo (se consulta
+    `clave_objeto`). Un objeto referenciado nunca se borra.
+  - **Por qué no dentro de la transacción** (así era al principio): la conexión del
+    pool, y el bloqueo del reporte, quedaban tomados mientras duraba la subida al
+    almacén. Con un pico de reportes con foto y subidas lentas, el pool (10
+    conexiones) se agotaba y frenaba también a los reportes sin foto.
+  - Antes de subir se comprueba, sin transacción, que el reporte exista. El límite
+    de fotos se decide dentro de la transacción, para que el reintento de la tercera
+    foto devuelva el resultado y no un conflicto.
 - **SDK de AWS:** los checksums se calculan solo cuando el servicio los exige
   (`WHEN_REQUIRED`). Con el valor por defecto del SDK 2.30+, los objetos viajan
   como `aws-chunked` con checksum al final y SeaweedFS los guardaba corruptos;
@@ -44,8 +54,11 @@ carga de archivos peligrosos y ADR-09 eliminar los metadatos EXIF.
 ## Consecuencias
 - Se pierde la orientación EXIF: las apps (fases 9 y 10) deben enviar la foto ya
   orientada.
-- Si la transacción falla después de subir el objeto y la compensación también
-  falla, puede quedar un objeto huérfano (se registra en el log); una limpieza
-  periódica por clave sin referencia es una mejora pendiente.
+- Puede quedar un objeto huérfano (sin fila que lo referencie) en dos casos: si la
+  compensación falla (se registra en el log) o si el proceso se cae entre la subida
+  y el fin de la transacción. No afecta a los datos, porque nada lo referencia, y
+  una limpieza periódica por clave sin referencia es una mejora pendiente.
+- Una foto que se rechaza dentro de la transacción (p. ej. la cuarta de un reporte)
+  alcanza a subirse antes de borrarse. Es el precio de no tener la conexión tomada.
 - Las fotos pasan por memoria en Reportes y Persistencia (máximo ~6 MB por
   petición): aceptable para el volumen del MVP.

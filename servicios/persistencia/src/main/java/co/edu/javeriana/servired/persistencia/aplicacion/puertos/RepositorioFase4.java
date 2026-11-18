@@ -44,6 +44,9 @@ public interface RepositorioFase4 {
 
     Optional<EvidenciaReferencia> evidenciaDeReporte(UUID idReporte, UUID idEvidencia);
 
+    /** ¿Alguna evidencia guardada apunta a este objeto del almacén? */
+    boolean existeClaveEvidencia(String clave);
+
     void insertarDenuncia(DenunciaNueva d);
 
     Optional<DenunciaGuardada> buscarDenuncia(UUID idDenuncia);
