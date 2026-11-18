@@ -7,7 +7,7 @@ import { FormularioPeriodo, NOMBRE_SERVICIO, TIPOS_SERVICIO } from 'compartido';
   selector: 'app-formulario-filtros',
   imports: [FormsModule],
   template: `
-    <form class="sr-tarjeta sr-fila" (ngSubmit)="aplicar.emit()" aria-label="Filtros">
+    <form class="sr-tarjeta filtros" (ngSubmit)="aplicar.emit()" aria-label="Filtros">
       <label>Desde <input type="date" name="desde" [(ngModel)]="f().desde" /></label>
       <label>Hasta <input type="date" name="hasta" [(ngModel)]="f().hasta" /></label>
       <label>Servicio
@@ -24,13 +24,19 @@ import { FormularioPeriodo, NOMBRE_SERVICIO, TIPOS_SERVICIO } from 'compartido';
         </select>
       </label>
       <label>Departamento
-        <input name="dep" [(ngModel)]="f().codigoDepartamento" inputmode="numeric" maxlength="2" size="4" placeholder="11" />
+        <input name="dep" [(ngModel)]="f().codigoDepartamento" inputmode="numeric" maxlength="2" placeholder="11" />
       </label>
       <label>Municipio
-        <input name="mun" [(ngModel)]="f().codigoMunicipio" inputmode="numeric" maxlength="5" size="7" placeholder="11001" />
+        <input name="mun" [(ngModel)]="f().codigoMunicipio" inputmode="numeric" maxlength="5" placeholder="11001" />
       </label>
       <button class="sr-primario" type="submit">Aplicar</button>
     </form>
+  `,
+  styles: `
+    /* Columnas iguales: todos los campos del mismo ancho, sea fecha, lista o texto. */
+    .filtros { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-items: end; }
+    .filtros input, .filtros select { width: 100%; min-width: 0; height: 2.4rem; }
+    .filtros button { justify-content: center; height: 2.4rem; }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
