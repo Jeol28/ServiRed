@@ -16,7 +16,10 @@ import co.edu.javeriana.servired.identidad.dominio.Excepciones.CorreoYaRegistrad
 import co.edu.javeriana.servired.identidad.dominio.IdCorrelacion;
 import co.edu.javeriana.servired.identidad.dominio.NuevaCuenta;
 import co.edu.javeriana.servired.identidad.dominio.Rol;
+import co.edu.javeriana.servired.identidad.infraestructura.persistencia.CircuitoPersistencia;
 import co.edu.javeriana.servired.identidad.infraestructura.persistencia.ClientePersistencia;
+import co.edu.javeriana.servired.identidad.infraestructura.persistencia.PropiedadesCircuito;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import co.edu.javeriana.servired.identidad.infraestructura.persistencia.PersistenciaNoDisponible;
 import co.edu.javeriana.servired.identidad.infraestructura.persistencia.PropiedadesPersistencia;
 import java.time.Duration;
@@ -84,5 +87,25 @@ class ClientePersistenciaTest {
                 requestTo(URL + "/interno/v1/sesiones/cerrar")).andRespond(withServerError());
 
         assertThatThrownBy(() -> cliente.cerrar("a".repeat(64), correlacion)).isInstanceOf(PersistenciaNoDisponible.class);
+    }
+
+    @Test
+    void conElCircuitoAbiertoNiSiquieraLaRotacionLlegaAPersistencia() {
+        var c = RestClient.builder();
+        var srv = MockRestServiceServer.bindTo(c).build();
+        var circuito = CircuitoPersistencia.crear(new PropiedadesCircuito(2, 2, 50, Duration.ofHours(1), 1));
+        var conCircuito = new ClientePersistencia(c,
+                new PropiedadesPersistencia(URL, "clave-identidad-123456", null, null, 2, Duration.ofMillis(1)),
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), circuito);
+        srv.expect(org.springframework.test.web.client.ExpectedCount.times(2),
+                requestTo(URL + "/interno/v1/sesiones/cerrar")).andRespond(withServerError());
+        assertThatThrownBy(() -> conCircuito.cerrar("a".repeat(64), correlacion))
+                .isInstanceOf(PersistenciaNoDisponible.class);
+        assertThat(circuito.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+
+        // Abierto: el inicio de sesión y la rotación fallan sin llamar a Persistencia (503).
+        assertThatThrownBy(() -> conCircuito.rotar("a".repeat(64), UUID.randomUUID(), "b".repeat(64),
+                Instant.now(), correlacion)).isInstanceOf(PersistenciaNoDisponible.class);
+        srv.verify();
     }
 }

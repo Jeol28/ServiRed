@@ -22,9 +22,8 @@ public static class ServiciosInfraestructura
         servicios.AddHttpClient<ClienteVistaLectura>(http =>
         {
             http.BaseAddress = persistencia.Url;
-            http.Timeout = persistencia.Timeout;
             http.DefaultRequestHeaders.Add(ClienteVistaLectura.CabeceraClave, persistencia.Clave);
-        });
+        }).ConCircuitoPersistencia(persistencia.Timeout);
         servicios.AddTransient<IVistaLectura>(sp => sp.GetRequiredService<ClienteVistaLectura>());
         servicios.AddTransient<IRegistroAcciones>(sp => sp.GetRequiredService<ClienteVistaLectura>());
         servicios.AddScoped<ProyeccionEventos>();

@@ -29,10 +29,14 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 
 /**
  * Adaptador hacia las operaciones de identidad de Persistencia
  * (contratos/internos/persistencia.v1.yaml). Reintenta ante fallas de red o 5xx.
+ * Cada intento pasa por el circuit breaker (ADR-20): con el circuito abierto se
+ * falla al instante con {@link PersistenciaNoDisponible} (503), sin reintentos.
  * El correo nunca va en la URL ni en los logs.
  */
 public class ClientePersistencia implements RepositorioCuentas, RepositorioSesiones, RegistroAcciones {
@@ -42,6 +46,7 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
     private final RestClient http;
     private final PropiedadesPersistencia propiedades;
     private final MeterRegistry metricas;
+    private final CircuitBreaker circuito;
 
     public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades) {
         this(constructor, propiedades, new SimpleMeterRegistry());
@@ -49,8 +54,14 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
 
     public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades,
                                MeterRegistry metricas) {
+        this(constructor, propiedades, metricas, CircuitoPersistencia.crear(PropiedadesCircuito.porDefecto()));
+    }
+
+    public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades,
+                               MeterRegistry metricas, CircuitBreaker circuito) {
         this.propiedades = propiedades;
         this.metricas = metricas;
+        this.circuito = circuito;
         // Series en 0 desde el arranque: increase() de Prometheus no ve el salto de "no existe" a 1.
         for (String accion : new String[]{"INICIO_SESION_FALLIDO", "REFRESCO_REUTILIZADO"}) {
             metricas.counter("servired.acciones.auditadas", "accion", accion, "resultado", "FALLO");
@@ -217,11 +228,11 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
     public ResultadoRotacion rotar(String hashActual, UUID idSesionNueva, String hashNuevo, Instant expiraEn,
                                    IdCorrelacion correlacion) {
         try {
-            var r = http.post().uri("/interno/v1/sesiones/rotar")
+            var r = circuito.executeSupplier(() -> http.post().uri("/interno/v1/sesiones/rotar")
                     .header(IdCorrelacion.CABECERA, correlacion.valor())
                     .body(Map.of("hashRefrescoActual", hashActual, "idSesionNueva", idSesionNueva,
                             "hashRefrescoNuevo", hashNuevo, "expiraEn", expiraEn))
-                    .retrieve().body(RotacionDto.class);
+                    .retrieve().body(RotacionDto.class));
             return ResultadoRotacion.valida(r.cuenta().aDominio());
         } catch (HttpClientErrorException.Conflict e) {
             boolean reutilizado = e.getResponseBodyAsString().contains("REUTILIZADA");
@@ -229,7 +240,7 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
                 log.warn("se presentó un token de refresco ya usado; se revocaron las sesiones de la cuenta");
             }
             return ResultadoRotacion.invalida(reutilizado);
-        } catch (ResourceAccessException | HttpServerErrorException e) {
+        } catch (ResourceAccessException | HttpServerErrorException | CallNotPermittedException e) {
             throw new PersistenciaNoDisponible("Persistencia no disponible para rotarSesion", e);
         }
     }
@@ -255,7 +266,10 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
         RuntimeException ultima = null;
         for (int intento = 1; intento <= propiedades.intentos(); intento++) {
             try {
-                return llamada.get();
+                return circuito.executeSupplier(llamada);
+            } catch (CallNotPermittedException e) {
+                throw new PersistenciaNoDisponible(
+                        "Persistencia no disponible para " + operacion + " (circuito abierto)", e);
             } catch (ResourceAccessException | HttpServerErrorException e) {
                 ultima = e;
                 log.warn("persistencia falló en {} (intento {}/{}): {}", operacion, intento,

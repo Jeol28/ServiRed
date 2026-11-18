@@ -1,5 +1,11 @@
 package co.edu.javeriana.servired.reportes.infraestructura.config;
 
+import co.edu.javeriana.servired.reportes.infraestructura.persistencia.CircuitoPersistencia;
+import co.edu.javeriana.servired.reportes.infraestructura.persistencia.PropiedadesCircuito;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics;
+import io.micrometer.core.instrument.MeterRegistry;
 import co.edu.javeriana.servired.reportes.aplicacion.ConsultarReporte;
 import co.edu.javeriana.servired.reportes.aplicacion.CrearReporte;
 import co.edu.javeriana.servired.reportes.aplicacion.GestionEvidencias;
@@ -25,7 +31,7 @@ import org.springframework.web.client.RestClient;
 
 /** Composición: conecta los casos de uso (sin Spring) con sus adaptadores. */
 @Configuration
-@EnableConfigurationProperties(PropiedadesPersistencia.class)
+@EnableConfigurationProperties({PropiedadesPersistencia.class, PropiedadesCircuito.class})
 public class ConfiguracionReportes {
 
     @Bean
@@ -33,13 +39,23 @@ public class ConfiguracionReportes {
         return Clock.systemUTC();
     }
 
+    /** Circuit breaker hacia Persistencia (ADR-20); su estado se publica en /actuator/prometheus. */
+    @Bean
+    CircuitBreaker circuitoPersistencia(PropiedadesCircuito propiedades, MeterRegistry metricas) {
+        var registro = CircuitBreakerRegistry.ofDefaults();
+        var circuito = CircuitoPersistencia.crear(registro, propiedades);
+        TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registro).bindTo(metricas);
+        return circuito;
+    }
+
     @Bean
     ClientePersistencia clientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades,
-                                            ObjectMapper json) {
+                                            ObjectMapper json, CircuitBreaker circuitoPersistencia) {
         var fabrica = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(propiedades.timeoutConexion()).build());
         fabrica.setReadTimeout(propiedades.timeoutLectura());
-        return new ClientePersistencia(constructor.clone().requestFactory(fabrica), propiedades, json);
+        return new ClientePersistencia(constructor.clone().requestFactory(fabrica), propiedades, json,
+                circuitoPersistencia);
     }
 
     @Bean

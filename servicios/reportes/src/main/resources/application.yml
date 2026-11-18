@@ -44,6 +44,14 @@ servired:
     timeout-lectura: 5s
     intentos: 3
     espera-entre-intentos: 200ms
+    # Circuit breaker (ADR-20): abre con >= 50 % de fallas en las últimas 20 llamadas
+    # (mínimo 10); abierto falla al instante 15 s y luego prueba con 3 llamadas.
+    circuito:
+      ventana: 20
+      minimo-llamadas: 10
+      porcentaje-fallas: 50
+      espera-abierto: 15s
+      llamadas-de-prueba: 3
   validacion:
     # Validación comunitaria (RF-4, ADR-08)
     umbral: 3

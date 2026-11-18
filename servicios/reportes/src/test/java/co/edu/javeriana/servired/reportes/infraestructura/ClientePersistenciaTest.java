@@ -17,7 +17,10 @@ import co.edu.javeriana.servired.reportes.dominio.Magnitud;
 import co.edu.javeriana.servired.reportes.dominio.NuevoReporte;
 import co.edu.javeriana.servired.reportes.dominio.TipoServicio;
 import co.edu.javeriana.servired.reportes.dominio.Ubicacion;
+import co.edu.javeriana.servired.reportes.infraestructura.persistencia.CircuitoPersistencia;
 import co.edu.javeriana.servired.reportes.infraestructura.persistencia.ClientePersistencia;
+import co.edu.javeriana.servired.reportes.infraestructura.persistencia.PropiedadesCircuito;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import co.edu.javeriana.servired.reportes.infraestructura.persistencia.PersistenciaNoDisponible;
 import co.edu.javeriana.servired.reportes.infraestructura.persistencia.PropiedadesPersistencia;
 import java.time.Duration;
@@ -83,6 +86,50 @@ class ClientePersistenciaTest {
         assertThatThrownBy(() -> cliente.guardar(r, "11001",
                 EventosReporte.reporteCreado(r, "11001", correlacion), correlacion))
                 .isInstanceOf(PersistenciaNoDisponible.class);
+    }
+
+    /** Circuito pequeño para la prueba: abre con 3 llamadas fallidas de 3 y no se cierra solo. */
+    private ClientePersistencia clienteConCircuito(RestClient.Builder c, CircuitBreaker circuito) {
+        return new ClientePersistencia(c,
+                new PropiedadesPersistencia(URL, "clave-de-reportes-123", null, null, 3, Duration.ofMillis(1)),
+                new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules(), circuito);
+    }
+
+    @Test
+    void conPersistenciaCaidaElCircuitoSeAbreYLaSiguienteLlamadaFallaAlInstante() {
+        var c = RestClient.builder();
+        var srv = MockRestServiceServer.bindTo(c).build();
+        var circuito = CircuitoPersistencia.crear(new PropiedadesCircuito(3, 3, 50, Duration.ofHours(1), 1));
+        var conCircuito = clienteConCircuito(c, circuito);
+        var r = reporte();
+        // Los 3 intentos fallan: el circuito queda abierto.
+        srv.expect(times(3), requestTo(URL + "/interno/v1/reportes/guardar")).andRespond(withServiceUnavailable());
+        assertThatThrownBy(() -> conCircuito.guardar(r, "11001",
+                EventosReporte.reporteCreado(r, "11001", correlacion), correlacion))
+                .isInstanceOf(PersistenciaNoDisponible.class);
+        assertThat(circuito.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+
+        // Abierto: falla sin llamar a Persistencia (no hay más peticiones esperadas) y sin reintentar.
+        assertThatThrownBy(() -> conCircuito.buscar(UUID.randomUUID(), correlacion))
+                .isInstanceOf(PersistenciaNoDisponible.class)
+                .hasMessageContaining("circuito abierto");
+        srv.verify();
+    }
+
+    @Test
+    void unNoEncontradoNoCuentaComoFallaDelCircuito() {
+        var c = RestClient.builder();
+        var srv = MockRestServiceServer.bindTo(c).build();
+        var circuito = CircuitoPersistencia.crear(new PropiedadesCircuito(3, 3, 50, Duration.ofHours(1), 1));
+        var conCircuito = clienteConCircuito(c, circuito);
+        srv.expect(times(4), requestTo(org.hamcrest.Matchers.startsWith(URL + "/interno/v1/reportes/")))
+                .andRespond(withResourceNotFound());
+
+        for (int i = 0; i < 4; i++) {
+            assertThat(conCircuito.buscar(UUID.randomUUID(), correlacion)).isEmpty();
+        }
+        assertThat(circuito.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+        srv.verify();
     }
 
     @Test

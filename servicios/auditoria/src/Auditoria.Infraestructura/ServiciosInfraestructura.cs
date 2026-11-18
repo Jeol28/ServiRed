@@ -23,9 +23,8 @@ public static class ServiciosInfraestructura
         servicios.AddHttpClient<IRepositorioAuditoria, ClientePersistencia>(http =>
         {
             http.BaseAddress = persistencia.Url;
-            http.Timeout = persistencia.Timeout;
             http.DefaultRequestHeaders.Add(ClientePersistencia.CabeceraClave, persistencia.Clave);
-        });
+        }).ConCircuitoPersistencia(persistencia.Timeout);
         // El detector guarda ventanas en memoria: una sola instancia por proceso.
         servicios.AddSingleton<DetectorAlertas>();
         servicios.AddSingleton<IMetricasAlertas, MetricasAlertas>();

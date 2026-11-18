@@ -24,9 +24,8 @@ public static class ServiciosInfraestructura
         servicios.AddHttpClient<ClientePersistencia>(http =>
         {
             http.BaseAddress = persistencia.Url;
-            http.Timeout = persistencia.Timeout;
             http.DefaultRequestHeaders.Add(ClientePersistencia.CabeceraClave, persistencia.Clave);
-        });
+        }).ConCircuitoPersistencia(persistencia.Timeout);
         servicios.AddTransient<IRepositorioCasos>(sp => sp.GetRequiredService<ClientePersistencia>());
         servicios.AddTransient<ICatalogoAtencion>(sp => sp.GetRequiredService<ClientePersistencia>());
         servicios.AddTransient<IRepositorioModeracion>(sp => sp.GetRequiredService<ClientePersistencia>());

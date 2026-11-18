@@ -39,11 +39,15 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 
 /**
  * Adaptador hacia la API interna de Persistencia (contratos/internos/persistencia.v1.yaml).
  * Reintenta ante fallas de red o 5xx: es seguro porque cada operación es
- * idempotente por X-Correlation-Id.
+ * idempotente por X-Correlation-Id. Cada intento pasa por el circuit breaker
+ * (ADR-20): con el circuito abierto no se reintenta ni se espera un timeout, se
+ * falla al instante con {@link PersistenciaNoDisponible} (503).
  */
 public class ClientePersistencia implements RepositorioReportes, CatalogoTerritorial {
 
@@ -53,10 +57,17 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
     private final RestClient http;
     private final PropiedadesPersistencia propiedades;
     private final ObjectMapper json;
+    private final CircuitBreaker circuito;
 
     public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades, ObjectMapper json) {
+        this(constructor, propiedades, json, CircuitoPersistencia.crear(PropiedadesCircuito.porDefecto()));
+    }
+
+    public ClientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades, ObjectMapper json,
+                               CircuitBreaker circuito) {
         this.propiedades = propiedades;
         this.json = json;
+        this.circuito = circuito;
         this.http = constructor.clone()
                 .baseUrl(propiedades.url())
                 .defaultHeader("X-Clave-Servicio", propiedades.clave())
@@ -253,7 +264,10 @@ public class ClientePersistencia implements RepositorioReportes, CatalogoTerrito
         RuntimeException ultima = null;
         for (int intento = 1; intento <= propiedades.intentos(); intento++) {
             try {
-                return llamada.get();
+                return circuito.executeSupplier(llamada);
+            } catch (CallNotPermittedException e) {
+                throw new PersistenciaNoDisponible(
+                        "Persistencia no disponible para " + operacion + " (circuito abierto)", e);
             } catch (ResourceAccessException | HttpServerErrorException e) {
                 ultima = e;
                 log.warn("persistencia falló en {} (intento {}/{}): {}", operacion, intento,

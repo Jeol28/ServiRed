@@ -24,6 +24,14 @@ servired:
     url: ${PERSISTENCIA_URL:http://persistencia:8080}
     # Clave propia de este servicio ante Persistencia (PERSISTENCIA_CLAVE_IDENTIDAD en .env).
     clave: ${PERSISTENCIA_CLAVE:}
+    # Circuit breaker (ADR-20): abre con >= 50 % de fallas en las últimas 20 llamadas
+    # (mínimo 10); abierto falla al instante 15 s y luego prueba con 3 llamadas.
+    circuito:
+      ventana: 20
+      minimo-llamadas: 10
+      porcentaje-fallas: 50
+      espera-abierto: 15s
+      llamadas-de-prueba: 3
   admin-inicial:
     correo: ${IDENTIDAD_ADMIN_CORREO:}
     clave: ${IDENTIDAD_ADMIN_CLAVE:}

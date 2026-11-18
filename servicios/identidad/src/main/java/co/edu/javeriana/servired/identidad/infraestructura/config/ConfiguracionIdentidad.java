@@ -1,5 +1,10 @@
 package co.edu.javeriana.servired.identidad.infraestructura.config;
 
+import co.edu.javeriana.servired.identidad.infraestructura.persistencia.CircuitoPersistencia;
+import co.edu.javeriana.servired.identidad.infraestructura.persistencia.PropiedadesCircuito;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics;
 import co.edu.javeriana.servired.identidad.aplicacion.AdministracionCuentas;
 import co.edu.javeriana.servired.identidad.aplicacion.Autenticacion;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.CifradorClaves;
@@ -22,7 +27,7 @@ import org.springframework.web.client.RestClient;
 
 /** Composición: conecta los casos de uso (sin Spring) con sus adaptadores. */
 @Configuration
-@EnableConfigurationProperties({PropiedadesJwt.class, PropiedadesPersistencia.class})
+@EnableConfigurationProperties({PropiedadesJwt.class, PropiedadesPersistencia.class, PropiedadesCircuito.class})
 public class ConfiguracionIdentidad {
 
     @Bean
@@ -45,13 +50,25 @@ public class ConfiguracionIdentidad {
         return new CifradorBcrypt(costo);
     }
 
+    /** Circuit breaker hacia Persistencia (ADR-20); su estado se publica en /actuator/prometheus. */
+    @Bean
+    CircuitBreaker circuitoPersistencia(PropiedadesCircuito propiedades,
+                                        io.micrometer.core.instrument.MeterRegistry metricas) {
+        var registro = CircuitBreakerRegistry.ofDefaults();
+        var circuito = CircuitoPersistencia.crear(registro, propiedades);
+        TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registro).bindTo(metricas);
+        return circuito;
+    }
+
     @Bean
     ClientePersistencia clientePersistencia(RestClient.Builder constructor, PropiedadesPersistencia propiedades,
-                                            io.micrometer.core.instrument.MeterRegistry metricas) {
+                                            io.micrometer.core.instrument.MeterRegistry metricas,
+                                            CircuitBreaker circuitoPersistencia) {
         var fabrica = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(propiedades.timeoutConexion()).build());
         fabrica.setReadTimeout(propiedades.timeoutLectura());
-        return new ClientePersistencia(constructor.clone().requestFactory(fabrica), propiedades, metricas);
+        return new ClientePersistencia(constructor.clone().requestFactory(fabrica), propiedades, metricas,
+                circuitoPersistencia);
     }
 
     @Bean
