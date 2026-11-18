@@ -14,9 +14,15 @@ public sealed record SobreEventoSaliente(
 {
     public const string OrigenAtencion = "atencion";
 
+    /// <summary>
+    /// Un campo opcional ausente se omite: el contrato no admite <c>null</c> (p. ej.
+    /// idEmpresaOperadora de un caso sin empresa). Las opciones JSON del servicio omiten los
+    /// null de las propiedades, pero no los de un diccionario como <c>datos</c>.
+    /// </summary>
     public static SobreEventoSaliente Nuevo(string tipo, IdCorrelacion correlacion, DateTimeOffset ahora,
         IReadOnlyDictionary<string, object?> datos) =>
-        new(Guid.NewGuid(), tipo, 1, ahora, Guid.Parse(correlacion.Valor), OrigenAtencion, datos);
+        new(Guid.NewGuid(), tipo, 1, ahora, Guid.Parse(correlacion.Valor), OrigenAtencion,
+            datos.Where(d => d.Value is not null).ToDictionary(d => d.Key, d => d.Value));
 }
 
 /// <summary>Eventos del dominio de atención según sus esquemas versionados.</summary>
