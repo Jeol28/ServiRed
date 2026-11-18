@@ -169,6 +169,17 @@ table.sr-tabla { width: 100%; border-collapse: collapse; font-size: .92rem; }
   width: 48px; height: 48px; min-height: 48px; padding: 0; justify-content: center; flex: none;
   border-radius: 50%; font-size: 1.3rem; color: var(--sr-texto);
 }
+// Ícono del menú: tres barras dibujadas (un carácter ☰ queda descentrado según la fuente).
+.sr-hamburguesa {
+  display: block; width: 20px; height: 14px;
+  background:
+    linear-gradient(currentColor 0 0) top / 100% 2px no-repeat,
+    linear-gradient(currentColor 0 0) center / 100% 2px no-repeat,
+    linear-gradient(currentColor 0 0) bottom / 100% 2px no-repeat;
+  border-radius: 1px;
+}
+.sr-redondo { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+
 .sr-pildora {
   display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 1; max-width: 460px;
   border-radius: 999px; padding: .35rem 1.1rem; min-height: 48px; text-decoration: none; color: var(--sr-texto);

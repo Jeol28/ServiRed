@@ -25,7 +25,7 @@ const SUBTITULO: Record<string, string> = {
   template: `
     <header class="sr-barra-flotante">
       <button type="button" class="sr-redondo" aria-label="Abrir menú" aria-controls="menu-lateral"
-              [attr.aria-expanded]="menu()" (click)="menu.set(true)">☰</button>
+              [attr.aria-expanded]="menu()" (click)="menu.set(true)"><span class="sr-hamburguesa" aria-hidden="true"></span></button>
       <a class="sr-pildora" routerLink="/">
         <span class="marca">SERVI-RED</span>
         <span class="sub">{{ subtitulo() }}</span>
