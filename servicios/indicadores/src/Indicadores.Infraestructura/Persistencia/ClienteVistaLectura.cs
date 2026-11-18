@@ -39,7 +39,12 @@ public sealed class ClienteVistaLectura(HttpClient http) : IVistaLectura, IRegis
         (await EnviarAsync<EstadoVista>(HttpMethod.Get, "/interno/v1/indicadores/estado", null, correlacion, ct))!;
 
     public Task PublicarAsync(AccionAuditada a, IdCorrelacion correlacion, CancellationToken ct) =>
-        EnviarAsync<object>(HttpMethod.Post, "/interno/v1/acciones-auditadas", new Dictionary<string, object?>
+        EnviarAsync<object>(HttpMethod.Post, "/interno/v1/acciones-auditadas", SobreAccionAuditada(a, correlacion),
+            correlacion, ct, sinCuerpo: true);
+
+    /// <summary>Sobre del evento accion.auditada v1 (contratos/eventos/esquemas/accion.auditada.v1.json).</summary>
+    internal static Dictionary<string, object?> SobreAccionAuditada(AccionAuditada a, IdCorrelacion correlacion) =>
+        new()
         {
             ["idEvento"] = Guid.NewGuid(),
             ["tipo"] = "accion.auditada",
@@ -56,7 +61,7 @@ public sealed class ClienteVistaLectura(HttpClient http) : IVistaLectura, IRegis
                 ["recurso"] = new Dictionary<string, object?> { ["tipo"] = a.RecursoTipo },
                 ["detalle"] = a.Detalle,
             },
-        }, correlacion, ct, sinCuerpo: true);
+        };
 
     private static object Filtro(FiltroVista f) => new
     {

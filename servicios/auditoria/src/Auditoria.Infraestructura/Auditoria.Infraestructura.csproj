@@ -12,4 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="../Auditoria.Aplicacion/Auditoria.Aplicacion.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Las pruebas de contrato leen con las mismas opciones JSON que el consumidor. -->
+    <InternalsVisibleTo Include="Auditoria.Pruebas" />
+  </ItemGroup>
 </Project>

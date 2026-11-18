@@ -12,4 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="../Atencion.Aplicacion/Atencion.Aplicacion.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Las pruebas de contrato serializan con las mismas opciones JSON que el servicio. -->
+    <InternalsVisibleTo Include="Atencion.Pruebas" />
+  </ItemGroup>
 </Project>

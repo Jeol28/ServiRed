@@ -1,0 +1,14 @@
+{
+  "idEvento": "0b6f3c2e-1a2b-4c3d-8e9f-000000000004",
+  "tipo": "denuncia.recibida",
+  "version": 1,
+  "fechaOcurrencia": "2026-11-18T15:04:05.123Z",
+  "correlationId": "7c1d2e3f-4a5b-4c6d-9e8f-000000000004",
+  "origen": "reportes",
+  "datos": {
+    "idDenuncia": "5d6e7f80-91a2-4b3c-8d4e-5f6071829304",
+    "tipoServicio": "ENERGIA",
+    "codigoMunicipio": "08001",
+    "fechaRecepcion": "2026-11-18T15:04:05Z"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "idEvento": "0b6f3c2e-1a2b-4c3d-8e9f-000000000006",
+  "tipo": "caso.cerrado",
+  "version": 1,
+  "fechaOcurrencia": "2026-11-18T15:04:05.123Z",
+  "correlationId": "7c1d2e3f-4a5b-4c6d-9e8f-000000000006",
+  "origen": "atencion",
+  "datos": {
+    "idCaso": "9b2e7c1a-4d3f-4a8b-9c6d-1e2f3a4b5c6d",
+    "idReporte": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "fechaCierre": "2026-11-18T18:00:00Z",
+    "resolucion": "Se reparó el tubo madre",
+    "idActor": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+  }
+}

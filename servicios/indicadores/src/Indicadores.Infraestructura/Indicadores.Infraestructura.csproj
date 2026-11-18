@@ -12,4 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="../Indicadores.Aplicacion/Indicadores.Aplicacion.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Las pruebas de contrato serializan con las mismas opciones JSON que el servicio. -->
+    <InternalsVisibleTo Include="Indicadores.Pruebas" />
+  </ItemGroup>
 </Project>

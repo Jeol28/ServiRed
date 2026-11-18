@@ -21,6 +21,7 @@
         <java.version>21</java.version>
         <archunit.version>1.5.1</archunit.version>
         <resilience4j.version>2.2.0</resilience4j.version>
+        <json-schema-validator.version>1.5.6</json-schema-validator.version>
     </properties>
 
     <dependencies>
@@ -71,6 +72,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Valida los eventos contra contratos/eventos (JSON Schema 2020-12). -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>${json-schema-validator.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
