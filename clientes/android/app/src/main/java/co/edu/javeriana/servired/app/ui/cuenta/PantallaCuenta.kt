@@ -29,10 +29,10 @@ import co.edu.javeriana.servired.app.ui.componentes.Aviso
 import co.edu.javeriana.servired.app.ui.componentes.PantallaConBarra
 
 @Composable
-fun PantallaCuenta(vm: CuentaViewModel) {
+fun PantallaCuenta(vm: CuentaViewModel, alVolver: () -> Unit) {
     val e by vm.estado.collectAsStateWithLifecycle()
     var confirmarEliminar by remember { mutableStateOf(false) }
-    PantallaConBarra(titulo = "Mi cuenta", enPestana = true) { margen ->
+    PantallaConBarra(titulo = "Mi cuenta", alVolver = alVolver) { margen ->
         Column(
             Modifier.padding(margen).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

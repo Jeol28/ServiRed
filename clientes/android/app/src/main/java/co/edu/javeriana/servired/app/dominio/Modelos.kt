@@ -69,6 +69,9 @@ data class ReporteCercano(
     val restablecimiento: Conteo?,
 )
 
+/** Zona de ~1 km con cortes reportados, agregada y anónima (k ≥ 3): la vista nacional del mapa. */
+data class Zona(val ubicacion: Ubicacion, val reportes: Int)
+
 data class ResultadoValidacion(val objeto: ObjetoValidacion, val conteo: Conteo, val nueva: Boolean)
 
 data class Cuenta(val id: String, val correo: String, val nombre: String?, val rol: String)

@@ -59,6 +59,10 @@ import kotlinx.serialization.Serializable
     val validacionRestablecimiento: ConteoDto? = null,
 )
 
+@Serializable data class CeldaDto(val latitud: Double, val longitud: Double, val reportes: Int)
+
+@Serializable data class MapaPublicoDto(val celdas: List<CeldaDto> = emptyList())
+
 @Serializable data class NuevaValidacionDto(val objeto: String, val sentido: String, val ubicacion: UbicacionDto)
 
 @Serializable data class ValidacionDto(

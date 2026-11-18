@@ -31,6 +31,7 @@ import co.edu.javeriana.servired.app.dominio.ResultadoValidacion
 import co.edu.javeriana.servired.app.dominio.Sentido
 import co.edu.javeriana.servired.app.dominio.TipoError
 import co.edu.javeriana.servired.app.dominio.Ubicacion
+import co.edu.javeriana.servired.app.dominio.Zona
 import co.edu.javeriana.servired.app.dominio.map
 import java.io.File
 import java.time.Clock
@@ -194,6 +195,9 @@ class RepositorioReportesImpl(
 
     override suspend fun cercanos(desde: Ubicacion): Resultado<List<ReporteCercano>> =
         llamar { api.cercanos(desde.latitud, desde.longitud) }.map { l -> l.map { it.dominio() } }
+
+    override suspend fun zonasPublicas(): Resultado<List<Zona>> =
+        llamar { api.mapaPublico() }.map { m -> m.celdas.map { Zona(Ubicacion(it.latitud, it.longitud), it.reportes) } }
 
     override suspend fun validar(
         id: String, objeto: ObjetoValidacion, sentido: Sentido, desde: Ubicacion,

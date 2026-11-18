@@ -46,6 +46,10 @@ interface ApiCiudadano {
     @GET("api/v1/reportes/cercanos")
     suspend fun cercanos(@Query("latitud") latitud: Double, @Query("longitud") longitud: Double): List<ReporteCercanoDto>
 
+    /** Público: celdas agregadas (k ≥ 3) del periodo por defecto (30 días). */
+    @GET("api/v1/mapas/publico")
+    suspend fun mapaPublico(): MapaPublicoDto
+
     /** 201 si el voto es nuevo; 200 si ya había votado (no cambia nada). */
     @POST("api/v1/reportes/{id}/validaciones")
     suspend fun validar(@Path("id") id: String, @Body cuerpo: NuevaValidacionDto): Response<ValidacionDto>

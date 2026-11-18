@@ -2,6 +2,7 @@ package co.edu.javeriana.servired.app
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -37,9 +38,10 @@ class PantallaIngresoTest {
         regla.onNodeWithTag("acepta").performScrollTo().performClick()
         regla.onNodeWithTag("enviar").performScrollTo().performClick()
         regla.waitUntil(30_000) {
-            regla.onAllNodes(hasText("Reportar un corte"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+            regla.onAllNodes(hasTestTag("reportar"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
-        regla.onAllNodes(hasText("Mis reportes"), useUnmergedTree = true)[0].assertIsDisplayed()
+        // La pantalla principal es el mapa, con el botón grande de reportar.
+        regla.onAllNodes(hasText("SERVI-RED"), useUnmergedTree = true)[0].assertIsDisplayed()
         runBlocking { (regla.activity.application as ServiRedApp).contenedor.cuenta.eliminar() }
     }
 }

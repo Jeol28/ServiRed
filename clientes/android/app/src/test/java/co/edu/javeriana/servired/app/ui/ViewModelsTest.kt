@@ -1,6 +1,8 @@
 package co.edu.javeriana.servired.app.ui
 
 import co.edu.javeriana.servired.app.UbicacionFija
+import co.edu.javeriana.servired.app.dominio.Conteo
+import co.edu.javeriana.servired.app.dominio.EstadoReporte
 import co.edu.javeriana.servired.app.dominio.EstadoSesion
 import co.edu.javeriana.servired.app.dominio.Magnitud
 import co.edu.javeriana.servired.app.dominio.NuevaDenuncia
@@ -17,9 +19,10 @@ import co.edu.javeriana.servired.app.dominio.ResultadoValidacion
 import co.edu.javeriana.servired.app.dominio.Sentido
 import co.edu.javeriana.servired.app.dominio.TipoServicio
 import co.edu.javeriana.servired.app.dominio.Ubicacion
-import co.edu.javeriana.servired.app.ui.cercanos.CercanosViewModel
+import co.edu.javeriana.servired.app.dominio.Zona
 import co.edu.javeriana.servired.app.ui.denuncia.DenunciaViewModel
 import co.edu.javeriana.servired.app.ui.ingreso.IngresoViewModel
+import co.edu.javeriana.servired.app.ui.mapa.MapaViewModel
 import co.edu.javeriana.servired.app.ui.reportes.NuevoReporteViewModel
 import co.edu.javeriana.servired.app.ui.reportes.ResultadoEnvio
 import java.time.Clock
@@ -61,7 +64,10 @@ class ViewModelsTest {
         var creados = mutableListOf<NuevoReporte>()
         var enviar = true
         var cercanos: List<ReporteCercano> = emptyList()
-        override fun misReportes(): Flow<List<Reporte>> = flowOf(emptyList())
+        var mios = MutableStateFlow<List<Reporte>>(emptyList())
+        val restablecidos = mutableListOf<String>()
+        val votos = mutableListOf<Pair<String, Sentido>>()
+        override fun misReportes(): Flow<List<Reporte>> = mios
         override fun pendientes(): Flow<List<ReportePendiente>> = flowOf(emptyList())
         override suspend fun actualizar() = Resultado.Exito(Unit)
         override suspend fun obtener(id: String): Resultado<Reporte> = TODO()
@@ -70,9 +76,18 @@ class ViewModelsTest {
         override suspend fun descartarPendiente(idLocal: Long) = Unit
         override suspend fun adjuntarFoto(idReporte: String, ruta: String): Resultado<Reporte> = TODO()
         override suspend fun foto(idReporte: String, idEvidencia: String): Resultado<ByteArray> = TODO()
-        override suspend fun restablecer(id: String, fecha: Instant, comentario: String?): Resultado<Reporte> = TODO()
+        override suspend fun restablecer(id: String, fecha: Instant, comentario: String?): Resultado<Reporte> {
+            restablecidos += id
+            val r = mios.value.first { it.id == id }.copy(fechaRestablecimiento = fecha, estado = EstadoReporte.RESTABLECIDO)
+            mios.value = mios.value.map { if (it.id == id) r else it }
+            return Resultado.Exito(r)
+        }
         override suspend fun cercanos(desde: Ubicacion) = Resultado.Exito(cercanos)
-        override suspend fun validar(id: String, objeto: ObjetoValidacion, sentido: Sentido, desde: Ubicacion): Resultado<ResultadoValidacion> = TODO()
+        override suspend fun zonasPublicas() = Resultado.Exito(listOf(Zona(Ubicacion(3.45, -76.53), 7)))
+        override suspend fun validar(id: String, objeto: ObjetoValidacion, sentido: Sentido, desde: Ubicacion): Resultado<ResultadoValidacion> {
+            votos += id to sentido
+            return Resultado.Exito(ResultadoValidacion(objeto, Conteo(3, 0, 3), nueva = true))
+        }
     }
 
     @Test fun `el registro exige un correo valido, una clave adecuada y la autorizacion de datos`() = runTest {
@@ -121,10 +136,71 @@ class ViewModelsTest {
         assertEquals(listOf("f1", "f3"), vm.estado.value.fotos)
     }
 
-    @Test fun `sin ubicacion no se buscan reportes cercanos`() = runTest {
-        val vm = CercanosViewModel(ReportesFalso(), UbicacionFija(null))
-        vm.buscar()
-        assertTrue(vm.estado.value.error!!.contains("ubicación"))
+    private val aqui = Ubicacion(4.6287, -74.0648)
+
+    private fun cercano(id: String) = ReporteCercano(
+        id, TipoServicio.ENERGIA, Magnitud.CUADRA, EstadoReporte.RECIBIDO, Instant.parse("2026-11-17T11:00:00Z"),
+        Ubicacion(4.629, -74.065), 300, Conteo(1, 0, 1), null,
+    )
+
+    private fun propio(id: String) = Reporte(
+        id, TipoServicio.ACUEDUCTO, aqui, "11001", "BOGOTÁ, D.C.", Instant.parse("2026-11-17T10:00:00Z"), Magnitud.BARRIO, null,
+        EstadoReporte.RECIBIDO, Instant.parse("2026-11-17T10:05:00Z"), null, null, null, null, emptyList(), emptyList(),
+    )
+
+    @Test fun `el mapa carga ubicacion, cortes cercanos y zonas del pais`() = runTest {
+        val repo = ReportesFalso().apply { cercanos = listOf(cercano("c1"), cercano("c2")) }
+        val vm = MapaViewModel(repo, UbicacionFija(aqui), reloj)
+        vm.refrescar()
+        val e = vm.estado.value
+        assertEquals(aqui, e.ubicacion)
+        assertEquals(listOf("c1", "c2"), e.cercanos.map { it.id })
+        assertEquals(7, e.zonas.single().reportes)
+        assertTrue(!e.cargando)
+    }
+
+    @Test fun `sin ubicacion el mapa lo avisa y no busca cortes cercanos`() = runTest {
+        val repo = ReportesFalso().apply { cercanos = listOf(cercano("c1")) }
+        val vm = MapaViewModel(repo, UbicacionFija(null), reloj)
+        vm.refrescar()
+        assertTrue(vm.estado.value.sinUbicacion)
+        assertTrue(vm.estado.value.cercanos.isEmpty())
+    }
+
+    @Test fun `confirmar un corte cercano lo cuenta y cierra la tarjeta`() = runTest {
+        val repo = ReportesFalso().apply { cercanos = listOf(cercano("c1")) }
+        val vm = MapaViewModel(repo, UbicacionFija(aqui), reloj)
+        vm.refrescar()
+        vm.seleccionar("c:c1")
+        assertEquals("c1", vm.estado.value.cercanoSeleccionado?.id)
+        vm.validar(Sentido.CONFIRMA)
+        assertEquals(listOf("c1" to Sentido.CONFIRMA), repo.votos)
+        val e = vm.estado.value
+        assertNull(e.seleccion)
+        assertTrue(e.cercanos.single().corte!!.validado)
+        assertTrue(e.aviso!!.contains("Gracias"))
+    }
+
+    @Test fun `con un corte propio activo pregunta si ya volvio y responde en un toque`() = runTest {
+        val repo = ReportesFalso().apply { mios.value = listOf(propio("r1"), propio("r2")) }
+        val vm = MapaViewModel(repo, UbicacionFija(aqui), reloj)
+        assertEquals("r1", vm.estado.value.preguntaVolvio?.id)
+        vm.todaviaNo("r1")
+        assertEquals("r2", vm.estado.value.preguntaVolvio?.id)
+        vm.yaVolvio("r2")
+        assertEquals(listOf("r2"), repo.restablecidos)
+        assertNull("ya no hay cortes propios activos sin responder", vm.estado.value.preguntaVolvio)
+        assertTrue(vm.estado.value.aviso!!.contains("volvió"))
+    }
+
+    @Test fun `seleccionar una marca propia oculta la pregunta y deseleccionar la vuelve a mostrar`() = runTest {
+        val repo = ReportesFalso().apply { mios.value = listOf(propio("r1")) }
+        val vm = MapaViewModel(repo, UbicacionFija(aqui), reloj)
+        vm.seleccionar("m:r1")
+        assertEquals("r1", vm.estado.value.propioSeleccionado?.id)
+        assertNull(vm.estado.value.preguntaVolvio)
+        vm.seleccionar(null)
+        assertEquals("r1", vm.estado.value.preguntaVolvio?.id)
     }
 
     @Test fun `al enviar la denuncia se olvida su contenido`() = runTest {

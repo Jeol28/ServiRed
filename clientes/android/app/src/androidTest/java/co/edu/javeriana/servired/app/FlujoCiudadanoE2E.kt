@@ -98,6 +98,9 @@ class FlujoCiudadanoE2E {
         assertEquals(EstadoReporte.RESTABLECIDO, restablecido.estado)
         assertTrue(restablecido.duracionMinutos!! in 105..115)
 
+        // La vista nacional del mapa (zonas agregadas y anónimas).
+        exito(ana.reportes.zonasPublicas())
+
         // Denuncia anónima por el cliente público.
         val denuncias = RepositorioDenunciasImpl(crearApiPublica(base), jsonServiRed)
         exito(denuncias.enviar(NuevaDenuncia(TipoServicio.GAS, aqui, "Conexión ilegal de gas (prueba Android)"), null))

@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,15 +40,12 @@ import co.edu.javeriana.servired.app.ui.componentes.fechaHora
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaMisReportes(vm: MisReportesViewModel, alNuevo: () -> Unit, alAbrir: (String) -> Unit) {
+fun PantallaMisReportes(vm: MisReportesViewModel, alAbrir: (String) -> Unit, alVolver: () -> Unit) {
     val e by vm.estado.collectAsStateWithLifecycle()
     PantallaConBarra(
         titulo = "Mis reportes",
-        enPestana = true,
+        alVolver = alVolver,
         acciones = { IconButton(onClick = vm::actualizar) { Icon(Icons.Filled.Refresh, contentDescription = "Actualizar") } },
-        botonFlotante = {
-            ExtendedFloatingActionButton(onClick = alNuevo, icon = { Icon(Icons.Filled.Add, null) }, text = { Text("Reportar un corte") })
-        },
     ) { margen ->
         PullToRefreshBox(isRefreshing = e.actualizando, onRefresh = vm::actualizar, modifier = Modifier.padding(margen).fillMaxSize()) {
             LazyColumn(
@@ -66,7 +61,7 @@ fun PantallaMisReportes(vm: MisReportesViewModel, alNuevo: () -> Unit, alAbrir: 
                 }
                 if (e.reportes.isEmpty() && e.pendientes.isEmpty() && !e.actualizando) {
                     item {
-                        Text("Aún no tiene reportes. Si se le fue un servicio, repórtelo con el botón de abajo.",
+                        Text("Aún no tiene reportes. Si se le fue un servicio, repórtelo con el botón «Reportar» del mapa.",
                             style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 24.dp))
                     }
                 }

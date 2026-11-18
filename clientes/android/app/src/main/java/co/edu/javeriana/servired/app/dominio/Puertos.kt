@@ -36,6 +36,8 @@ interface RepositorioReportes {
     suspend fun foto(idReporte: String, idEvidencia: String): Resultado<ByteArray>
     suspend fun restablecer(id: String, fecha: Instant, comentario: String?): Resultado<Reporte>
     suspend fun cercanos(desde: Ubicacion): Resultado<List<ReporteCercano>>
+    /** Zonas con cortes de los últimos 30 días en todo el país (agregadas y anónimas). */
+    suspend fun zonasPublicas(): Resultado<List<Zona>>
     suspend fun validar(id: String, objeto: ObjetoValidacion, sentido: Sentido, desde: Ubicacion): Resultado<ResultadoValidacion>
 }
 
