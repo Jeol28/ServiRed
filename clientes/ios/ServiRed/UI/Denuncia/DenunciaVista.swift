@@ -30,7 +30,7 @@ struct DenunciaVista: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Toque el mapa donde ocurre").font(.subheadline.weight(.semibold))
             Button("Usar mi ubicación") { Task { await modelo.usarMiUbicacion() } }.buttonStyle(.bordered)
-            MapaOSM(seleccion: modelo.ubicacion) { modelo.ubicacion = $0 }
+            MapaOSM(seleccion: modelo.ubicacion, alElegir: { modelo.ubicacion = $0 })
                 .frame(height: 260).clipShape(RoundedRectangle(cornerRadius: 12))
         }
         VStack(alignment: .leading) {

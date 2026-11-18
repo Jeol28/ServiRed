@@ -2,20 +2,9 @@ import SwiftUI
 
 struct MisReportesVista: View {
     @State var modelo: MisReportesModelo
-    let alNuevo: () -> Void
 
     var body: some View {
         List {
-            Section {
-                Button(action: alNuevo) {
-                    Label("Reportar un corte", systemImage: "plus.circle.fill").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .accessibilityIdentifier("reportar")
-            }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
             if modelo.sinConexion {
                 Aviso(texto: "Sin conexión: ve los reportes guardados en el teléfono.", error: false)
             }
@@ -27,7 +16,7 @@ struct MisReportesVista: View {
             }
             Section {
                 if modelo.reportes.isEmpty && modelo.pendientes.isEmpty && !modelo.actualizando {
-                    Text("Aún no tiene reportes. Si se le fue un servicio, repórtelo con el botón de arriba.")
+                    Text("Aún no tiene reportes. Si se le fue un servicio, repórtelo con el botón «Reportar» del mapa.")
                         .foregroundStyle(.secondary)
                 }
                 ForEach(modelo.reportes) { r in
@@ -37,12 +26,6 @@ struct MisReportesVista: View {
         }
         .navigationTitle("Mis reportes")
         .refreshable { await modelo.actualizar() }
-        .toolbar {
-            // La barra inferior queda bajo la barra de pestañas flotante: el atajo va arriba.
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: alNuevo) { Image(systemName: "plus") }.accessibilityLabel("Reportar un corte")
-            }
-        }
         .task {
             await modelo.cargarLocal()
             await modelo.actualizar()

@@ -176,6 +176,11 @@ actor RepositorioReportesImpl: RepositorioReportes {
         return try lista.map { try $0.dominio() }
     }
 
+    func zonasPublicas() async throws -> [Zona] {
+        let m: MapaPublicoDTO = try await api.json(Peticion(metodo: "GET", ruta: "api/v1/mapas/publico"))
+        return m.celdas.map { Zona(ubicacion: Ubicacion(latitud: $0.latitud, longitud: $0.longitud), reportes: $0.reportes) }
+    }
+
     func validar(_ id: String, objeto: ObjetoValidacion, sentido: Sentido, desde u: Ubicacion) async throws -> ResultadoValidacion {
         do {
             let (datos, respuesta) = try await api.ejecutar(.json("POST", "api/v1/reportes/\(id)/validaciones",

@@ -6,7 +6,7 @@ import Testing
 private let gatewayArriba: Bool = {
     let semaforo = DispatchSemaphore(value: 0)
     nonisolated(unsafe) var listo = false
-    URLSession.shared.dataTask(with: URL(string: "http://localhost:8080/readyz")!) { _, r, _ in
+    URLSession.shared.dataTask(with: Contenedor.baseConfigurada().appending(path: "readyz")) { _, r, _ in
         listo = (r as? HTTPURLResponse)?.statusCode == 200
         semaforo.signal()
     }.resume()
@@ -15,14 +15,15 @@ private let gatewayArriba: Bool = {
 }()
 
 /**
- De punta a punta contra el gateway real (localhost:8080). Usa las mismas
+ De punta a punta contra el gateway que usa la app (API_BASE: el compose local o el
+ servidor de pruebas). Usa las mismas
  piezas que la app, con un cofre y SwiftData en memoria. Se omite si el
  compose no está arriba.
  */
 @Suite("Flujo del ciudadano contra el gateway", .serialized, .enabled(if: gatewayArriba, "requiere el compose arriba"))
 @MainActor
 struct FlujoCiudadanoE2E {
-    let base = URL(string: "http://localhost:8080/")!
+    let base = Contenedor.baseConfigurada()
 
     final class Ciudadano {
         let sesion: SesionServiRed
@@ -82,6 +83,9 @@ struct FlujoCiudadanoE2E {
         let restablecido = try await ana.reportes.restablecer(reporte.id, fecha: Date().addingTimeInterval(-600), comentario: "Volvió la luz")
         #expect(restablecido.estado == .RESTABLECIDO)
         #expect((105...115).contains(restablecido.duracionMinutos ?? 0))
+
+        // La vista nacional del mapa (zonas agregadas y anónimas).
+        _ = try await ana.reportes.zonasPublicas()
 
         // Denuncia anónima por el cliente público.
         let denuncias = RepositorioDenunciasImpl(publica: ClienteAPI(base: base, transporte: TransporteURLSession(), gestor: nil),

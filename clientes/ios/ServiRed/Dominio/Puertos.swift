@@ -29,6 +29,8 @@ protocol RepositorioReportes: Sendable {
     func foto(idReporte: String, idEvidencia: String) async throws -> Data
     func restablecer(_ id: String, fecha: Date, comentario: String?) async throws -> Reporte
     func cercanos(desde: Ubicacion) async throws -> [ReporteCercano]
+    /// Zonas con cortes de los últimos 30 días en todo el país (agregadas y anónimas).
+    func zonasPublicas() async throws -> [Zona]
     func validar(_ id: String, objeto: ObjetoValidacion, sentido: Sentido, desde: Ubicacion) async throws -> ResultadoValidacion
 }
 

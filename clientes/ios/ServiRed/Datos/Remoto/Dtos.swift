@@ -51,6 +51,9 @@ struct ReporteCercanoDTO: Codable, Sendable {
     var validacionRestablecimiento: ConteoDTO?
 }
 
+struct CeldaDTO: Codable, Sendable { var latitud: Double; var longitud: Double; var reportes: Int }
+struct MapaPublicoDTO: Codable, Sendable { var celdas: [CeldaDTO] }
+
 struct NuevaValidacionDTO: Codable, Sendable { var objeto: ObjetoValidacion; var sentido: Sentido; var ubicacion: UbicacionDTO }
 
 struct ValidacionDTO: Codable, Sendable {

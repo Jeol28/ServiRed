@@ -23,7 +23,8 @@ final class RecorridoCapturasUITests: XCTestCase {
     private func ciudadanoConReporte() throws -> (String, String) {
         let correo = "cap-\(UUID().uuidString.prefix(6).lowercased())@prueba.servired.co", clave = "una clave larga de prueba"
         func llamar(_ ruta: String, _ cuerpo: [String: Any], token: String? = nil) throws -> [String: Any] {
-            var r = URLRequest(url: URL(string: "http://localhost:8080\(ruta)")!)
+            let base = ProcessInfo.processInfo.environment["SERVIRED_BASE"] ?? "http://localhost:8080"
+            var r = URLRequest(url: URL(string: base + ruta)!)
             r.httpMethod = "POST"
             r.setValue("application/json", forHTTPHeaderField: "Content-Type")
             if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
@@ -57,24 +58,24 @@ final class RecorridoCapturasUITests: XCTestCase {
         app.secureTextFields["clave"].tap()
         app.secureTextFields["clave"].typeText(clave)
         app.buttons["enviar"].tap()
-        XCTAssertTrue(app.navigationBars["Mis reportes"].waitForExistence(timeout: 20))
-        capturar("i2-mis-reportes", esperar: 4)
+        XCTAssertTrue(app.buttons["reportar"].waitForExistence(timeout: 20))
+        capturar("i2-mapa", esperar: 8)
 
         app.buttons["reportar"].tap()
-        capturar("i3-nuevo-reporte", esperar: 6)
-        app.swipeUp()
-        capturar("i3b-nuevo-reporte-abajo", esperar: 2)
+        capturar("i3-hoja", esperar: 3)
+        app.buttons["servicio-ACUEDUCTO"].tap()
+        app.buttons["Mi barrio"].tap()
+        capturar("i3b-hoja-agua", esperar: 1)
+        app.swipeDown(velocity: .fast)
+        sleep(2)
+
+        app.buttons["menu"].tap()
+        capturar("i4-menu", esperar: 2)
+        app.buttons["Mis reportes"].tap()
+        capturar("i5-mis-reportes", esperar: 4)
         app.navigationBars.buttons.firstMatch.tap()
-
-        app.tabBars.buttons["Cercanos"].tap()
-        capturar("i4-cercanos", esperar: 7)
-        app.tabBars.buttons["Denunciar"].tap()
-        capturar("i5-denuncia", esperar: 5)
-        app.tabBars.buttons["Cuenta"].tap()
-        capturar("i7-cuenta")
-
-        app.tabBars.buttons["Mis reportes"].tap()
-        app.staticTexts["Acueducto"].firstMatch.tap()
-        capturar("i6-detalle", esperar: 6)
+        app.buttons["menu"].tap()
+        app.buttons["Denuncia anónima"].tap()
+        capturar("i6-denuncia", esperar: 3)
     }
 }

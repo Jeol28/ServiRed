@@ -106,6 +106,12 @@ struct ReporteCercano: Equatable, Sendable, Identifiable {
     var restablecimiento: Conteo?
 }
 
+/// Zona de ~1 km con cortes reportados, agregada y anónima (k ≥ 3): la vista nacional del mapa.
+struct Zona: Equatable, Sendable {
+    var ubicacion: Ubicacion
+    var reportes: Int
+}
+
 struct ResultadoValidacion: Equatable, Sendable {
     var objeto: ObjetoValidacion
     var conteo: Conteo

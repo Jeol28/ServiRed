@@ -9,10 +9,12 @@ Las decisiones están en [ADR-18](../../docs/adr/ADR-18-app-movil-ciudadano.md).
 | Pantalla | Qué hace | Requisito |
 |---|---|---|
 | Ingreso / registro | Correo y clave. El registro exige autorizar el tratamiento de datos (Ley 1581). Da acceso a la denuncia sin cuenta | RF-11 |
-| Mis reportes | Reportes del ciudadano (se ven sin conexión) y los pendientes de envío; deslizar para actualizar | RF-2 |
-| Reportar un corte | Servicio, magnitud, desde cuándo, ubicación (GPS o tocando el mapa), descripción y hasta 3 fotos | RF-1, RF-2 |
-| Detalle del reporte | Estado, historia, validaciones, mapa, fotos, agregar foto y "el servicio volvió" | RF-3 |
-| Cercanos | Cortes de otros a menos de 1 km; confirmar o controvertir el corte y su regreso | RF-4 |
+| **Mapa (pantalla principal)** | Mapa a pantalla completa centrado en el ciudadano. Muestra íconos por servicio (⚡ luz, 💧 agua, 🔥 gas, 🌊 alcantarillado, 🗑️ basura) de los cortes a menos de 1 km y de los propios (con anillo oscuro). Al alejar, zonas con cortes del país (agregadas, k ≥ 3). Se refresca cada minuto | RF-2, RF-4, RF-9 |
+| Tarjeta de corte cercano | Al tocar un ícono: «Sin luz · a 188 m · 3 vecinos lo confirmaron», con **Sí, también me afecta** / **Aquí no** | RF-4 |
+| «¿Ya volvió la luz?» | Si el ciudadano tiene un corte activo, la pregunta aparece sola: **Sí, ya volvió** (registra el restablecimiento y la duración) o **Todavía no** | RF-3 |
+| Reportar (hoja) | Botón grande **Reportar**: servicio, alcance y enviar. La hora es «ahora» y la ubicación la del GPS, salvo que se cambien (se ajusta moviendo el mapa bajo un pin). Foto y descripción opcionales. Sin red queda pendiente | RF-1, RF-2 |
+| Menú lateral (☰) | Mis reportes, Denuncia anónima y Mi cuenta | — |
+| Mis reportes / Detalle | Lista (también sin conexión) y detalle con historia, validaciones, fotos y restablecimiento | RF-2, RF-3 |
 | Denuncia anónima | Servicio, ubicación, descripción y foto opcional, sin ningún dato de la cuenta ni del teléfono | RF-5 |
 | Cuenta | Editar el nombre, cambiar la clave, cerrar sesión y eliminar la cuenta | RF-11 |
 

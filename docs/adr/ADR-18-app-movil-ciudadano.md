@@ -80,6 +80,28 @@ Las decisiones anteriores se aplican igual en iOS. Cambia la tecnología:
   una renovación no llega a salir del teléfono, la app conserva el resumen de la cuenta y
   abre la sesión sin red.
 
+## Actualización: la app centrada en el mapa
+Se rediseñan las dos apps al estilo de las apps de navegación colaborativa: el mapa es la
+pantalla principal y reportar lleva tres toques. Es un diseño visual propio de SERVI-RED.
+- **El mapa muestra:**
+  - la ubicación del ciudadano;
+  - íconos por servicio de los cortes a menos de 1 km (`GET /reportes/cercanos`) y de los
+    reportes propios activos;
+  - al alejar, las zonas con cortes del país (`GET /mapas/publico`, agregadas y anónimas,
+    k ≥ 3).
+  Se refresca cada minuto mientras está visible.
+- **Reportar:** una hoja con servicio, alcance y «desde cuándo» («ahora» por defecto). La
+  ubicación es la del GPS y se ajusta moviendo el mapa bajo un pin fijo. Se reutilizan el
+  mismo modelo de vista, las reglas y el envío sin conexión.
+- **Tarjetas de un toque:**
+  - «Sí, también me afecta» / «Aquí no» para los cortes cercanos (validación, RF-4).
+  - «¿Ya volvió la luz?» para los propios activos, que registra el restablecimiento con la
+    hora actual (RF-3).
+- **Menú lateral** con Mis reportes, Denuncia anónima y Mi cuenta. Se retiran las pestañas,
+  la pantalla de cercanos y el formulario de reporte anterior.
+- Los íconos se dibujan como imágenes (círculo del color del servicio y su emoji) en una
+  capa de símbolos de MapLibre; el estilo raster de OpenStreetMap no tiene tipografías.
+
 ## Consecuencias
 - Si la clave del Keystore se pierde (por ejemplo, al restaurar el sistema), la app
   pide ingresar de nuevo: el cofre se lee como vacío.

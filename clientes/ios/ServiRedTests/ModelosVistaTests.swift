@@ -15,8 +15,14 @@ final class SesionFalsa: RepositorioSesion {
 actor ReportesFalso: RepositorioReportes {
     var creados: [NuevoReporte] = []
     var enviar = true
+    var cercanosFalsos: [ReporteCercano] = []
+    var mios: [Reporte] = []
+    var restablecidos: [String] = []
+    var votos: [String] = []
     func ponerEnviar(_ v: Bool) { enviar = v }
-    func misReportes() async -> [Reporte] { [] }
+    func ponerCercanos(_ c: [ReporteCercano]) { cercanosFalsos = c }
+    func ponerMios(_ m: [Reporte]) { mios = m }
+    func misReportes() async -> [Reporte] { mios }
     func pendientes() async -> [ReportePendiente] { [] }
     func actualizar() async throws {}
     func obtener(_ id: String) async throws -> Reporte { throw ErrorApp.sinConexion }
@@ -25,10 +31,18 @@ actor ReportesFalso: RepositorioReportes {
     func descartarPendiente(_ idLocal: UUID) async {}
     func adjuntarFoto(idReporte: String, foto: String) async throws -> Reporte { throw ErrorApp.sinConexion }
     func foto(idReporte: String, idEvidencia: String) async throws -> Data { Data() }
-    func restablecer(_ id: String, fecha: Date, comentario: String?) async throws -> Reporte { throw ErrorApp.sinConexion }
-    func cercanos(desde: Ubicacion) async throws -> [ReporteCercano] { [] }
+    func restablecer(_ id: String, fecha: Date, comentario: String?) async throws -> Reporte {
+        restablecidos.append(id)
+        guard let i = mios.firstIndex(where: { $0.id == id }) else { throw ErrorApp.sinConexion }
+        mios[i].fechaRestablecimiento = fecha
+        mios[i].estado = .RESTABLECIDO
+        return mios[i]
+    }
+    func cercanos(desde: Ubicacion) async throws -> [ReporteCercano] { cercanosFalsos }
+    func zonasPublicas() async throws -> [Zona] { [Zona(ubicacion: Ubicacion(latitud: 3.45, longitud: -76.53), reportes: 7)] }
     func validar(_ id: String, objeto: ObjetoValidacion, sentido: Sentido, desde: Ubicacion) async throws -> ResultadoValidacion {
-        throw ErrorApp.sinConexion
+        votos.append(id)
+        return ResultadoValidacion(objeto: objeto, conteo: Conteo(confirmaciones: 3, controversias: 0, netas: 3), nueva: true)
     }
 }
 
@@ -93,10 +107,79 @@ struct ModelosVistaTests {
         #expect(m.fotos == ["f1", "f3"])
     }
 
-    @Test func sinUbicacionNoSeBuscanReportesCercanos() async {
-        let m = CercanosModelo(repo: ReportesFalso(), ubicacion: UbicacionFija(u: nil))
-        await m.buscar()
-        #expect(m.error?.contains("ubicación") == true)
+    let aqui = Ubicacion(latitud: 4.6287, longitud: -74.0648)
+
+    func cercano(_ id: String) -> ReporteCercano {
+        ReporteCercano(id: id, tipoServicio: .ENERGIA, magnitud: .CUADRA, estado: .RECIBIDO, inicioEstimado: ahora.addingTimeInterval(-7200),
+                       ubicacion: Ubicacion(latitud: 4.629, longitud: -74.065), distanciaMetros: 300,
+                       corte: Conteo(confirmaciones: 1, controversias: 0, netas: 1), restablecimiento: nil)
+    }
+
+    func propio(_ id: String) -> Reporte {
+        Reporte(id: id, tipoServicio: .ACUEDUCTO, ubicacion: aqui, codigoMunicipio: "11001", nombreMunicipio: "BOGOTÁ, D.C.",
+                inicioEstimado: ahora.addingTimeInterval(-3600), magnitud: .BARRIO, descripcion: nil, estado: .RECIBIDO,
+                fechaRegistro: ahora, fechaRestablecimiento: nil, duracionMinutos: nil, validacionCorte: nil,
+                validacionRestablecimiento: nil, evidencias: [], historia: [])
+    }
+
+    @Test func elMapaCargaUbicacionCortesCercanosYZonasDelPais() async {
+        let repo = ReportesFalso()
+        await repo.ponerCercanos([cercano("c1"), cercano("c2")])
+        let m = MapaModelo(repo: repo, ubicacion: UbicacionFija(u: aqui), ahora: { self.ahora })
+        await m.refrescar()
+        #expect(m.ubicacion == aqui)
+        #expect(m.cercanos.map(\.id) == ["c1", "c2"])
+        #expect(m.zonas.first?.reportes == 7)
+        #expect(!m.cargando)
+    }
+
+    @Test func sinUbicacionElMapaLoAvisaYNoBuscaCortesCercanos() async {
+        let repo = ReportesFalso()
+        await repo.ponerCercanos([cercano("c1")])
+        let m = MapaModelo(repo: repo, ubicacion: UbicacionFija(u: nil))
+        await m.refrescar()
+        #expect(m.sinUbicacion)
+        #expect(m.cercanos.isEmpty)
+    }
+
+    @Test func confirmarUnCorteCercanoLoCuentaYCierraLaTarjeta() async {
+        let repo = ReportesFalso()
+        await repo.ponerCercanos([cercano("c1")])
+        let m = MapaModelo(repo: repo, ubicacion: UbicacionFija(u: aqui))
+        await m.refrescar()
+        m.seleccionar("c:c1")
+        #expect(m.cercanoSeleccionado?.id == "c1")
+        await m.validar(.CONFIRMA)
+        #expect(await repo.votos == ["c1"])
+        #expect(m.seleccion == nil)
+        #expect(m.cercanos.first?.corte?.validado == true)
+        #expect(m.aviso?.contains("Gracias") == true)
+    }
+
+    @Test func conUnCortePropioActivoPreguntaSiYaVolvioYRespondeEnUnToque() async {
+        let repo = ReportesFalso()
+        await repo.ponerMios([propio("r1"), propio("r2")])
+        let m = MapaModelo(repo: repo, ubicacion: UbicacionFija(u: aqui), ahora: { self.ahora })
+        await m.cargarLocal()
+        #expect(m.preguntaVolvio?.id == "r1")
+        m.todaviaNo("r1")
+        #expect(m.preguntaVolvio?.id == "r2")
+        await m.yaVolvio("r2")
+        #expect(await repo.restablecidos == ["r2"])
+        #expect(m.preguntaVolvio == nil, "ya no hay cortes propios activos sin responder")
+        #expect(m.aviso?.contains("volvió") == true)
+    }
+
+    @Test func seleccionarUnaMarcaPropiaOcultaLaPreguntaYDeseleccionarLaVuelveAMostrar() async {
+        let repo = ReportesFalso()
+        await repo.ponerMios([propio("r1")])
+        let m = MapaModelo(repo: repo, ubicacion: UbicacionFija(u: aqui))
+        await m.cargarLocal()
+        m.seleccionar("m:r1")
+        #expect(m.propioSeleccionado?.id == "r1")
+        #expect(m.preguntaVolvio == nil)
+        m.seleccionar(nil)
+        #expect(m.preguntaVolvio?.id == "r1")
     }
 
     @Test func alEnviarLaDenunciaSeOlvidaSuContenido() async {

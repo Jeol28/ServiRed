@@ -1,7 +1,7 @@
 import XCTest
 
 /// La app completa (Keychain, SwiftData, red real): registrarse desde la pantalla,
-/// llegar a «Mis reportes» y eliminar la cuenta. Requiere el compose arriba.
+/// llegar al mapa y eliminar la cuenta desde el menú. Requiere el servidor arriba.
 final class RegistroUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
@@ -25,9 +25,11 @@ final class RegistroUITests: XCTestCase {
 
         app.switches["acepta"].switches.firstMatch.tap()
         app.buttons["enviar"].tap()
-        XCTAssertTrue(app.navigationBars["Mis reportes"].waitForExistence(timeout: 20))
+        // La pantalla principal es el mapa, con el botón grande de reportar.
+        XCTAssertTrue(app.buttons["reportar"].waitForExistence(timeout: 20))
 
-        app.tabBars.buttons["Cuenta"].tap()
+        app.buttons["menu"].tap()
+        app.buttons["Mi cuenta"].tap()
         let eliminar = app.buttons["eliminar-cuenta"]
         XCTAssertTrue(eliminar.waitForExistence(timeout: 10))
         eliminar.tap()
