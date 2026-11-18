@@ -33,7 +33,12 @@ export interface FiltroTerritorio {
       <span id="ayuda-municipio" class="sr-oculto">Primero elija un departamento.</span>
     </label>
   `,
-  styles: `:host { display: contents; }`,
+  styles: `
+    :host { display: contents; }
+    /* Del mismo ancho que los demás campos: sin esto, la lista toma el ancho de su opción más larga. */
+    label { min-width: 0; }
+    select { width: 100%; min-width: 0; height: 2.4rem; text-overflow: ellipsis; }
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SelectorTerritorio implements OnInit {
