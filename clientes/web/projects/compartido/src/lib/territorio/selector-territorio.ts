@@ -26,8 +26,8 @@ export interface FiltroTerritorio {
     </label>
     <label>Municipio
       <select name="municipio" [ngModel]="municipio()" (ngModelChange)="elegirMunicipio($event)"
-              [disabled]="!departamento()" [attr.aria-describedby]="departamento() ? null : 'ayuda-municipio'">
-        <option value="">{{ departamento() ? 'Todos' : 'Elija un departamento' }}</option>
+              [disabled]="!departamento()" [title]="departamento() ? '' : 'Elija primero un departamento'" [attr.aria-describedby]="departamento() ? null : 'ayuda-municipio'">
+        <option value="">{{ departamento() ? 'Todos' : '← Departamento' }}</option>
         @for (m of municipios(); track m.codigo) { <option [value]="m.codigo">{{ m.nombre }}</option> }
       </select>
       <span id="ayuda-municipio" class="sr-oculto">Primero elija un departamento.</span>

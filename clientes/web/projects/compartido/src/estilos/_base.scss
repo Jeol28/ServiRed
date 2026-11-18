@@ -94,6 +94,15 @@ input, select, textarea {
 }
 textarea { min-height: 5rem; resize: vertical; }
 
+// Campo apagado (p. ej. Municipio sin departamento): se nota que no se puede usar todavía.
+input:disabled, select:disabled, textarea:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--sr-borde) 35%, var(--sr-superficie));
+  border-style: dashed;
+}
+label:has(> select:disabled, > input:disabled) { color: color-mix(in srgb, var(--sr-texto-suave) 60%, transparent); }
+
 button, .sr-boton {
   font: inherit;
   cursor: pointer;
