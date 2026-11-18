@@ -60,6 +60,14 @@ docker compose up -d --build --wait --scale persistencia=2 --scale reportes=2
   réplicas y una réplica que se cae sale del DNS. No hay balanceador aparte.
 - **JVM:** guarda el DNS en caché solo 5 s (`-Dsun.net.inetaddr.ttl=5`; el valor por
   defecto es 30 s), así una réplica caída sale pronto de la rotación.
+- **El gateway no usa la caché de la JVM.** Su cliente HTTP (Reactor Netty) tiene su propio
+  resolvedor y guardaba cada respuesta lo que dice el DNS de Docker: 600 s.
+  - **Qué pasó:** al recrearse Reportes con otra IP, el gateway siguió enviando a la vieja,
+    que ya era de Atención, y un `POST /api/v1/reportes` terminó respondido por Kestrel
+    con 404 durante minutos. Lo descubrió la prueba del contrato de eventos.
+  - **La corrección:** `ResolucionDns` limita esa caché a 5 s.
+  - **Verificación:** con la IP vieja ocupada por otro contenedor, el gateway llega a la
+    nueva en unos 5 s. Solo falla la primera solicitud.
 - **.NET:** renueva sus conexiones cada minuto (`PooledConnectionLifetime`).
 - **Gateway:** repite un GET si falla la conexión con una réplica, y la siguiente
   conexión va a otra. Solo ante errores de conexión: un 5xx no se repite, porque sumaría
