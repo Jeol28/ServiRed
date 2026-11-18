@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  ApiIndicadores, NOMBRE_SERVICIO, TIPOS_SERVICIO, descargar, filtroDePeriodo, formularioPeriodo, mensajeDeError,
+  ApiIndicadores, NOMBRE_SERVICIO, SelectorTerritorio, TIPOS_SERVICIO, descargar, filtroDePeriodo, formularioPeriodo, mensajeDeError,
 } from 'compartido';
 
 /**
@@ -10,12 +10,12 @@ import {
  */
 @Component({
   selector: 'app-exportacion',
-  imports: [FormsModule],
+  imports: [FormsModule, SelectorTerritorio],
   template: `
     <h1>Exportación regulatoria</h1>
     <form class="sr-tarjeta" (ngSubmit)="exportar()">
       <p class="sr-suave">Periodo máximo de 366 días. La exportación queda registrada en la auditoría con su cuenta.</p>
-      <div class="sr-fila">
+      <div class="sr-filtros">
         <label>Desde <input type="date" name="desde" [(ngModel)]="f.desde" required /></label>
         <label>Hasta <input type="date" name="hasta" [(ngModel)]="f.hasta" required /></label>
         <label>Servicio
@@ -24,8 +24,7 @@ import {
             @for (t of tipos; track t) { <option [ngValue]="t">{{ nombreServicio[t] }}</option> }
           </select>
         </label>
-        <label>Departamento <input name="dep" [(ngModel)]="f.codigoDepartamento" maxlength="2" size="4" placeholder="11" /></label>
-        <label>Municipio <input name="mun" [(ngModel)]="f.codigoMunicipio" maxlength="5" size="7" placeholder="11001" /></label>
+        <sr-selector-territorio [f]="f" />
         <label>Formato
           <select name="formato" [(ngModel)]="formato">
             <option ngValue="csv">CSV</option>

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CatalogoTerritorial } from './territorio';
 
@@ -44,6 +44,8 @@ export interface FiltroTerritorio {
 export class SelectorTerritorio implements OnInit {
   protected readonly catalogo = inject(CatalogoTerritorial);
   readonly f = input.required<FiltroTerritorio>();
+  /** Tras cada elección, para las páginas que filtran al instante (p. ej. el mapa). */
+  readonly cambio = output<void>();
 
   // Copias reactivas de los códigos, para que la lista de municipios siga al departamento.
   protected readonly departamento = signal('');
@@ -66,10 +68,12 @@ export class SelectorTerritorio implements OnInit {
     this.municipio.set('');
     this.f().codigoDepartamento = codigo;
     this.f().codigoMunicipio = '';
+    this.cambio.emit();
   }
 
   protected elegirMunicipio(codigo: string): void {
     this.municipio.set(codigo);
     this.f().codigoMunicipio = codigo;
+    this.cambio.emit();
   }
 }

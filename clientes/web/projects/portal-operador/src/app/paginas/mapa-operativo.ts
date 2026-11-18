@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import {
   ApiIndicadores, COLOR_PRIORIDAD, COLOR_SERVICIO, CORTO_SERVICIO, EMOJI_SERVICIO, MarcaMapa, Mapa, NOMBRE_ESTADO,
-  NOMBRE_MAGNITUD, NOMBRE_PRIORIDAD, PuntoOperativo, TIPOS_SERVICIO, TipoServicio, fechaCorta, filtroDePeriodo,
+  NOMBRE_MAGNITUD, NOMBRE_PRIORIDAD, PuntoOperativo, SelectorTerritorio, TIPOS_SERVICIO, TipoServicio, fechaCorta, filtroDePeriodo,
   formularioPeriodo, mensajeDeError,
 } from 'compartido';
 import { nombreEmpresa } from '../empresas';
@@ -22,7 +21,7 @@ type Situacion = 'ACTIVO' | 'RESUELTO' | undefined;
  */
 @Component({
   selector: 'app-mapa-operativo',
-  imports: [FormsModule, Mapa],
+  imports: [Mapa, SelectorTerritorio],
   template: `
     <div class="sr-pantalla-mapa">
       <sr-mapa [marcas]="marcas()" alto="100%" titulo="Mapa operativo de reportes" posicionZoom="bottomright"
@@ -77,21 +76,16 @@ type Situacion = 'ACTIVO' | 'RESUELTO' | undefined;
           <button type="button" class="sr-chip-filtro" [attr.aria-pressed]="situacion() === 'ACTIVO'" (click)="cambiarSituacion('ACTIVO')">Activos</button>
           <button type="button" class="sr-chip-filtro" [attr.aria-pressed]="situacion() === 'RESUELTO'" (click)="cambiarSituacion('RESUELTO')">Resueltos</button>
         </div>
-        <form class="municipio" (ngSubmit)="cargar()" aria-label="Municipio">
-          <label class="sr-en-linea">Municipio
-            <input name="municipio" [(ngModel)]="municipio" maxlength="5" size="7" inputmode="numeric" placeholder="11001" />
-          </label>
-          <button type="submit">Buscar</button>
-        </form>
+        <div class="territorio" role="group" aria-label="Territorio">
+          <sr-selector-territorio [f]="territorio" (cambio)="cargar()" />
+        </div>
       </section>
     </div>
   `,
   styles: `
     .cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
     .sr-hoja .sr-chip-filtro { min-height: 2rem; padding: 0 .7rem; font-size: .85rem; box-shadow: none; }
-    .municipio { display: flex; gap: .5rem; align-items: center; margin-top: .6rem; }
-    .municipio input { min-height: 2rem; padding: .2rem .5rem; }
-    .municipio button { min-height: 2rem; }
+    .territorio { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .6rem; }
     .etiquetas { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .7rem; }
     .validado { color: var(--sr-exito); }
     .empresa { margin: .5rem 0 0; font-size: .88rem; }
@@ -115,7 +109,8 @@ export class MapaOperativo {
   protected readonly servicio = signal<TipoServicio | undefined>(undefined);
   protected readonly situacion = signal<Situacion>(undefined);
   protected readonly dias = signal(7);
-  protected municipio = '';
+  /** Departamento y municipio elegidos en las listas ('' = todos). */
+  protected territorio = { codigoDepartamento: '', codigoMunicipio: '' };
   protected readonly puntos = signal<PuntoOperativo[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly elegido = signal<string | null>(null);
@@ -164,7 +159,8 @@ export class MapaOperativo {
     const f = formularioPeriodo(this.dias());
     f.tipoServicio = this.servicio();
     f.situacion = this.situacion();
-    f.codigoMunicipio = this.municipio;
+    f.codigoDepartamento = this.territorio.codigoDepartamento;
+    f.codigoMunicipio = this.territorio.codigoMunicipio;
     this.api.mapaOperativo(filtroDePeriodo(f)).subscribe({
       next: (p) => {
         this.puntos.set(p);

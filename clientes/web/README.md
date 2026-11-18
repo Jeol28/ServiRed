@@ -45,7 +45,7 @@ npx ng serve portal-operador --port 4200 --proxy-config proxy.conf.json
 
 ## Catálogo de departamentos y municipios
 
-Los filtros de territorio (Indicadores, Datos abiertos y la bandeja de Casos) usan dos
+Los filtros de territorio (Indicadores, Datos abiertos, Casos, Mapa operativo y Exportación) usan dos
 listas desplegables: al elegir el departamento solo se ofrecen sus municipios, con su
 nombre oficial del DANE (p. ej. «Santiago de Cali»). La bandeja de casos filtra también
 solo por departamento (`codigoDepartamento` en `GET /casos`).

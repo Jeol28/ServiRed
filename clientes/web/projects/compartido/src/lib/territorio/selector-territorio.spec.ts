@@ -33,6 +33,8 @@ describe('Selector de departamento y municipio', () => {
   it('al elegir un departamento solo ofrece sus municipios y reinicia el municipio', async () => {
     const f = { codigoDepartamento: '', codigoMunicipio: '' };
     const { fix, dep, mun } = await crear(f);
+    let cambios = 0;
+    fix.componentInstance.cambio.subscribe(() => cambios++);
     dep.value = '05';
     dep.dispatchEvent(new Event('change'));
     fix.detectChanges();
@@ -51,6 +53,7 @@ describe('Selector de departamento y municipio', () => {
     dep.dispatchEvent(new Event('change'));
     fix.detectChanges();
     expect(f).toEqual({ codigoDepartamento: '76', codigoMunicipio: '' });
+    expect(cambios).toBe(3); // avisa cada elección, para filtrar al instante (mapa)
     expect(opciones(mun)).toContain('Santiago de Cali');
   });
 });
