@@ -21,8 +21,8 @@ data class EstadoIngreso(
 )
 
 /** Ingreso y registro del ciudadano. Al abrir la sesión, la navegación cambia sola. */
-class IngresoViewModel(private val sesion: RepositorioSesion) : ViewModel() {
-    private val _estado = MutableStateFlow(EstadoIngreso())
+class IngresoViewModel(private val sesion: RepositorioSesion, registro: Boolean = false) : ViewModel() {
+    private val _estado = MutableStateFlow(EstadoIngreso(registro = registro))
     val estado: StateFlow<EstadoIngreso> = _estado
 
     fun cambiar(f: (EstadoIngreso) -> EstadoIngreso) = _estado.update { f(it).copy(error = null) }

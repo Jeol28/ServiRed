@@ -37,7 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.edu.javeriana.servired.app.ui.componentes.Aviso
 
 @Composable
-fun PantallaIngreso(vm: IngresoViewModel, alDenunciar: () -> Unit) {
+fun PantallaIngreso(vm: IngresoViewModel, alDenunciar: () -> Unit, alVolver: (() -> Unit)? = null) {
     val e by vm.estado.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -45,11 +45,15 @@ fun PantallaIngreso(vm: IngresoViewModel, alDenunciar: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Spacer(Modifier.height(24.dp))
+                if (alVolver != null) TextButton(onClick = alVolver) { Text("← Volver al mapa") }
+                Spacer(Modifier.height(if (alVolver != null) 0.dp else 24.dp))
                 Text("SERVI-RED", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary)
-                Text("Reporte los cortes de energía, gas, agua, alcantarillado y aseo, y siga su atención.",
-                    style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    if (e.registro) "Con su cuenta puede reportar cortes, confirmar los de sus vecinos y avisar cuando vuelva el servicio."
+                    else "Reporte los cortes de energía, gas, agua, alcantarillado y aseo, y siga su atención.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
                 Spacer(Modifier.height(8.dp))
                 Text(if (e.registro) "Crear cuenta" else "Ingresar", style = MaterialTheme.typography.titleLarge)
                 OutlinedTextField(

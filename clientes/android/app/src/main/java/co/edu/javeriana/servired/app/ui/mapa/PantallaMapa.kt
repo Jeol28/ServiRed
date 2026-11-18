@@ -90,6 +90,8 @@ fun PantallaMapa(
     fotos: PreparadorFotos,
     alAbrirMenu: () -> Unit,
     alVerDetalle: (String) -> Unit,
+    alIngresar: (registro: Boolean) -> Unit = {},
+    alDenunciar: () -> Unit = {},
 ) {
     val e by vm.estado.collectAsStateWithLifecycle()
     PedirUbicacion { vm.refrescar() }
@@ -103,6 +105,7 @@ fun PantallaMapa(
 
     var reporteN by rememberSaveable { mutableIntStateOf(0) }
     var hojaVisible by rememberSaveable { mutableStateOf(false) }
+    var invitacionVisible by rememberSaveable { mutableStateOf(false) }
     var eligiendo by rememberSaveable { mutableStateOf(false) }
     var centroMapa by remember { mutableStateOf<Ubicacion?>(null) }
     // Ubicación elegida moviendo el mapa; la hoja de reporte la toma al volver a abrirse.
@@ -147,6 +150,7 @@ fun PantallaMapa(
                     Text("SERVI-RED", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Text(
                         when {
+                            vm.anonimo -> "Explore los cortes del país"
                             e.sinUbicacion -> "Active la ubicación para ver su zona"
                             e.ubicacion == null -> "Buscando su ubicación…"
                             e.cercanos.isEmpty() -> "Sin cortes reportados cerca"
@@ -157,7 +161,11 @@ fun PantallaMapa(
                     )
                 }
             }
-            BotonRedondo(alTocar = vm::recentrar, descripcion = "Centrar en mi ubicación") { Icon(Icons.Filled.LocationOn, null) }
+            if (vm.anonimo) {
+                Button(onClick = { alIngresar(false) }, modifier = Modifier.height(48.dp).testTag("ingresar")) { Text("Ingresar") }
+            } else {
+                BotonRedondo(alTocar = vm::recentrar, descripcion = "Centrar en mi ubicación") { Icon(Icons.Filled.LocationOn, null) }
+            }
         }
         if (e.cargando) LinearProgressIndicator(Modifier.fillMaxWidth().statusBarsPadding())
 
@@ -200,11 +208,21 @@ fun PantallaMapa(
                 TarjetaPregunta(r, e.ocupado, alSi = { vm.yaVolvio(r.id) }, alNo = { vm.todaviaNo(r.id) })
             }
             Button(
-                onClick = { reporteN++; hojaVisible = true },
+                onClick = { if (vm.anonimo) invitacionVisible = true else { reporteN++; hojaVisible = true } },
                 colors = ButtonDefaults.buttonColors(containerColor = Ambar, contentColor = Color(0xFF1C1917)),
                 shape = RoundedCornerShape(32.dp),
                 modifier = Modifier.fillMaxWidth().height(64.dp).testTag("reportar"),
             ) { Text("⚠  Reportar", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+        }
+    }
+
+    if (invitacionVisible) {
+        ModalBottomSheet(onDismissRequest = { invitacionVisible = false }) {
+            Invitacion(
+                alCrear = { invitacionVisible = false; alIngresar(true) },
+                alIngresar = { invitacionVisible = false; alIngresar(false) },
+                alDenunciar = { invitacionVisible = false; alDenunciar() },
+            )
         }
     }
 
@@ -235,6 +253,27 @@ fun PantallaMapa(
         ) {
             HojaReporte(vmReporte, fotos, alElegirEnMapa = { hojaVisible = false; eligiendo = true })
         }
+    }
+}
+
+/** Sin cuenta: reportar un corte la pide; un fraude se puede denunciar sin ella. */
+@Composable
+private fun Invitacion(alCrear: () -> Unit, alIngresar: () -> Unit, alDenunciar: () -> Unit) {
+    Column(
+        Modifier.navigationBarsPadding().padding(horizontal = 20.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text("Para reportar un corte, cree su cuenta", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(
+            "Toma menos de un minuto. Con ella sigue la atención de su reporte, confirma los cortes de sus vecinos " +
+                "y avisa cuando vuelva el servicio.",
+        )
+        Button(onClick = alCrear, shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth().height(52.dp).testTag("crear-cuenta")) {
+            Text("Crear mi cuenta", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        }
+        OutlinedButton(onClick = alIngresar, modifier = Modifier.fillMaxWidth()) { Text("Ya tengo cuenta: ingresar") }
+        Text("¿Es una conexión ilegal o un fraude?", style = MaterialTheme.typography.titleSmall)
+        TextButton(onClick = alDenunciar) { Text("Hacer una denuncia anónima, sin cuenta") }
     }
 }
 

@@ -159,6 +159,20 @@ class ViewModelsTest {
         assertTrue(!e.cargando)
     }
 
+    @Test fun `sin cuenta el mapa muestra las zonas del pais pero no los cortes exactos`() = runTest {
+        var actualizaciones = 0
+        val repo = object : ReportesFalso() {
+            override suspend fun actualizar(): Resultado.Exito<Unit> { actualizaciones++; return Resultado.Exito(Unit) }
+        }.apply { cercanos = listOf(cercano("c1")) }
+        val vm = MapaViewModel(repo, UbicacionFija(aqui), reloj, anonimo = true)
+        vm.refrescar()
+        val e = vm.estado.value
+        assertEquals(aqui, e.ubicacion)
+        assertEquals(7, e.zonas.single().reportes)
+        assertTrue("los cortes exactos son solo para quien tiene cuenta (RNF-DAT2)", e.cercanos.isEmpty())
+        assertEquals(0, actualizaciones)
+    }
+
     @Test fun `sin ubicacion el mapa lo avisa y no busca cortes cercanos`() = runTest {
         val repo = ReportesFalso().apply { cercanos = listOf(cercano("c1")) }
         val vm = MapaViewModel(repo, UbicacionFija(null), reloj)

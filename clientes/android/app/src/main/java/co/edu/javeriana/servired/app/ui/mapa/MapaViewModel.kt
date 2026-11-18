@@ -58,11 +58,14 @@ data class EstadoMapa(
 /**
  * Pantalla principal de la app: el mapa con los cortes cercanos (para
  * confirmarlos), los reportes propios y las zonas con cortes del país.
+ * Sin cuenta (`anonimo`) solo se ven las zonas: los cortes cercanos exactos
+ * son solo para cuentas (privacidad, RNF-DAT2) y reportar pide crear una.
  */
 class MapaViewModel(
     private val repo: RepositorioReportes,
     private val proveedor: ProveedorUbicacion,
     private val reloj: Clock = Clock.systemUTC(),
+    val anonimo: Boolean = false,
 ) : ViewModel() {
     private val _estado = MutableStateFlow(EstadoMapa())
     val estado: StateFlow<EstadoMapa> = _estado
@@ -79,14 +82,16 @@ class MapaViewModel(
         viewModelScope.launch {
             val u = proveedor.actual() ?: _estado.value.ubicacion
             _estado.update { it.copy(ubicacion = u, sinUbicacion = u == null) }
-            if (u != null) {
+            if (u != null && !anonimo) {
                 when (val r = repo.cercanos(u)) {
                     is Resultado.Exito -> _estado.update { it.copy(cercanos = r.valor, error = null) }
                     is Resultado.Fallo -> _estado.update { it.copy(error = mensaje(r.error.tipo, r.error.mensaje)) }
                 }
             }
-            repo.enviarPendientes()
-            repo.actualizar()
+            if (!anonimo) {
+                repo.enviarPendientes()
+                repo.actualizar()
+            }
             (repo.zonasPublicas() as? Resultado.Exito)?.let { r -> _estado.update { it.copy(zonas = r.valor) } }
             _estado.update { it.copy(cargando = false) }
         }
