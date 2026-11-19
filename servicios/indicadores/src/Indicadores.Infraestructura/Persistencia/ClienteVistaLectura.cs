@@ -25,9 +25,14 @@ public sealed class ClienteVistaLectura(HttpClient http) : IVistaLectura, IRegis
         EnviarAsync<object>(HttpMethod.Post, "/interno/v1/indicadores/vista", a, correlacion, ct, sinCuerpo: true);
 
     public async Task<IReadOnlyList<Agregado>> AgregarAsync(FiltroVista filtro, Agrupacion agrupacion, double celdaGrados,
-        IdCorrelacion correlacion, CancellationToken ct) =>
+        double celdaRuralGrados, IdCorrelacion correlacion, CancellationToken ct) =>
         (await EnviarAsync<List<Agregado>>(HttpMethod.Post, "/interno/v1/indicadores/agregados",
-            new { Filtro = Filtro(filtro), Agrupacion = agrupacion.ToString(), CeldaGrados = celdaGrados > 0 ? celdaGrados : (double?)null },
+            new
+            {
+                Filtro = Filtro(filtro), Agrupacion = agrupacion.ToString(),
+                CeldaGrados = celdaGrados > 0 ? celdaGrados : (double?)null,
+                CeldaRuralGrados = celdaRuralGrados > 0 ? celdaRuralGrados : (double?)null,
+            },
             correlacion, ct))!;
 
     public async Task<PaginaHechos> HechosAsync(FiltroVista filtro, int desde, int limite, IdCorrelacion correlacion,

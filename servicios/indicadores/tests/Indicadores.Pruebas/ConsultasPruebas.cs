@@ -29,6 +29,41 @@ public class ConsultasPruebas
         Assert.Contains("3 reportes", mapa.Metadatos.Anonimizacion);
     }
 
+    /// <summary>ADR-28: k = 3 en las cabeceras municipales; k = 5 fuera de ellas o sin clasificar.</summary>
+    [Fact]
+    public async Task FueraDeLasCabecerasElMapaExigeMasReportesYCeldasMasGrandes()
+    {
+        _vista.Agregados[Agrupacion.CELDA] =
+        [
+            VistaFalsa.Grupo(3, codigo: null, lat: 4.625, lon: -74.065, enCabecera: true),     // urbana: se muestra
+            VistaFalsa.Grupo(4, codigo: null, lat: 4.025, lon: -74.175, enCabecera: false),    // rural con 4: no
+            VistaFalsa.Grupo(5, codigo: null, lat: 4.525, lon: -74.275, enCabecera: false),    // rural con 5: sí
+            VistaFalsa.Grupo(4, codigo: null, lat: 3.975, lon: -74.125),                       // sin clasificar = rural
+        ];
+
+        var mapa = await _consultas.MapaPublicoAsync(_filtro, _c, CancellationToken.None);
+
+        Assert.Equal(2, mapa.Celdas.Count);
+        Assert.Contains(mapa.Celdas, x => x.Reportes == 3 && x.CeldaGrados == PoliticaAnonimizacion.CeldaGrados);
+        Assert.Contains(mapa.Celdas, x => x.Reportes == 5 && x.CeldaGrados == PoliticaAnonimizacion.CeldaRuralGrados);
+        Assert.Contains("5 reportes", mapa.Metadatos.Anonimizacion);
+    }
+
+    [Fact]
+    public async Task UnaCeldaRuralYUnaUrbanaConElMismoCentroSePublicanComoUna()
+    {
+        _vista.Agregados[Agrupacion.CELDA] =
+        [
+            VistaFalsa.Grupo(3, codigo: null, lat: 4.525, lon: -74.275, enCabecera: true),
+            VistaFalsa.Grupo(6, codigo: null, lat: 4.525, lon: -74.275, enCabecera: false),
+        ];
+
+        var celda = Assert.Single((await _consultas.MapaPublicoAsync(_filtro, _c, CancellationToken.None)).Celdas);
+
+        Assert.Equal(9, celda.Reportes);
+        Assert.Equal(PoliticaAnonimizacion.CeldaRuralGrados, celda.CeldaGrados);
+    }
+
     [Fact]
     public async Task LosDatosAbiertosMarcanLasFilasSuprimidas()
     {

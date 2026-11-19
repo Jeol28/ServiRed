@@ -20,4 +20,6 @@ public sealed record Agregado(
     long Sector,
     long Validados,
     long Resueltos,
-    double? TiempoResolucionPromedio);
+    double? TiempoResolucionPromedio,
+    // Solo en celdas: si es de una cabecera municipal (true) o rural (false); null = sin clasificar (ADR-28).
+    bool? EnCabecera = null);

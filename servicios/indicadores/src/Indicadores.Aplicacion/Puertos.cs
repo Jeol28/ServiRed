@@ -65,8 +65,10 @@ public interface IVistaLectura
 {
     Task ActualizarAsync(ActualizacionVista a, IdCorrelacion correlacion, CancellationToken ct);
 
+    /// <param name="celdaGrados">en CELDA, el lado en las cabeceras municipales</param>
+    /// <param name="celdaRuralGrados">en CELDA, el lado fuera de ellas (ADR-28)</param>
     Task<IReadOnlyList<Agregado>> AgregarAsync(FiltroVista filtro, Agrupacion agrupacion, double celdaGrados,
-        IdCorrelacion correlacion, CancellationToken ct);
+        double celdaRuralGrados, IdCorrelacion correlacion, CancellationToken ct);
 
     Task<PaginaHechos> HechosAsync(FiltroVista filtro, int desde, int limite, IdCorrelacion correlacion, CancellationToken ct);
 

@@ -43,6 +43,8 @@ actualización. El SAD no fija umbrales ni el nivel de agregación.
   habitantes a costa de detalle; la exportación regulatoria sí lo incluye.
 - La celda de ~1,1 km puede revelar la zona en áreas rurales muy despobladas; se
   mitiga con k = 3 y puede ampliarse sin cambiar contratos.
+  **Resuelto en [ADR-28](ADR-28-privacidad-rural-del-mapa.md):** fuera de las cabeceras
+  municipales las celdas miden 0,05° (~5,5 km) y se muestran desde 5 reportes.
 - No hay tasas por habitante (no hay datos de población en la semilla).
 - Las exportaciones se registran en el log; el registro de auditoría formal
   (RF-12) llega en la fase 7.

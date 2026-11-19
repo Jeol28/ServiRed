@@ -604,7 +604,19 @@ paths:
       summary: Definiciones, fuente y política de anonimización (RNF-DAT4)
       security: []
       responses:
-        "200": { description: Catálogo }
+        "200":
+          description: Catálogo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  indicadores: { type: array, items: { type: object } }
+                  fuente: { type: string }
+                  umbralSupresion: { type: integer, example: 3 }
+                  celdaMapaGrados: { type: number, example: 0.01 }
+                  umbralSupresionRural: { type: integer, example: 5, description: Celdas del mapa fuera de las cabeceras municipales (ADR-28) }
+                  celdaMapaRuralGrados: { type: number, example: 0.05 }
 
   /api/v1/indicadores/resumen:
     get:
@@ -678,8 +690,11 @@ paths:
     get:
       tags: [indicadores]
       operationId: mapaPublico
-      summary: Mapa agregado en celdas de ~1,1 km (RF-8)
-      description: Solo celdas con 3 o más reportes; sin identificadores ni puntos exactos.
+      summary: Mapa agregado en celdas (RF-8)
+      description: |
+        Sin identificadores ni puntos exactos. En las cabeceras municipales las celdas miden
+        0,01° (~1,1 km) y se muestran desde 3 reportes; fuera de ellas (rural disperso y centros
+        poblados) miden 0,05° (~5,5 km) y se muestran desde 5 (ADR-28).
       security: []
       parameters:
         - { name: desde, in: query, schema: { type: string, format: date-time }, description: Por defecto hasta − 30 días }
@@ -697,7 +712,7 @@ paths:
                 type: object
                 properties:
                   metadatos: { $ref: "#/components/schemas/Metadatos" }
-                  celdaGrados: { type: number, example: 0.01 }
+                  celdaGrados: { type: number, example: 0.01, description: Lado de las celdas en las cabeceras municipales }
                   celdas:
                     type: array
                     items:
@@ -706,6 +721,7 @@ paths:
                         latitud: { type: number, description: Centro de la celda }
                         longitud: { type: number }
                         reportes: { type: integer, minimum: 3 }
+                        celdaGrados: { type: number, enum: [0.01, 0.05], description: "Lado de esta celda: 0,01° en una cabecera municipal, 0,05° fuera" }
 
   /api/v1/mapas/operativo:
     get:

@@ -95,7 +95,9 @@ def celdas_cercanas():
 esperar(lambda: sum(c["reportes"] for c in celdas_cercanas()[2]) >= 4, 30)
 estado, mapa, cerca = celdas_cercanas()
 comprobar(estado == 200 and sum(c["reportes"] for c in cerca) >= 4, "las celdas cercanas suman los 4 reportes")
-comprobar(all(set(c) == {"latitud", "longitud", "reportes"} for c in mapa["celdas"]), "las celdas no traen ids")
+# Solo el centro, el conteo y el lado de la celda (ADR-28): nada que identifique reportes.
+comprobar(all(set(c) == {"latitud", "longitud", "reportes", "celdaGrados"} for c in mapa["celdas"]),
+          "las celdas no traen ids")
 comprobar(mapa["celdaGrados"] == 0.01, "celdas de 0,01° (~1,1 km)")
 
 print("4) Datos abiertos (RF-10)")

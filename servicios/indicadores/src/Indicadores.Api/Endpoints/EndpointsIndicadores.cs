@@ -21,7 +21,10 @@ public static partial class EndpointsIndicadores
         {
             Publico(h);
             return Results.Ok(new { indicadores = CatalogoIndicadores.Todos, fuente = CatalogoIndicadores.Fuente,
-                umbralSupresion = PoliticaAnonimizacion.UmbralMinimo, celdaMapaGrados = PoliticaAnonimizacion.CeldaGrados });
+                umbralSupresion = PoliticaAnonimizacion.UmbralMinimo, celdaMapaGrados = PoliticaAnonimizacion.CeldaGrados,
+                // Fuera de las cabeceras municipales (ADR-28).
+                umbralSupresionRural = PoliticaAnonimizacion.UmbralRural,
+                celdaMapaRuralGrados = PoliticaAnonimizacion.CeldaRuralGrados });
         });
 
         app.MapGet("/api/v1/indicadores/resumen", async (HttpContext h, ConsultasIndicadores c, TimeProvider reloj,

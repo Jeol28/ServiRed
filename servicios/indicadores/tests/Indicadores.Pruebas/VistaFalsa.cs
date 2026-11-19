@@ -29,7 +29,7 @@ public sealed class VistaFalsa : IVistaLectura, IRegistroAcciones
     }
 
     public Task<IReadOnlyList<Agregado>> AgregarAsync(FiltroVista filtro, Agrupacion agrupacion, double celdaGrados,
-        IdCorrelacion correlacion, CancellationToken ct)
+        double celdaRuralGrados, IdCorrelacion correlacion, CancellationToken ct)
     {
         Consultas.Enqueue((agrupacion, filtro));
         return Task.FromResult<IReadOnlyList<Agregado>>(Agregados.GetValueOrDefault(agrupacion) ?? []);
@@ -47,10 +47,10 @@ public sealed class VistaFalsa : IVistaLectura, IRegistroAcciones
         Task.FromResult(new EstadoVista(10, 2, DateTimeOffset.UtcNow.AddDays(-5), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
 
     public static Agregado Grupo(long reportes, long conDuracion = 0, string? codigo = "11001", string? servicio = null,
-        double? lat = null, double? lon = null) =>
+        double? lat = null, double? lon = null, bool? enCabecera = null) =>
         new(codigo, "BOGOTÁ, D.C.", "BOGOTÁ, D.C.", servicio, new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero),
             lat, lon, reportes, conDuracion, conDuracion > 0 ? 100 : null, conDuracion > 0 ? 90 : null,
-            conDuracion > 0 ? 200 : null, reportes, 0, 0, 0, reportes / 2, reportes / 2, 60);
+            conDuracion > 0 ? 200 : null, reportes, 0, 0, 0, reportes / 2, reportes / 2, 60, enCabecera);
 
     public static Hecho Hecho(Guid? empresa = null) =>
         new(Guid.NewGuid(), "ENERGIA", "11001", "BOGOTÁ, D.C.", "BOGOTÁ, D.C.", 4.628734, -74.064821, "CUADRA",

@@ -23,7 +23,8 @@ public sealed record IndicadorTerritorial(string Codigo, string Nombre, string? 
 
 public sealed record Territorial(Metadatos Metadatos, NivelTerritorial Nivel, IReadOnlyList<IndicadorTerritorial> Territorios);
 
-public sealed record CeldaMapa(double Latitud, double Longitud, long Reportes);
+/// <param name="CeldaGrados">lado de la celda: 0,01° en una cabecera municipal, 0,05° fuera (ADR-28)</param>
+public sealed record CeldaMapa(double Latitud, double Longitud, long Reportes, double CeldaGrados);
 
 public sealed record MapaPublico(Metadatos Metadatos, double CeldaGrados, Situacion? Situacion, IReadOnlyList<CeldaMapa> Celdas);
 
@@ -48,8 +49,8 @@ public sealed class ConsultasIndicadores(IVistaLectura vista, IRegistroAcciones 
 
     public async Task<Resumen> ResumenAsync(FiltroVista f, IdCorrelacion c, CancellationToken ct)
     {
-        var total = (await vista.AgregarAsync(f, Agrupacion.NINGUNA, 0, c, ct)).FirstOrDefault();
-        var porServicio = await vista.AgregarAsync(f, Agrupacion.SERVICIO, 0, c, ct);
+        var total = (await vista.AgregarAsync(f, Agrupacion.NINGUNA, 0, 0, c, ct)).FirstOrDefault();
+        var porServicio = await vista.AgregarAsync(f, Agrupacion.SERVICIO, 0, 0, c, ct);
         return new Resumen(await MetadatosAsync(f, c, ct), ConjuntoIndicadores.Calcular(total),
             porServicio.Select(a => new IndicadorPorServicio(a.TipoServicio!, ConjuntoIndicadores.Calcular(a))).ToList());
     }
@@ -58,27 +59,34 @@ public sealed class ConsultasIndicadores(IVistaLectura vista, IRegistroAcciones 
         CancellationToken ct)
     {
         var agrupacion = nivel == NivelTerritorial.DEPARTAMENTO ? Agrupacion.DEPARTAMENTO : Agrupacion.MUNICIPIO;
-        var grupos = await vista.AgregarAsync(f, agrupacion, 0, c, ct);
+        var grupos = await vista.AgregarAsync(f, agrupacion, 0, 0, c, ct);
         return new Territorial(await MetadatosAsync(f, c, ct), nivel,
             grupos.Select(a => new IndicadorTerritorial(a.Codigo!, a.Nombre!,
                     nivel == NivelTerritorial.MUNICIPIO ? a.Departamento : null, ConjuntoIndicadores.Calcular(a)))
                 .ToList());
     }
 
-    /// <summary>RF-8 público: celdas de ~1,1 km; las celdas con menos de 3 reportes no se muestran.</summary>
+    /// <summary>
+    /// RF-8 público: celdas de ~1,1 km en las cabeceras municipales (se muestran desde 3 reportes)
+    /// y de ~5,5 km fuera de ellas (desde 5), ADR-28. Si una celda rural y una urbana comparten
+    /// centro, se publican como una sola, cada una ya filtrada con su umbral.
+    /// </summary>
     public async Task<MapaPublico> MapaPublicoAsync(FiltroVista f, IdCorrelacion c, CancellationToken ct)
     {
-        var celdas = await vista.AgregarAsync(f, Agrupacion.CELDA, PoliticaAnonimizacion.CeldaGrados, c, ct);
+        var celdas = await vista.AgregarAsync(f, Agrupacion.CELDA, PoliticaAnonimizacion.CeldaGrados,
+            PoliticaAnonimizacion.CeldaRuralGrados, c, ct);
         return new MapaPublico(await MetadatosAsync(f, c, ct), PoliticaAnonimizacion.CeldaGrados, f.Situacion,
-            celdas.Where(PoliticaAnonimizacion.Publicable)
-                .Select(a => new CeldaMapa(Math.Round(a.CeldaLatitud!.Value, 4), Math.Round(a.CeldaLongitud!.Value, 4), a.Reportes))
+            celdas.Where(PoliticaAnonimizacion.CeldaPublicable)
+                .GroupBy(a => (Lat: Math.Round(a.CeldaLatitud!.Value, 4), Lon: Math.Round(a.CeldaLongitud!.Value, 4)))
+                .Select(g => new CeldaMapa(g.Key.Lat, g.Key.Lon, g.Sum(a => a.Reportes),
+                    g.Max(PoliticaAnonimizacion.LadoDeCelda)))
                 .ToList());
     }
 
     /// <summary>RF-10: conjunto abierto municipio × servicio × mes, solo agregados y con supresión.</summary>
     public async Task<DatosAbiertos> DatosAbiertosAsync(FiltroVista f, IdCorrelacion c, CancellationToken ct)
     {
-        var grupos = await vista.AgregarAsync(f with { IdEmpresa = null }, Agrupacion.MUNICIPIO_SERVICIO_MES, 0, c, ct);
+        var grupos = await vista.AgregarAsync(f with { IdEmpresa = null }, Agrupacion.MUNICIPIO_SERVICIO_MES, 0, 0, c, ct);
         var filas = grupos.OrderBy(a => a.Mes).ThenBy(a => a.Codigo).ThenBy(a => a.TipoServicio)
             .Select(a =>
             {
@@ -138,7 +146,9 @@ public sealed class ConsultasIndicadores(IVistaLectura vista, IRegistroAcciones 
             new Cobertura(estado.Reportes, estado.Municipios, estado.PrimerReporte, estado.UltimoReporte),
             estado.ActualizadoEn,
             $"Solo agregados; se suprimen los grupos con menos de {PoliticaAnonimizacion.UmbralMinimo} reportes; " +
-            $"el mapa usa celdas de {PoliticaAnonimizacion.CeldaGrados}° (~1,1 km).");
+            $"el mapa usa celdas de {PoliticaAnonimizacion.CeldaGrados}° (~1,1 km) en las cabeceras municipales y de " +
+            $"{PoliticaAnonimizacion.CeldaRuralGrados}° (~5,5 km) fuera de ellas, donde se muestran desde " +
+            $"{PoliticaAnonimizacion.UmbralRural} reportes.");
     }
 
     private static void ExigirPersonal(Actor actor, params Rol[] roles)
