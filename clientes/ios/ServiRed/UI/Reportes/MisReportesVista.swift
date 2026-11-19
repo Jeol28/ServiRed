@@ -61,7 +61,10 @@ private struct TarjetaPendiente: View {
             Text(p.datos.tipoServicio.etiqueta).font(.headline).foregroundStyle(p.datos.tipoServicio.color)
             Text("Desde \(Formato.fechaHora(p.datos.inicioEstimado))").font(.caption)
             switch p.estado {
-            case .PENDIENTE: Text("Esperando conexión: se enviará automáticamente.").font(.caption).foregroundStyle(.secondary)
+            case .PENDIENTE:
+                Text("Esperando conexión: se enviará automáticamente.").font(.caption).foregroundStyle(.secondary)
+                // Es la única forma de renunciar a él: cerrar sesión no lo borra mientras exista.
+                Button("Descartar", role: .destructive, action: alDescartar).font(.caption)
             case .ENVIANDO: Text("Enviando…").font(.caption).foregroundStyle(.secondary)
             case .FALLIDO:
                 Text("No se pudo enviar: \(p.error ?? "revise los datos")").font(.caption).foregroundStyle(.red)

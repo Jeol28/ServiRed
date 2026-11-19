@@ -2,6 +2,8 @@ package co.edu.javeriana.servired.app.ui
 
 import co.edu.javeriana.servired.app.UbicacionFija
 import co.edu.javeriana.servired.app.dominio.Conteo
+import co.edu.javeriana.servired.app.dominio.Cuenta
+import co.edu.javeriana.servired.app.dominio.EstadoEnvio
 import co.edu.javeriana.servired.app.dominio.EstadoReporte
 import co.edu.javeriana.servired.app.dominio.EstadoSesion
 import co.edu.javeriana.servired.app.dominio.Magnitud
@@ -11,6 +13,7 @@ import co.edu.javeriana.servired.app.dominio.ObjetoValidacion
 import co.edu.javeriana.servired.app.dominio.Reporte
 import co.edu.javeriana.servired.app.dominio.ReporteCercano
 import co.edu.javeriana.servired.app.dominio.ReportePendiente
+import co.edu.javeriana.servired.app.dominio.RepositorioCuenta
 import co.edu.javeriana.servired.app.dominio.RepositorioDenuncias
 import co.edu.javeriana.servired.app.dominio.RepositorioReportes
 import co.edu.javeriana.servired.app.dominio.RepositorioSesion
@@ -20,6 +23,7 @@ import co.edu.javeriana.servired.app.dominio.Sentido
 import co.edu.javeriana.servired.app.dominio.TipoServicio
 import co.edu.javeriana.servired.app.dominio.Ubicacion
 import co.edu.javeriana.servired.app.dominio.Zona
+import co.edu.javeriana.servired.app.ui.cuenta.CuentaViewModel
 import co.edu.javeriana.servired.app.ui.denuncia.DenunciaViewModel
 import co.edu.javeriana.servired.app.ui.ingreso.IngresoViewModel
 import co.edu.javeriana.servired.app.ui.mapa.MapaViewModel
@@ -57,7 +61,32 @@ class ViewModelsTest {
         override suspend fun restaurar() = Unit
         override suspend fun ingresar(correo: String, clave: String): Resultado<Unit> { llamadas += "ingresar:$correo"; return Resultado.Exito(Unit) }
         override suspend fun registrar(correo: String, clave: String, nombre: String?): Resultado<Unit> { llamadas += "registrar:$correo"; return Resultado.Exito(Unit) }
-        override suspend fun cerrar() = Unit
+        override suspend fun cerrar() { llamadas += "cerrar" }
+    }
+
+    private class CuentaFalsa : RepositorioCuenta {
+        override suspend fun yo() = Resultado.Exito(Cuenta("c1", "ana@correo.co", "Ana", "CIUDADANO"))
+        override suspend fun cambiarNombre(nombre: String): Resultado<Cuenta> = TODO()
+        override suspend fun cambiarClave(actual: String, nueva: String): Resultado<Unit> = TODO()
+        override suspend fun eliminar(): Resultado<Unit> = TODO()
+    }
+
+    /** Pendientes en memoria: con red se envían los que esperan; los rechazados quedan. */
+    private class ReportesConPendientes(vararg estados: EstadoEnvio) : ReportesFalso() {
+        var hayRed = true
+        var envios = 0
+        val lista = MutableStateFlow(estados.mapIndexed { i, e -> pendiente(i.toLong(), e) })
+        override fun pendientes(): Flow<List<ReportePendiente>> = lista
+        override suspend fun enviarPendientes(): Boolean {
+            envios++
+            if (hayRed) lista.value = lista.value.filter { it.estado == EstadoEnvio.FALLIDO }
+            return lista.value.none { it.estado != EstadoEnvio.FALLIDO }
+        }
+
+        private fun pendiente(id: Long, estado: EstadoEnvio) = ReportePendiente(
+            id, "c$id", NuevoReporte(TipoServicio.ENERGIA, Ubicacion(4.6, -74.1), Instant.EPOCH, Magnitud.CUADRA, null),
+            emptyList(), estado, if (estado == EstadoEnvio.FALLIDO) "Datos inválidos" else null, Instant.EPOCH, null,
+        )
     }
 
     private open class ReportesFalso : RepositorioReportes {
@@ -88,6 +117,60 @@ class ViewModelsTest {
             votos += id to sentido
             return Resultado.Exito(ResultadoValidacion(objeto, Conteo(3, 0, 3), nueva = true))
         }
+    }
+
+    @Test fun `sin pendientes cierra la sesion de inmediato`() = runTest {
+        val sesion = SesionFalsa()
+        val reportes = ReportesConPendientes()
+        CuentaViewModel(CuentaFalsa(), sesion, reportes).cerrarSesion()
+        assertEquals(listOf("cerrar"), sesion.llamadas)
+        assertEquals(0, reportes.envios)
+    }
+
+    @Test fun `antes de cerrar sesion envia los pendientes y si salen cierra`() = runTest {
+        val sesion = SesionFalsa()
+        val reportes = ReportesConPendientes(EstadoEnvio.PENDIENTE, EstadoEnvio.PENDIENTE)
+        val vm = CuentaViewModel(CuentaFalsa(), sesion, reportes)
+        vm.cerrarSesion()
+        assertEquals(1, reportes.envios)
+        assertTrue(reportes.lista.value.isEmpty())
+        assertEquals(listOf("cerrar"), sesion.llamadas)
+        assertNull(vm.estado.value.cierreBloqueado)
+    }
+
+    @Test fun `sin red no cierra la sesion ni borra los pendientes y explica por que`() = runTest {
+        val sesion = SesionFalsa()
+        val reportes = ReportesConPendientes(EstadoEnvio.PENDIENTE).apply { hayRed = false }
+        val vm = CuentaViewModel(CuentaFalsa(), sesion, reportes)
+        vm.cerrarSesion()
+        assertTrue(sesion.llamadas.isEmpty())
+        assertEquals(1, reportes.lista.value.size)
+        val motivo = vm.estado.value.cierreBloqueado!!
+        assertTrue(motivo, motivo.startsWith("Tiene 1 reporte sin enviar, que se borraría"))
+        assertTrue(motivo, motivo.contains("1 aún no se pudo enviar"))
+        assertTrue(!vm.estado.value.ocupado && !vm.estado.value.enviandoPendientes)
+        vm.cerrarAvisoBloqueo()
+        assertNull(vm.estado.value.cierreBloqueado)
+
+        reportes.hayRed = true
+        vm.cerrarSesion()
+        assertEquals(listOf("cerrar"), sesion.llamadas)
+    }
+
+    @Test fun `un reporte rechazado por el servidor tambien bloquea el cierre hasta descartarlo`() = runTest {
+        val sesion = SesionFalsa()
+        val reportes = ReportesConPendientes(EstadoEnvio.PENDIENTE, EstadoEnvio.FALLIDO, EstadoEnvio.FALLIDO)
+        val vm = CuentaViewModel(CuentaFalsa(), sesion, reportes)
+        vm.cerrarSesion()
+        assertTrue(sesion.llamadas.isEmpty())
+        val motivo = vm.estado.value.cierreBloqueado!!
+        assertTrue(motivo, motivo.startsWith("Tiene 2 reportes sin enviar, que se borrarían"))
+        assertTrue(motivo, motivo.contains("2 fueron rechazados por el servidor: revíselos en Mis reportes"))
+        assertTrue(motivo, !motivo.contains("aún no"))
+
+        reportes.lista.value = emptyList()   // el ciudadano los descartó en Mis reportes
+        vm.cerrarSesion()
+        assertEquals(listOf("cerrar"), sesion.llamadas)
     }
 
     @Test fun `el registro exige un correo valido, una clave adecuada y la autorizacion de datos`() = runTest {

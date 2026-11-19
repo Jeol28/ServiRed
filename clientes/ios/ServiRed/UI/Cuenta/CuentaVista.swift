@@ -24,15 +24,26 @@ struct CuentaVista: View {
                 Text("Al cambiarla se cierran todas sus sesiones.")
             }
             Section {
-                Button("Cerrar sesión") { Task { await modelo.cerrarSesion() } }.disabled(modelo.ocupado)
+                Button(modelo.enviandoPendientes ? "Enviando reportes pendientes…" : "Cerrar sesión") {
+                    Task { await modelo.cerrarSesion() }
+                }
+                .disabled(modelo.ocupado)
                 Button("Eliminar mi cuenta", role: .destructive) { confirmarEliminar = true }
                     .accessibilityIdentifier("eliminar-cuenta")
             } footer: {
-                Text("Al cerrar sesión se borran del teléfono sus reportes guardados y los que no se han enviado.")
+                Text("Antes de cerrar sesión se envían los reportes pendientes. Si alguno no se puede enviar, la sesión sigue abierta para no perderlo. Al cerrarla se borran del teléfono sus reportes guardados.")
             }
         }
         .navigationTitle("Mi cuenta")
         .task { await modelo.cargar() }
+        .alert("La sesión sigue abierta", isPresented: Binding(
+            get: { modelo.cierreBloqueado != nil },
+            set: { if !$0 { modelo.cierreBloqueado = nil } }
+        )) {
+            Button("Entendido", role: .cancel) { modelo.cierreBloqueado = nil }
+        } message: {
+            Text(modelo.cierreBloqueado ?? "")
+        }
         .confirmationDialog("¿Eliminar su cuenta?", isPresented: $confirmarEliminar, titleVisibility: .visible) {
             Button("Eliminar", role: .destructive) { Task { await modelo.eliminarCuenta() } }
         } message: {

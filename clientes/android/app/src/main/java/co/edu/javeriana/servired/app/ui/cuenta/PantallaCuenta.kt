@@ -62,16 +62,27 @@ fun PantallaCuenta(vm: CuentaViewModel, alVolver: () -> Unit) {
                 Text("Cambiar clave")
             }
             HorizontalDivider()
-            Button(onClick = vm::cerrarSesion, enabled = !e.ocupado, modifier = Modifier.fillMaxWidth()) { Text("Cerrar sesión") }
+            Button(onClick = vm::cerrarSesion, enabled = !e.ocupado, modifier = Modifier.fillMaxWidth()) {
+                Text(if (e.enviandoPendientes) "Enviando reportes pendientes…" else "Cerrar sesión")
+            }
             TextButton(
                 onClick = { confirmarEliminar = true },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) { Text("Eliminar mi cuenta") }
             Text(
-                "Al cerrar sesión se borran del teléfono sus reportes guardados y los que no se han enviado.",
+                "Antes de cerrar sesión se envían los reportes pendientes. Si alguno no se puede enviar, la sesión " +
+                    "sigue abierta para no perderlo. Al cerrarla se borran del teléfono sus reportes guardados.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
+    }
+    e.cierreBloqueado?.let { motivo ->
+        AlertDialog(
+            onDismissRequest = vm::cerrarAvisoBloqueo,
+            title = { Text("La sesión sigue abierta") },
+            text = { Text(motivo) },
+            confirmButton = { TextButton(onClick = vm::cerrarAvisoBloqueo) { Text("Entendido") } },
+        )
     }
     if (confirmarEliminar) {
         AlertDialog(

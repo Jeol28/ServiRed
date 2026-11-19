@@ -60,7 +60,7 @@ private struct Principal: View {
                     DenunciaVista(modelo: DenunciaModelo(repo: c.denuncias, ubicacion: c.ubicacion, descartarFoto: c.fotos.descartar),
                                   fotos: c.fotos)
                 case .cuenta:
-                    CuentaVista(modelo: CuentaModelo(repo: c.cuenta, sesion: c.sesion))
+                    CuentaVista(modelo: CuentaModelo(repo: c.cuenta, sesion: c.sesion, reportes: c.reportes))
                 case .ingreso(let registro):
                     IngresoVista(modelo: IngresoModelo(sesion: c.sesion, registro: registro)) { camino.append(Ruta.denuncia) }
                 }

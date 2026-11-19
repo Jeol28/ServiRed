@@ -159,7 +159,7 @@ private fun Rutas(c: Contenedor, nav: NavHostController, anonimo: Boolean, alAbr
             )
         }
         composable<RutaCuenta> {
-            PantallaCuenta(viewModel { CuentaViewModel(c.cuenta, c.sesion) }, alVolver = { nav.popBackStack() })
+            PantallaCuenta(viewModel { CuentaViewModel(c.cuenta, c.sesion, c.reportes) }, alVolver = { nav.popBackStack() })
         }
     }
 }

@@ -9,7 +9,7 @@ final class SesionFalsa: RepositorioSesion {
     func restaurar() async {}
     func ingresar(correo: String, clave: String) async throws { llamadas.append("ingresar:\(correo)") }
     func registrar(correo: String, clave: String, nombre: String?) async throws { llamadas.append("registrar:\(correo)") }
-    func cerrar() async {}
+    func cerrar() async { llamadas.append("cerrar") }
 }
 
 actor ReportesFalso: RepositorioReportes {
@@ -206,5 +206,107 @@ struct ModelosVistaTests {
         #expect(await repo.enviadas.count == 1)
         #expect(m.enviada)
         #expect(m.descripcion.isEmpty && m.ubicacion == nil && m.tipo == nil)
+    }
+}
+
+actor CuentaFalsa: RepositorioCuenta {
+    func yo() async throws -> Cuenta { Cuenta(id: "c1", correo: "ana@correo.co", nombre: "Ana", rol: "CIUDADANO") }
+    func cambiarNombre(_ nombre: String) async throws -> Cuenta { throw ErrorApp.sinConexion }
+    func cambiarClave(actual: String, nueva: String) async throws {}
+    func eliminar() async throws {}
+}
+
+/// Pendientes en memoria: con red se envían los que esperan; los rechazados quedan.
+actor ReportesConPendientes: RepositorioReportes {
+    var lista: [ReportePendiente]
+    var hayRed = true
+    var envios = 0
+    init(_ estados: [EstadoEnvio]) {
+        lista = estados.map { e in
+            ReportePendiente(idLocal: UUID(), correlationId: UUID().uuidString,
+                             datos: NuevoReporte(tipoServicio: .ENERGIA, ubicacion: Ubicacion(latitud: 4.6, longitud: -74.1),
+                                                 inicioEstimado: Date(timeIntervalSince1970: 0), magnitud: .CUADRA, descripcion: nil),
+                             fotos: [], estado: e, error: e == .FALLIDO ? "Datos inválidos" : nil,
+                             creadoEn: Date(timeIntervalSince1970: 0), idReporte: nil)
+        }
+    }
+    func ponerRed(_ v: Bool) { hayRed = v }
+    func vaciar() { lista = [] }
+    func pendientes() async -> [ReportePendiente] { lista }
+    func enviarPendientes() async -> Bool {
+        envios += 1
+        if hayRed { lista = lista.filter { $0.estado == .FALLIDO } }
+        return !lista.contains { $0.estado != .FALLIDO }
+    }
+    func misReportes() async -> [Reporte] { [] }
+    func actualizar() async throws {}
+    func obtener(_ id: String) async throws -> Reporte { throw ErrorApp.sinConexion }
+    func crear(_ nuevo: NuevoReporte, fotos: [String]) async throws -> Bool { true }
+    func descartarPendiente(_ idLocal: UUID) async { lista.removeAll { $0.idLocal == idLocal } }
+    func adjuntarFoto(idReporte: String, foto: String) async throws -> Reporte { throw ErrorApp.sinConexion }
+    func foto(idReporte: String, idEvidencia: String) async throws -> Data { Data() }
+    func restablecer(_ id: String, fecha: Date, comentario: String?) async throws -> Reporte { throw ErrorApp.sinConexion }
+    func cercanos(desde: Ubicacion) async throws -> [ReporteCercano] { [] }
+    func zonasPublicas() async throws -> [Zona] { [] }
+    func validar(_ id: String, objeto: ObjetoValidacion, sentido: Sentido, desde: Ubicacion) async throws -> ResultadoValidacion {
+        throw ErrorApp.sinConexion
+    }
+}
+
+@Suite("Cerrar sesión con reportes pendientes")
+@MainActor
+struct CierreDeSesionTests {
+    @Test func sinPendientesCierraDeInmediato() async {
+        let sesion = SesionFalsa()
+        let reportes = ReportesConPendientes([])
+        await CuentaModelo(repo: CuentaFalsa(), sesion: sesion, reportes: reportes).cerrarSesion()
+        #expect(sesion.llamadas == ["cerrar"])
+        #expect(await reportes.envios == 0)
+    }
+
+    @Test func antesDeCerrarEnviaLosPendientesYSiSalenCierra() async {
+        let sesion = SesionFalsa()
+        let reportes = ReportesConPendientes([.PENDIENTE, .PENDIENTE])
+        let m = CuentaModelo(repo: CuentaFalsa(), sesion: sesion, reportes: reportes)
+        await m.cerrarSesion()
+        #expect(await reportes.envios == 1)
+        #expect(await reportes.lista.isEmpty)
+        #expect(sesion.llamadas == ["cerrar"])
+        #expect(m.cierreBloqueado == nil)
+    }
+
+    @Test func sinRedNoCierraNiBorraYExplicaPorQue() async throws {
+        let sesion = SesionFalsa()
+        let reportes = ReportesConPendientes([.PENDIENTE])
+        await reportes.ponerRed(false)
+        let m = CuentaModelo(repo: CuentaFalsa(), sesion: sesion, reportes: reportes)
+        await m.cerrarSesion()
+        #expect(sesion.llamadas.isEmpty)
+        #expect(await reportes.lista.count == 1)
+        let motivo = try #require(m.cierreBloqueado)
+        #expect(motivo.hasPrefix("Tiene 1 reporte sin enviar, que se borraría"))
+        #expect(motivo.contains("1 aún no se pudo enviar"))
+        #expect(!m.ocupado && !m.enviandoPendientes)
+
+        m.cierreBloqueado = nil
+        await reportes.ponerRed(true)
+        await m.cerrarSesion()
+        #expect(sesion.llamadas == ["cerrar"])
+    }
+
+    @Test func unRechazadoTambienBloqueaHastaDescartarlo() async throws {
+        let sesion = SesionFalsa()
+        let reportes = ReportesConPendientes([.PENDIENTE, .FALLIDO, .FALLIDO])
+        let m = CuentaModelo(repo: CuentaFalsa(), sesion: sesion, reportes: reportes)
+        await m.cerrarSesion()
+        #expect(sesion.llamadas.isEmpty)
+        let motivo = try #require(m.cierreBloqueado)
+        #expect(motivo.hasPrefix("Tiene 2 reportes sin enviar, que se borrarían"))
+        #expect(motivo.contains("2 fueron rechazados por el servidor: revíselos en Mis reportes"))
+        #expect(!motivo.contains("aún no"))
+
+        await reportes.vaciar()   // el ciudadano los descartó en Mis reportes
+        await m.cerrarSesion()
+        #expect(sesion.llamadas == ["cerrar"])
     }
 }

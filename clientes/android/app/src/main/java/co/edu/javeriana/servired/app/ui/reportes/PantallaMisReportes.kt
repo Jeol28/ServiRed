@@ -104,7 +104,9 @@ private fun TarjetaPendiente(p: ReportePendiente, alDescartar: () -> Unit) {
                 color = if (p.estado == EstadoEnvio.FALLIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
-            if (p.estado == EstadoEnvio.FALLIDO) TextButton(onClick = alDescartar) { Text("Descartar") }
+            // También uno que espera conexión: es la única forma de renunciar a él (cerrar sesión
+            // no lo borra mientras exista).
+            if (p.estado != EstadoEnvio.ENVIANDO) TextButton(onClick = alDescartar) { Text("Descartar") }
         }
     }
 }
