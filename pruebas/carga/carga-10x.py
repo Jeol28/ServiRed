@@ -6,7 +6,8 @@ RNF-E2: «El sistema debe soportar incrementos de tráfico de al menos diez vece
 promedio en una zona afectada sin pérdida de reportes aceptados».
 
 Escenario (E7): un corte masivo en una zona de Bogotá. Muchos ciudadanos distintos
-reportan a la vez; cada uno, después de reportar, consulta su reporte y el mapa público.
+reportan a la vez; la mitad adjunta una foto (--fotos) y cada uno, después de reportar,
+consulta su reporte y el mapa público.
 La carga es de lazo abierto: los reportes salen a la tasa fijada aunque el sistema se
 demore, como en un pico real (los ciudadanos no esperan a que el sistema se desocupe).
 
@@ -24,6 +25,13 @@ Comprueba:
      tras los reintentos.
   4. RNF-R1: p95 de la creación ≤ 2 s.  RNF-R3: cada reporte visible para el operador
      (caso abierto) en ≤ 10 s.
+  5. Fotos: cada foto aceptada (201) tiene su referencia en la base, se puede descargar,
+     es un JPEG y llegó sin EXIF (ni GPS ni modelo del teléfono). Ningún servicio se
+     reinició ni se quedó sin memoria (el saneamiento decodifica cada foto completa).
+
+Las fotos son como las que mandan las apps: JPEG de 2560 × 1920 (el lado máximo que
+dejan las apps), calidad 85, entre 0,9 y 1,3 MB. Llevan EXIF con GPS y modelo del teléfono,
+como si un cliente no los hubiera quitado. Se generan con Pillow.
 
 Las cuentas de prueba se crean clonando una cuenta registrada por la API (misma clave) y
 se envejecen 2 días, como en las e2e. Cada cuenta envía a lo sumo 4 reportes por minuto y
@@ -39,6 +47,7 @@ si PERSISTENCIA_DB_URL apunta a Supabase.
 """
 import argparse
 import base64
+import io
 import json
 import math
 import random
@@ -51,13 +60,49 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "e2e"))
-from comun import ENV, RABBIT_API, _http, http, sql  # noqa: E402
+from comun import ENV, RABBIT_API, _http, http, http_crudo, multipart, sql  # noqa: E402
 
 import urllib.request  # noqa: E402
 
 ZONA = {"latitud": (4.60, 4.70), "longitud": (-74.10, -74.04), "municipio": "11001"}   # Bogotá
 CLAVE = "una clave larga de carga"
 BOGOTA = timezone(timedelta(hours=-5))
+MODELO = "TelefonoDeCargaServiRed"
+
+
+def generar_fotos():
+    """Tres JPEG como los de las apps (2560 × 1920, calidad 85), con EXIF de GPS y modelo."""
+    try:
+        from PIL import Image, ImageChops
+    except ImportError:
+        raise SystemExit("Las fotos de la prueba se generan con Pillow: pip install pillow (o use --fotos 0)")
+    ancho, alto = 2560, 1920
+    gradiente = Image.linear_gradient("L").resize((ancho, alto))
+    base = Image.merge("RGB", (gradiente, gradiente.rotate(180), gradiente.transpose(Image.Transpose.FLIP_LEFT_RIGHT)))
+    fotos = []
+    for sigma in (12, 14, 18):
+        imagen = ImageChops.add(base, Image.effect_noise((ancho, alto), sigma).convert("RGB"), scale=2.0, offset=-60)
+        exif = Image.Exif()
+        exif[0x0110] = MODELO                                   # Model
+        exif[0x8825] = {1: "N", 2: (4.0, 38.0, 15.0), 3: "W", 4: (74.0, 3.0, 50.0)}   # GPSInfo
+        salida = io.BytesIO()
+        imagen.save(salida, "JPEG", quality=85, exif=exif)
+        fotos.append(salida.getvalue())
+    return fotos
+
+
+def servicios_reiniciados():
+    """Reinicios y muertes por memoria de cada contenedor del compose."""
+    import subprocess
+    nombres = subprocess.run(["docker", "ps", "-a", "--filter", "name=servired-", "--format", "{{.Names}}"],
+                             capture_output=True, text=True).stdout.split()
+    estado = {}
+    for n in nombres:
+        r = subprocess.run(["docker", "inspect", "-f", "{{.RestartCount}} {{.State.OOMKilled}} {{.State.StartedAt}}",
+                            n], capture_output=True, text=True).stdout.split()
+        if r:
+            estado[n] = tuple(r)
+    return estado
 
 
 def percentil(valores, p):
@@ -83,6 +128,9 @@ class Resultados:
         self.lat_creacion = []       # ms del intento que respondió
         self.lat_lecturas = {"reporte": [], "mapa": []}
         self.lecturas_fallidas = 0
+        self.fotos = {}               # estado final de la subida -> cantidad
+        self.fotos_aceptadas = []     # (idReporte, url, token)
+        self.lat_fotos = []
         self.atraso_max = 0.0        # cuánto se atrasó el generador respecto a lo planeado
 
     def sumar(self, **k):
@@ -127,7 +175,33 @@ def iniciar_sesiones(corrida, n):
     return tokens
 
 
-def un_ciudadano(token, res, consultas, intentos_max=3):
+def subir_foto(token, id_reporte, foto, res, intentos_max=3):
+    """Como la app: un X-Correlation-Id por foto, el mismo en los reintentos."""
+    correlacion = str(uuid.uuid4())
+    cuerpo, tipo = multipart([("foto", "foto.jpg", "image/jpeg", foto)])
+    estado, r = None, None
+    for intento in range(intentos_max):
+        t0 = time.perf_counter()
+        try:
+            estado, _, r = http_crudo("POST", f"/api/v1/reportes/{id_reporte}/evidencias", cuerpo, tipo, token,
+                                      {"X-Correlation-Id": correlacion})
+        except Exception:
+            estado = "sin respuesta"
+        if intento == 0:
+            with res.candado:
+                res.lat_fotos.append((time.perf_counter() - t0) * 1000)
+        if estado == 201 or (isinstance(estado, int) and estado < 500 and estado != 408):
+            break
+        res.sumar(reintentos=1)
+        time.sleep(0.5 * 2 ** intento)
+    with res.candado:
+        res.fotos[estado] = res.fotos.get(estado, 0) + 1
+        if estado == 201:
+            for e in json.loads(r)["evidencias"]:
+                res.fotos_aceptadas.append((id_reporte, e["url"], token))
+
+
+def un_ciudadano(token, res, consultas, fotos, fraccion_fotos, intentos_max=3):
     """Lo que hace la app: crea el reporte (reintenta con la misma correlación) y consulta."""
     correlacion = str(uuid.uuid4())
     cuerpo = {
@@ -157,7 +231,11 @@ def un_ciudadano(token, res, consultas, intentos_max=3):
         res.finales[estado] = res.finales.get(estado, 0) + 1
         if estado == 201:
             res.aceptados[r["idReporte"]] = correlacion
-    if estado != 201 or not consultas:
+    if estado != 201:
+        return
+    if fotos and random.random() < fraccion_fotos:
+        subir_foto(token, r["idReporte"], random.choice(fotos), res)
+    if not consultas:
         return
     for nombre, ruta, tk in (("reporte", f"/api/v1/reportes/{r['idReporte']}", token),
                              ("mapa", "/api/v1/mapas/publico?tipoServicio=ENERGIA", None)):
@@ -172,7 +250,7 @@ def un_ciudadano(token, res, consultas, intentos_max=3):
                 res.lecturas_fallidas += 1
 
 
-def generar(tokens, tasa, duracion, res, consultas):
+def generar(tokens, tasa, duracion, res, consultas, fotos, fraccion_fotos):
     """Lazo abierto: el reporte k sale en k/tasa segundos, sin importar cuánto tarden los anteriores."""
     total = int(tasa * duracion)
     inicio = time.perf_counter()
@@ -184,7 +262,7 @@ def generar(tokens, tasa, duracion, res, consultas):
                 time.sleep(espera)
             else:
                 res.atraso_max = max(res.atraso_max, -espera)
-            hilos.submit(un_ciudadano, tokens[k % len(tokens)], res, consultas)
+            hilos.submit(un_ciudadano, tokens[k % len(tokens)], res, consultas, fotos, fraccion_fotos)
             if k and k % int(tasa * 15) == 0:
                 with res.candado:
                     ok = res.finales.get(201, 0)
@@ -198,6 +276,7 @@ def main():
     p.add_argument("--factor", type=float, default=10)
     p.add_argument("--duracion", type=int, default=120, help="segundos del pico")
     p.add_argument("--sin-consultas", action="store_true", help="solo crear reportes")
+    p.add_argument("--fotos", type=float, default=0.5, help="fracción de reportes con una foto (0 = sin fotos)")
     p.add_argument("--espera-max", type=int, default=300, help="segundos para que se procese todo")
     args = p.parse_args()
 
@@ -219,18 +298,26 @@ def main():
     print(f"Carga promedio {args.promedio:g} reportes/min · pico {args.factor:g}× = {tasa * 60:g}/min "
           f"({tasa:g}/s) durante {args.duracion} s = {total} reportes · {n_cuentas} ciudadanos · corrida {corrida}")
 
+    fotos = generar_fotos() if args.fotos > 0 else []
+    if fotos:
+        print(f"Fotos: {args.fotos:.0%} de los reportes, JPEG 2560 × 1920 de "
+              f"{min(map(len, fotos)) / 1e6:.2f}–{max(map(len, fotos)) / 1e6:.2f} MB con EXIF")
+
     print("1. Preparar ciudadanos")
     crear_cuentas(corrida, n_cuentas)
     tokens = iniciar_sesiones(corrida, n_cuentas)
     dlq_antes = rabbit_dlq()
+    contenedores_antes = servicios_reiniciados()
 
     print(f"2. Pico de {tasa:g} reportes/s")
     res = Resultados()
-    real, enviados = generar(tokens, tasa, args.duracion, res, not args.sin_consultas)
+    real, enviados = generar(tokens, tasa, args.duracion, res, not args.sin_consultas, fotos, args.fotos)
     fin_carga = time.time()
     aceptados = res.aceptados
     print(f"     {enviados} enviados en {real:.1f} s (tasa real {enviados / real:.2f}/s, atraso máximo del "
           f"generador {res.atraso_max * 1000:.0f} ms) · finales: {res.finales} · reintentos: {res.reintentos}")
+    if fotos:
+        print(f"     fotos: {res.fotos}")
 
     print("3. Esperar a que se procese todo")
     filtro = (f"r.id_ciudadano IN (SELECT id FROM identidad.cuentas WHERE correo LIKE 'carga.{corrida}.%')")
@@ -291,6 +378,38 @@ def main():
               f"p95 {percentil(visibles, 95):.2f} · máx {max(visibles):.2f}")
         comprobar(max(visibles) <= 10, f"RNF-R3: todos visibles para el operador en ≤ 10 s "
                                        f"({sum(v > 10 for v in visibles)} tardaron más)")
+
+    if fotos:
+        print("5. Fotos")
+        aceptadas = res.fotos_aceptadas
+        lf = res.lat_fotos
+        print(f"     subida (ms): p50 {percentil(lf, 50):.0f} · p95 {percentil(lf, 95):.0f} · "
+              f"p99 {percentil(lf, 99):.0f} · máx {max(lf):.0f}")
+        rechazadas = sum(n for k, n in res.fotos.items() if k != 201)
+        comprobar(rechazadas == 0, f"se aceptaron todas las fotos: {len(aceptadas)} con 201, {rechazadas} sin 201 "
+                                   f"{ {k: v for k, v in res.fotos.items() if k != 201} or ''}".rstrip())
+        en_base = int(sql(f"SELECT count(*) FROM reportes.evidencias e JOIN reportes.reportes r ON r.id = e.id_reporte "
+                          f"WHERE {filtro}") or 0)
+        comprobar(en_base == len(aceptadas), f"cada foto aceptada tiene su referencia en la base ({en_base}/{len(aceptadas)})")
+
+        def descargar(f):
+            estado, _, contenido = http_crudo("GET", f[1], None, None, f[2])
+            return estado, contenido
+
+        with ThreadPoolExecutor(max_workers=16) as hilos:
+            descargas = list(hilos.map(descargar, aceptadas))
+        legibles = [c for e, c in descargas if e == 200 and c[:3] == b"\xff\xd8\xff"]
+        comprobar(len(legibles) == len(aceptadas), f"todas se descargan y son JPEG ({len(legibles)}/{len(aceptadas)})")
+        con_metadatos = sum(1 for c in legibles if MODELO.encode() in c or b"Exif\x00\x00" in c)
+        comprobar(con_metadatos == 0, f"ninguna conserva EXIF, GPS ni modelo del teléfono ({con_metadatos} con metadatos)")
+        if legibles:
+            print(f"     guardadas: {sum(map(len, legibles)) / len(legibles) / 1e6:.2f} MB en promedio")
+
+    despues = servicios_reiniciados()
+    cambiaron = {n: (contenedores_antes.get(n), e) for n, e in despues.items()
+                 if contenedores_antes.get(n) != e and "init" not in n}
+    comprobar(not cambiaron, "ningún servicio se reinició ni murió por memoria"
+              + (f": {cambiaron}" if cambiaron else ""))
 
     print("Resultado:", "TODO OK" if not fallos else f"{len(fallos)} fallo(s)")
     sys.exit(1 if fallos else 0)
