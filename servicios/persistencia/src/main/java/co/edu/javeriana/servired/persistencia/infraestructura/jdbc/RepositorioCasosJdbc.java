@@ -22,7 +22,7 @@ public class RepositorioCasosJdbc implements RepositorioCasos {
     }
 
     @Override
-    public void insertarSiNoExiste(CasoNuevo c) {
+    public boolean insertarSiNoExiste(CasoNuevo c) {
         int insertados = jdbc.sql("""
                         INSERT INTO atencion.casos
                             (id, id_reporte, tipo_servicio, codigo_municipio, magnitud, estado, abierto_en,
@@ -43,6 +43,7 @@ public class RepositorioCasosJdbc implements RepositorioCasos {
                     c.idEmpresa() == null ? "Caso abierto sin empresa con cobertura; requiere enrutamiento manual"
                             : "Caso abierto y enrutado a la empresa con cobertura", null);
         }
+        return insertados == 1;
     }
 
     @Override

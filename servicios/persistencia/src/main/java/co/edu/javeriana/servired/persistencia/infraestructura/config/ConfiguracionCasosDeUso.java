@@ -48,8 +48,9 @@ public class ConfiguracionCasosDeUso {
     }
 
     @Bean
-    AbrirCaso abrirCaso(UnidadDeTrabajo t, RegistroIdempotencia i, RepositorioCasos r, CatalogoTerritorial c) {
-        return new AbrirCaso(t, i, r, c);
+    AbrirCaso abrirCaso(UnidadDeTrabajo t, RegistroIdempotencia i, RepositorioCasos r, CatalogoTerritorial c,
+                        Outbox o) {
+        return new AbrirCaso(t, i, r, c, o);
     }
 
     @Bean

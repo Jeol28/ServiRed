@@ -67,6 +67,23 @@ public static class EventosCaso
         return eventos;
     }
 
+    /// <summary>
+    /// caso.actualizado de la apertura: estado RECIBIDO, la prioridad calculada y la empresa
+    /// enrutada, sin estadoAnterior (no lo había) ni idActor (es automática). Sin él, la vista de
+    /// Indicadores no conocía el estado, la prioridad ni la empresa hasta el primer cambio del
+    /// caso, y los mapas y exportaciones por empresa dejaban fuera esos reportes.
+    /// </summary>
+    public static SobreEventoSaliente Apertura(Caso caso, IdCorrelacion correlacion) =>
+        SobreEventoSaliente.Nuevo("caso.actualizado", correlacion, caso.AbiertoEn, new Dictionary<string, object?>
+        {
+            ["idCaso"] = caso.IdCaso.ToString(),
+            ["idReporte"] = caso.IdReporte.ToString(),
+            ["estado"] = caso.Estado.ToString(),
+            ["prioridad"] = caso.Prioridad.ToString(),
+            ["idEmpresaOperadora"] = caso.IdEmpresa?.ToString(),
+            ["fechaActualizacion"] = caso.AbiertoEn.ToString("O"),
+        });
+
     /// <summary>idActor (opcional en caso.* v1) solo cuando lo hizo una persona; ausente si fue automático.</summary>
     private static Dictionary<string, object?> ConActor(Guid? autor, Dictionary<string, object?> datos)
     {

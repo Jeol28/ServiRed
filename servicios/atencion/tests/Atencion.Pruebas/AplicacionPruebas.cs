@@ -35,6 +35,26 @@ public class AplicacionPruebas
     }
 
     [Fact]
+    public async Task AbrirElCasoPublicaSuEstadoPrioridadYEmpresa()
+    {
+        var caso = await _reacciones.AbrirCasoAsync(Reporte(), _c, CancellationToken.None);
+
+        var e = Assert.Single(_p.Eventos);
+        Assert.Equal("caso.actualizado", e.Tipo);
+        Assert.Equal(Guid.Parse(_c.Valor), e.CorrelationId);
+        Assert.Equal(caso.AbiertoEn, e.FechaOcurrencia);
+        Assert.Equal("RECIBIDO", e.Datos["estado"]);
+        Assert.Equal("ALTA", e.Datos["prioridad"]);
+        Assert.Equal(PersistenciaFalsa.EmpresaA.ToString(), e.Datos["idEmpresaOperadora"]);
+        Assert.False(e.Datos.ContainsKey("estadoAnterior"));
+        Assert.False(e.Datos.ContainsKey("idActor"));
+
+        await _reacciones.AbrirCasoAsync(Reporte("91001"), _c, CancellationToken.None);
+        Assert.Equal(2, _p.Eventos.Count);
+        Assert.False(_p.Eventos.ToArray()[1].Datos.ContainsKey("idEmpresaOperadora"), "sin empresa se omite (no null)");
+    }
+
+    [Fact]
     public async Task SinCoberturaElCasoQuedaSinEmpresa()
     {
         var caso = await _reacciones.AbrirCasoAsync(Reporte("91001"), _c, CancellationToken.None);
@@ -51,12 +71,14 @@ public class AplicacionPruebas
 
         Assert.Equal(a.IdCaso, b.IdCaso);
         Assert.Single(_p.Casos);
+        Assert.Single(_p.Eventos);
     }
 
     [Fact]
     public async Task ElRestablecimientoResuelveElCasoYPublicaCasoActualizado()
     {
         var caso = await _reacciones.AbrirCasoAsync(Reporte(), _c, CancellationToken.None);
+        _p.Eventos.Clear();   // la apertura
 
         var resuelto = await _reacciones.RegistrarRestablecimientoAsync(
             new DatosRestablecimiento(caso.IdReporte, DateTimeOffset.UtcNow, 95), IdCorrelacion.Nuevo(), CancellationToken.None);
@@ -78,6 +100,7 @@ public class AplicacionPruebas
     {
         var caso = await _reacciones.AbrirCasoAsync(Reporte() with { TipoServicio = "ACUEDUCTO", Magnitud = "BARRIO",
             CodigoMunicipio = "05001" }, _c, CancellationToken.None);
+        _p.Eventos.Clear();   // la apertura
         _p.ConflictosPendientes = 1;
 
         var actualizado = await _reacciones.RegistrarValidacionAsync(

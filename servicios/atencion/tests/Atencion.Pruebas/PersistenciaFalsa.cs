@@ -24,7 +24,8 @@ public sealed class PersistenciaFalsa : IRepositorioCasos, ICatalogoAtencion, IR
     public Dictionary<string, Guid[]> Cobertura = new() { ["11001|ENERGIA"] = [EmpresaB, EmpresaA] };
     public int ConflictosPendientes;
 
-    public Task<Caso> AbrirAsync(Caso caso, IdCorrelacion correlacion, CancellationToken ct)
+    public Task<Caso> AbrirAsync(Caso caso, IReadOnlyList<SobreEventoSaliente> eventos, IdCorrelacion correlacion,
+        CancellationToken ct)
     {
         Correlaciones.Add(correlacion.Valor);
         if (RechazosPermanentes.Contains(caso.IdReporte)) throw new FallaPermanente("rechazado");
@@ -37,6 +38,7 @@ public sealed class PersistenciaFalsa : IRepositorioCasos, ICatalogoAtencion, IR
         if (existente is not null) return Task.FromResult(existente);
         var nuevo = caso with { Historia = [new EntradaHistoriaCaso(EstadoCaso.RECIBIDO, caso.AbiertoEn, "Caso abierto", null)] };
         Casos[caso.IdCaso] = nuevo;
+        foreach (var e in eventos) Eventos.Enqueue(e);
         return Task.FromResult(nuevo);
     }
 

@@ -65,7 +65,7 @@ comprobar(sql(f"SELECT id_ciudadano FROM reportes.reportes WHERE id = '{id_repor
 print("2) Idempotencia por X-Correlation-Id")
 estado, _, repetido = http("POST", "/api/v1/reportes", nuevo_reporte(), correlacion, token)
 comprobar(estado == 201 and repetido.get("idReporte") == id_reporte, "el reintento devuelve el mismo reporte")
-comprobar(sql(f"SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = '{correlacion}'") == "1",
+comprobar(sql(f"SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = '{correlacion}' AND tipo = 'reporte.creado'") == "1",
           "un solo evento en el outbox")
 otra_cuenta = registrar_y_entrar()[0]["tokenAcceso"]
 estado, _, ajena = http("POST", "/api/v1/reportes", nuevo_reporte(), correlacion, otra_cuenta)
@@ -73,7 +73,7 @@ comprobar(estado == 409 and (ajena or {}).get("motivo") == "CORRELACION_AJENA",
           f"otra cuenta con el mismo X-Correlation-Id recibe 409 CORRELACION_AJENA ({estado})")
 comprobar(reporte["idReporte"] not in str(ajena) and "Sin luz" not in str(ajena),
           "sin ver el reporte ajeno")
-comprobar(sql(f"SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = '{correlacion}'") == "1",
+comprobar(sql(f"SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = '{correlacion}' AND tipo = 'reporte.creado'") == "1",
           "ni crear otro reporte")
 
 print("3) Consultar el reporte")
@@ -91,7 +91,12 @@ comprobar(any(e["campo"] == "inicioEstimado" for e in problema.get("errores", []
 print("5) reporte.creado -> Atención abre el caso")
 comprobar(esperar(lambda: caso_de(id_reporte) == "RECIBIDO"), "caso RECIBIDO en atencion.casos")
 comprobar(sql(f"SELECT publicado_en IS NOT NULL FROM infraestructura.outbox "
-              f"WHERE correlation_id = '{correlacion}'") == "t", "evento marcado como publicado")
+              f"WHERE correlation_id = '{correlacion}' AND tipo = 'reporte.creado'") == "t",
+          "evento marcado como publicado")
+# La apertura del caso publica caso.actualizado con el mismo correlationId (ADR-24).
+comprobar(esperar(lambda: sql(f"SELECT count(*) FROM infraestructura.outbox WHERE correlation_id = '{correlacion}' "
+                              "AND tipo = 'caso.actualizado'") == "1", 10),
+          "la apertura del caso publica caso.actualizado con el mismo correlationId")
 
 print("6) Trazabilidad del correlationId en los logs")
 for servicio in ["gateway", "reportes", "persistencia", "atencion"]:

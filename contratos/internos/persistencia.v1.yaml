@@ -256,13 +256,22 @@ paths:
         Invocable solo por `atencion`, al consumir reporte.creado. Idempotente por
         X-Correlation-Id (el del evento) y porque hay a lo sumo un caso por
         reporte: si ya existe, devuelve el caso original con 200.
+
+        `eventos` (opcional): el caso.actualizado de la apertura (estado RECIBIDO, sin
+        estadoAnterior). Se guarda en el outbox en la misma transacción y solo si el caso
+        se insertó; una redelivery no lo vuelve a publicar.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CasoAAbrir" }
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/CasoAAbrir"
+                - type: object
+                  properties:
+                    eventos: { type: array, items: { $ref: "#/components/schemas/EventoSaliente" } }
       responses:
         "201":
           description: Caso abierto

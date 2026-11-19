@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://servired.co/contratos/eventos/caso.actualizado.v1.json",
   "title": "Datos del evento caso.actualizado v1",
-  "description": "Cambió el estado, la prioridad o la asignación de un caso (RF-6, RF-7).",
+  "description": "Se abrió un caso (sin estadoAnterior) o cambió su estado, prioridad, asignación o empresa (RF-6, RF-7).",
   "type": "object",
   "additionalProperties": false,
   "required": [

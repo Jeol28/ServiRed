@@ -48,7 +48,7 @@ public class ClientePersistenciaPruebas
         var (cliente, manejador) = Cliente(HttpStatusCode.Created, respuesta);
         var correlacion = IdCorrelacion.Nuevo();
 
-        var caso = await cliente.AbrirAsync(Caso, correlacion, CancellationToken.None);
+        var caso = await cliente.AbrirAsync(Caso, [EventosCaso.Apertura(Caso, correlacion)], correlacion, CancellationToken.None);
 
         Assert.Equal(Caso.IdCaso, caso.IdCaso);
         Assert.Equal(EstadoCaso.RECIBIDO, caso.Estado);
@@ -56,6 +56,8 @@ public class ClientePersistenciaPruebas
         Assert.Equal(correlacion.Valor, manejador.Ultima.Headers.GetValues(IdCorrelacion.Cabecera).Single());
         Assert.Contains("\"tipoServicio\":\"ENERGIA\"", manejador.Cuerpo);
         Assert.Contains("\"codigoMunicipio\":\"11001\"", manejador.Cuerpo);
+        Assert.Contains("\"eventos\":[{", manejador.Cuerpo);
+        Assert.Contains("\"tipo\":\"caso.actualizado\"", manejador.Cuerpo);
     }
 
     [Fact]
@@ -76,7 +78,7 @@ public class ClientePersistenciaPruebas
     {
         var (cliente, _) = Cliente(codigo);
 
-        await Assert.ThrowsAsync<FallaPermanente>(() => cliente.AbrirAsync(Caso, IdCorrelacion.Nuevo(), CancellationToken.None));
+        await Assert.ThrowsAsync<FallaPermanente>(() => cliente.AbrirAsync(Caso, [], IdCorrelacion.Nuevo(), CancellationToken.None));
     }
 
     [Fact]
@@ -105,6 +107,6 @@ public class ClientePersistenciaPruebas
     {
         var (cliente, _) = Cliente(HttpStatusCode.ServiceUnavailable);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => cliente.AbrirAsync(Caso, IdCorrelacion.Nuevo(), CancellationToken.None));
+        await Assert.ThrowsAsync<HttpRequestException>(() => cliente.AbrirAsync(Caso, [], IdCorrelacion.Nuevo(), CancellationToken.None));
     }
 }

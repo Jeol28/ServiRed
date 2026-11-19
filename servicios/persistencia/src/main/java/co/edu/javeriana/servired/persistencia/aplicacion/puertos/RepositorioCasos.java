@@ -7,8 +7,8 @@ import java.util.UUID;
 
 public interface RepositorioCasos {
 
-    /** Inserta el caso salvo que ya exista uno para el mismo reporte. */
-    void insertarSiNoExiste(CasoNuevo caso);
+    /** Inserta el caso salvo que ya exista uno para el mismo reporte; true si lo insertó. */
+    boolean insertarSiNoExiste(CasoNuevo caso);
 
     Optional<CasoGuardado> buscarPorReporte(UUID idReporte);
 }

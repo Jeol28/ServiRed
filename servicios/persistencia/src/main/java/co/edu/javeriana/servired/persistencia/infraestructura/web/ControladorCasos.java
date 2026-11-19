@@ -67,7 +67,8 @@ public class ControladorCasos {
         var resultado = abrirCaso.ejecutar(servicio, new IdCorrelacion(correlacion),
                 new CasoNuevo(s.idCaso(), s.idReporte(), s.tipoServicio(), s.codigoMunicipio(), s.magnitud(),
                         s.abiertoEn(), s.idEmpresa(), s.prioridad(), s.latitud(), s.longitud(), s.descripcion(),
-                        s.inicioEstimado()));
+                        s.inicioEstimado()),
+                s.eventos() == null ? List.of() : s.eventos().stream().map(solicitudes::evento).toList());
         return ResponseEntity.status(resultado.nuevo() ? HttpStatus.CREATED : HttpStatus.OK).body(resultado.caso());
     }
 
@@ -173,7 +174,8 @@ public class ControladorCasos {
             @NotNull @Pattern(regexp = "[0-9]{5}") String codigoMunicipio,
             @NotNull @Pattern(regexp = "VIVIENDA|CUADRA|BARRIO|SECTOR") String magnitud,
             @NotNull Instant abiertoEn, UUID idEmpresa, @Pattern(regexp = PRIORIDADES) String prioridad,
-            Double latitud, Double longitud, @Size(max = 1000) String descripcion, Instant inicioEstimado) {
+            Double latitud, Double longitud, @Size(max = 1000) String descripcion, Instant inicioEstimado,
+            List<@Valid EventoDto> eventos) {
     }
 
     public record SolicitudActualizar(

@@ -35,8 +35,12 @@ public sealed class ConflictoDeVersion() : Exception("El caso cambió; vuelva a 
 /// </summary>
 public interface IRepositorioCasos
 {
-    /// <summary>Hay a lo sumo un caso por reporte: si ya existía, devuelve el original.</summary>
-    Task<Caso> AbrirAsync(Caso caso, IdCorrelacion correlacion, CancellationToken ct);
+    /// <summary>
+    /// Hay a lo sumo un caso por reporte: si ya existía, devuelve el original. Los eventos
+    /// (la apertura) se guardan en el outbox solo si el caso se creó.
+    /// </summary>
+    Task<Caso> AbrirAsync(Caso caso, IReadOnlyList<SobreEventoSaliente> eventos, IdCorrelacion correlacion,
+        CancellationToken ct);
 
     Task<Caso?> ConsultarAsync(Guid idCaso, IdCorrelacion correlacion, CancellationToken ct);
 

@@ -229,6 +229,9 @@ components:
       name: caso.actualizado
       title: caso.actualizado v1
       summary: "Caso actualizado (RF-7)"
+      description: |
+        Se publica al abrir el caso (estado RECIBIDO, sin estadoAnterior ni idActor) y
+        cada vez que cambian su estado, prioridad, asignación o empresa.
       payload:
         allOf:
           - $ref: './esquemas/sobre-evento.v1.json'

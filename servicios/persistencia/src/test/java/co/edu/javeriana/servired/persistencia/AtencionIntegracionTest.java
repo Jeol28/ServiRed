@@ -101,6 +101,55 @@ class AtencionIntegracionTest {
         return id;
     }
 
+    private ResultActions abrirConEvento(UUID idCaso, UUID idReporte, String correlacion, String tipoEvento)
+            throws Exception {
+        return mvc.perform(post("/interno/v1/casos/abrir").header("X-Clave-Servicio", ATENCION)
+                .header("X-Correlation-Id", correlacion).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"idCaso":"%1$s","idReporte":"%2$s","tipoServicio":"ENERGIA","codigoMunicipio":"11001",
+                         "magnitud":"BARRIO","abiertoEn":"2026-11-17T10:00:00Z","idEmpresa":"%4$s","prioridad":"ALTA",
+                         "eventos":[{"idEvento":"%5$s","tipo":"%6$s","version":1,
+                           "fechaOcurrencia":"2026-11-17T10:00:00Z","correlationId":"%3$s","origen":"atencion",
+                           "datos":{"idCaso":"%1$s","idReporte":"%2$s","estado":"RECIBIDO","prioridad":"ALTA",
+                                    "idEmpresaOperadora":"%4$s","fechaActualizacion":"2026-11-17T10:00:00Z"}}]}"""
+                        .formatted(idCaso, idReporte, correlacion, ENERGIA_ANDINA, UUID.randomUUID(), tipoEvento)));
+    }
+
+    private int aperturasEnOutbox(UUID idReporte) {
+        return jdbc.queryForObject("""
+                SELECT count(*) FROM infraestructura.outbox
+                WHERE tipo = 'caso.actualizado' AND sobre->'datos'->>'idReporte' = ?""", Integer.class,
+                idReporte.toString());
+    }
+
+    @Test
+    void abrirElCasoDejaSuEventoEnElOutboxUnaSolaVez() throws Exception {
+        UUID idReporte = UUID.randomUUID();
+        UUID idCaso = UUID.randomUUID();
+        String correlacion = UUID.randomUUID().toString();
+
+        abrirConEvento(idCaso, idReporte, correlacion, "caso.actualizado").andExpect(status().isCreated());
+        assertThat(aperturasEnOutbox(idReporte)).as("la apertura publica caso.actualizado").isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+                SELECT sobre->'datos'->>'estado' || '|' || (sobre->'datos'->>'prioridad') FROM infraestructura.outbox
+                WHERE tipo = 'caso.actualizado' AND sobre->'datos'->>'idReporte' = ?""", String.class,
+                idReporte.toString())).isEqualTo("RECIBIDO|ALTA");
+
+        abrirConEvento(idCaso, idReporte, correlacion, "caso.actualizado").andExpect(status().isOk());
+        abrirConEvento(UUID.randomUUID(), idReporte, UUID.randomUUID().toString(), "caso.actualizado")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.idCaso").value(idCaso.toString()));
+        assertThat(aperturasEnOutbox(idReporte)).as("un reintento o una redelivery no publica otra apertura")
+                .isEqualTo(1);
+    }
+
+    @Test
+    void abrirElCasoNoAdmiteOtrosEventos() throws Exception {
+        UUID idReporte = UUID.randomUUID();
+        abrirConEvento(UUID.randomUUID(), idReporte, UUID.randomUUID().toString(), "caso.cerrado")
+                .andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM atencion.casos WHERE id_reporte = ?", Integer.class,
+                idReporte)).as("no abrió el caso").isZero();
+    }
+
     @Test
     void resuelveLaEmpresaConCobertura() throws Exception {
         consultar("/interno/v1/catalogo/cobertura?codigoMunicipio=11001&tipoServicio=ENERGIA")

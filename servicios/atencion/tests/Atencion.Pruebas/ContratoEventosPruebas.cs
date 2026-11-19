@@ -35,6 +35,8 @@ public class ContratoEventosPruebas
         var resueltoSinResolucion = sinEmpresa with { Estado = EstadoCaso.RESUELTO };
         return new()
         {
+            { "abrir un caso enrutado", [EventosCaso.Apertura(enrutado, Correlacion)] },
+            { "abrir un caso sin empresa", [EventosCaso.Apertura(sinEmpresa, Correlacion)] },
             { "atender un caso enrutado", [.. EventosCaso.Para(enrutado, enrutado.Atender(Admin, Ahora), Correlacion)] },
             { "atender un caso sin empresa", [.. EventosCaso.Para(sinEmpresa, sinEmpresa.Atender(Admin, Ahora), Correlacion)] },
             { "cerrar con resolución", [.. EventosCaso.Para(resuelto, resuelto.Cerrar(Admin, null, Ahora), Correlacion)] },

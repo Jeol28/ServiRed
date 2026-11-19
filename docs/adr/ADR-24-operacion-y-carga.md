@@ -81,7 +81,23 @@ consultas.
 - **Preparación lenta:** toda la prueba sale de una sola IP y el inicio de sesión está
   limitado a 20 por minuto por IP, así que las 150 sesiones toman unos 7 minutos. Es el
   límite funcionando, no un problema del sistema.
-- **Hallazgo pendiente de R14:** la primera verificación en la base local encontró 131 de
-  259 filas sin el estado ni la prioridad del caso, y 117 sin empresa. Atención abre el
-  caso sin emitir un evento, así que la vista solo se entera cuando el caso cambia.
-  Mientras no se corrija, `reconstruir-indicadores.py --aplicar` lo repara.
+- **Hallazgo de R14, corregido:** la primera verificación en la base local encontró 131
+  de 259 filas sin el estado ni la prioridad del caso, y 117 sin empresa.
+  - **Causa:** Atención abría el caso sin emitir un evento, así que la vista solo se
+    enteraba cuando el caso cambiaba. Los mapas, los indicadores por empresa y las
+    exportaciones a la SSPD dejaban fuera esos reportes, y dos exportaciones podían no
+    coincidir.
+  - **Corrección:** Atención publica `caso.actualizado` al abrir el caso, con estado
+    `RECIBIDO`, prioridad y empresa, sin `estadoAnterior` ni `idActor`. Se reutiliza el
+    contrato v1 sin cambiarlo.
+  - **Por el outbox:** `abrirCaso` de Persistencia recibe el evento y lo guarda en la
+    misma transacción, solo si el caso se insertó. Un reintento o una redelivery no
+    publica una segunda apertura, y solo admite `caso.actualizado`.
+  - **Consumidores:** Reportes ignora `RECIBIDO`, así que el ciudadano no ve cambios.
+    Indicadores completa la fila; un evento de apertura tardío no pisa un cambio
+    posterior, porque la vista compara `caso_en`. Auditoría lo registra como
+    `CASO_ACTUALIZADO`.
+  - **Datos anteriores:** los casos abiertos antes del cambio se reparan una vez con
+    `reconstruir-indicadores.py --aplicar`, también en la VM. La e2e
+    `apertura-de-caso.py` comprueba que después los reportes nuevos dejan la vista
+    alineada.

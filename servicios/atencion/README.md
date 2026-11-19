@@ -1,6 +1,6 @@
 # Atención operacional
 
-Gestiona los casos del operador: crea el caso al recibir `reporte.creado`, lo enruta a la empresa operadora responsable por servicio y municipio (RF-6) y permite filtrar, priorizar, asignar, actualizar y cerrar (RF-7). Modera las denuncias anónimas. Publica `caso.actualizado` y `caso.cerrado`.
+Gestiona los casos del operador: crea el caso al recibir `reporte.creado`, lo enruta a la empresa operadora responsable por servicio y municipio (RF-6) y permite filtrar, priorizar, asignar, actualizar y cerrar (RF-7). Modera las denuncias anónimas. Publica `caso.actualizado` (también al abrir el caso, sin `estadoAnterior`; ADR-24) y `caso.cerrado`.
 
 | | |
 |---|---|
@@ -51,7 +51,7 @@ Cola `atencion.eventos-reportes`:
 
 | Evento | Reacción |
 |---|---|
-| `reporte.creado.v1` | Abre el caso enrutado y priorizado (un caso por reporte) |
+| `reporte.creado.v1` | Abre el caso enrutado y priorizado (un caso por reporte) y publica su `caso.actualizado` de apertura en la misma transacción |
 | `restablecimiento.registrado.v1` | El caso abierto pasa a `RESUELTO` y publica `caso.actualizado` |
 | `validacion.registrada.v1` (CORTE) | Marca la validación y recalcula la prioridad |
 | `denuncia.recibida.v1` | Abre la moderación en la empresa con cobertura |

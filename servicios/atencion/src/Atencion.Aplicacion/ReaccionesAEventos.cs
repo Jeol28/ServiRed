@@ -33,7 +33,7 @@ public sealed class ReaccionesAEventos(
         {
             throw new FallaPermanente("reporte.creado con datos inválidos: " + e.Message, e);
         }
-        return await casos.AbrirAsync(caso, correlacion, ct);
+        return await casos.AbrirAsync(caso, [EventosCaso.Apertura(caso, correlacion)], correlacion, ct);
     }
 
     /// <summary>restablecimiento.registrado: el caso abierto pasa a RESUELTO y se publica caso.actualizado.</summary>

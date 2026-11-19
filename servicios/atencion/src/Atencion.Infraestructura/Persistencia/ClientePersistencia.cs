@@ -24,13 +24,14 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
     };
 
     // ------------------------------------------------------------------ casos
-    public async Task<Caso> AbrirAsync(Caso caso, IdCorrelacion correlacion, CancellationToken ct)
+    public async Task<Caso> AbrirAsync(Caso caso, IReadOnlyList<SobreEventoSaliente> eventos, IdCorrelacion correlacion,
+        CancellationToken ct)
     {
         var cuerpo = new
         {
             caso.IdCaso, caso.IdReporte, TipoServicio = caso.TipoServicio.ToString(), caso.CodigoMunicipio,
             Magnitud = caso.Magnitud.ToString(), caso.AbiertoEn, caso.IdEmpresa, Prioridad = caso.Prioridad.ToString(),
-            caso.Latitud, caso.Longitud, caso.Descripcion, caso.InicioEstimado,
+            caso.Latitud, caso.Longitud, caso.Descripcion, caso.InicioEstimado, Eventos = eventos,
         };
         return (await EnviarAsync<Caso>(HttpMethod.Post, "/interno/v1/casos/abrir", cuerpo, correlacion, ct))!;
     }
