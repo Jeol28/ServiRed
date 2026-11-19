@@ -22,7 +22,8 @@ copia.
   solo después de que la cola principal lo recibió, así que no se pierde ninguno. Mueve
   los que había al empezar y termina solo. Los consumidores son idempotentes por
   idEvento: reprocesar un evento ya aplicado no lo duplica.
-- descartar guarda primero todos los mensajes en un archivo JSON y después vacía la cola.
+- descartar guarda primero todos los mensajes en un archivo JSON y después los consume con
+  confirmación (uno que llegue mientras tanto también se agrega a la copia).
 """
 import argparse
 import base64
@@ -203,15 +204,51 @@ def descartar(args):
               "repita con --confirmar (antes se guardan en un archivo).")
         return 1
     copia = Path(args.archivo or f"dlq-{principal_de(args.cola)}-{datetime.now():%Y%m%d-%H%M%S}.json")
-    lista = leer_todos(dlq, max(n, 1) + 100)
-    copia.write_text(json.dumps([{"routingKey": m.get("routing_key"), "propiedades": m["properties"],
-                                  "payload": m["payload"], "codificacion": m.get("payload_encoding")}
-                                 for m in lista], ensure_ascii=False, indent=2), encoding="utf-8")
-    if len(lista) < n:
-        print(f"Solo se pudieron copiar {len(lista)} de {n}: no se descarta nada. Copia parcial en {copia}.")
+
+    def registro(m):
+        return {"routingKey": m.get("routing_key"), "propiedades": m["properties"], "payload": m["payload"],
+                "codificacion": m.get("payload_encoding")}
+
+    def guardar(registros):
+        copia.write_text(json.dumps(registros, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    copiados = [registro(m) for m in leer_todos(dlq, max(n, 1) + 100)]
+    guardar(copiados)
+    if len(copiados) < n:
+        print(f"Solo se pudieron copiar {len(copiados)} de {n}: no se descarta nada. Copia parcial en {copia}.")
         return 1
-    api("DELETE", f"/queues/%2F/{q(dlq)}/contents")
-    print(f"{len(lista)} mensaje(s) copiados en {copia} y descartados de {dlq}.")
+    # No se vacía la cola de un golpe: un mensaje recién leído con «ver» puede estar aún volviendo
+    # a la cola (en una quorum el requeue es asíncrono) y el vaciado no lo alcanza, así que
+    # reaparece. Se consumen con confirmación los que se copiaron; si aparece uno que no estaba
+    # (llegó después), se agrega a la copia antes de seguir.
+    def identidad(r):
+        """Lo que identifica al mensaje, sin x-delivery-count (la quorum lo sube en cada lectura)."""
+        propiedades = dict(r["propiedades"])
+        propiedades["headers"] = {k: v for k, v in (propiedades.get("headers") or {}).items()
+                                  if k != "x-delivery-count"}
+        return json.dumps({**r, "propiedades": propiedades}, sort_keys=True)
+
+    pendientes = [identidad(r) for r in copiados]
+    descartados, limite = 0, time.time() + 30
+    while pendientes and time.time() < limite:
+        lote = api("POST", f"/queues/%2F/{q(dlq)}/get",
+                   {"count": len(pendientes), "ackmode": "ack_requeue_false", "encoding": "auto"}) or []
+        if not lote:
+            time.sleep(1)
+            continue
+        for m in lote:
+            clave = identidad(registro(m))
+            if clave in pendientes:
+                pendientes.remove(clave)
+            else:
+                copiados.append(registro(m))
+                guardar(copiados)
+            descartados += 1
+    if pendientes:
+        print(f"Se descartaron {descartados}, pero {len(pendientes)} de los copiados no aparecieron en 30 s "
+              f"(¿los consumió otro proceso?). Copia en {copia}.")
+        return 1
+    print(f"{descartados} mensaje(s) copiados en {copia} y descartados de {dlq}.")
     return 0
 
 

@@ -21,7 +21,8 @@ python3 infra/operacion/dlq.py descartar atencion.eventos-reportes --confirmar
 - **`reprocesar`:** úselo una vez corregida la causa. Devuelve los mensajes a su cola con
   un shovel que confirma cada uno, así que no se pierde ninguno. Los consumidores son
   idempotentes, así que reprocesar un evento ya aplicado no lo duplica.
-- **`descartar`:** guarda primero los mensajes en un archivo JSON y después vacía la cola.
+- **`descartar`:** guarda primero los mensajes en un archivo JSON y después los consume con
+  confirmación. Si llega uno mientras tanto, también lo agrega a la copia.
 - **Ojo:** las DLQ tienen la política `dlq-sin-limite-de-entregas`. Sin ella, cada lectura
   desde la consola de RabbitMQ («Get messages») cuenta como una entrega, y a la lectura 21
   el mensaje **se borra**. `dlq.py` se niega a leer una DLQ sin esa política.
