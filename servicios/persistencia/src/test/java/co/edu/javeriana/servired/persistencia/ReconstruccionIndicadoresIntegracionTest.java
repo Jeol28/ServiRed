@@ -41,7 +41,7 @@ class ReconstruccionIndicadoresIntegracionTest {
 
     @Container
     @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+    static PostgreSQLContainer<?> postgres = co.edu.javeriana.servired.persistencia.soporte.BaseDePrueba.crear();
 
     @Container
     @ServiceConnection

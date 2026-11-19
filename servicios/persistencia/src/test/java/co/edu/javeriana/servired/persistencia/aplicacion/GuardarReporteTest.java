@@ -57,7 +57,7 @@ class GuardarReporteTest {
     };
 
     private final CatalogoTerritorial catalogo = new CatalogoTerritorial() {
-        public Optional<Municipio> municipioMasCercano(double lat, double lon) {
+        public Optional<Municipio> municipioEn(double lat, double lon) {
             return Optional.empty();
         }
 

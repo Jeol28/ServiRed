@@ -28,3 +28,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-24](ADR-24-operacion-y-carga.md) | Operación de colas de fallidos, reconstrucción de Indicadores y prueba de carga 10× | Aceptada |
 | [ADR-25](ADR-25-limpieza-de-objetos-huerfanos.md) | Limpieza de objetos huérfanos del almacén de evidencias | Aceptada |
 | [ADR-26](ADR-26-revocacion-de-tokens-de-acceso.md) | Revocación de tokens de acceso por jti en el gateway | Aceptada |
+| [ADR-27](ADR-27-municipio-por-poligonos-oficiales.md) | Municipio del reporte por polígonos oficiales (PostGIS) | Aceptada |

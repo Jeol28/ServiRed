@@ -51,7 +51,7 @@ class OperacionesIntegracionTest {
 
     @Container
     @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
+    static PostgreSQLContainer<?> postgres = co.edu.javeriana.servired.persistencia.soporte.BaseDePrueba.crear();
 
     @Container
     @ServiceConnection
@@ -234,6 +234,33 @@ class OperacionesIntegracionTest {
                         .header("X-Clave-Servicio", CLAVE_REPORTES)
                         .header("X-Correlation-Id", UUID.randomUUID().toString()))
                 .andExpect(jsonPath("$.codigo").value("76001"));
+    }
+
+    private void municipioEn(double latitud, double longitud, String esperado) throws Exception {
+        mvc.perform(get("/interno/v1/catalogo/municipio-cercano?latitud=" + latitud + "&longitud=" + longitud)
+                        .header("X-Clave-Servicio", CLAVE_REPORTES)
+                        .header("X-Correlation-Id", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.codigo").value(esperado));
+    }
+
+    /** Casos reales en los que el centroide más cercano se equivocaba (ADR-27). */
+    @Test
+    void resuelveElMunicipioPorSuPoligonoOficialYNoPorElCentroide() throws Exception {
+        municipioEn(4.60334, -74.20528, "11001");   // Bosa, Bogotá: el centroide decía Soacha
+        municipioEn(4.82219, -74.03851, "11001");   // norte de Bogotá: el centroide decía Chía
+        municipioEn(4.5793, -74.2168, "25754");     // Soacha
+        municipioEn(-4.2153, -69.9406, "91001");    // Leticia
+        municipioEn(10.40, -75.60, "13001");        // en el mar frente a Cartagena: el polígono más cercano
+    }
+
+    @Test
+    void laMigracionCargaLosPoligonosMunicipalesValidos() {
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalogo.limites_municipios", Integer.class))
+                .isEqualTo(1121);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM catalogo.limites_municipios WHERE NOT ST_IsValid(geom) OR ST_SRID(geom) <> 4326""",
+                Integer.class)).isZero();
     }
 
     @Test

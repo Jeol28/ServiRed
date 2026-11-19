@@ -36,3 +36,6 @@ El SAD no fija umbrales ni reglas concretas para RF-3, RF-4 y RF-6.
 ## Consecuencias
 - El centroide puede asignar mal puntos cercanos a un límite municipal; se acepta
   para el MVP y se puede reemplazar por polígonos (PostGIS) sin cambiar contratos.
+  **Reemplazado por [ADR-27](ADR-27-municipio-por-poligonos-oficiales.md):** el municipio
+  ahora es el polígono oficial del DANE que contiene el punto; el centroide queda solo como
+  respaldo.

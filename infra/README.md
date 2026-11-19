@@ -29,7 +29,7 @@ Sin el perfil, las alertas de seguridad siguen activas dentro de Auditoría
 
 | Servicio | Imagen / origen | Red | Puerto en el host |
 |---|---|---|---|
-| postgres-local | postgres:17-alpine | interna | — |
+| postgres-local | servired/postgres-postgis:17 (infra/postgres: PostgreSQL 17 + PostGIS) | interna | — |
 | almacen | chrislusf/seaweedfs:3.97 (S3) | interna | — (solo lo usa persistencia) |
 | rabbitmq | rabbitmq:4.1-management-alpine | interna, borde | 127.0.0.1:15672 (consola) |
 | rabbitmq-init | curlimages/curl | interna | — (termina al aplicar la topología) |

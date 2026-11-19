@@ -34,8 +34,10 @@ services:
   # ------------------------------------------------------------------
   postgres-local:
     # Base de datos local que reemplaza a Supabase en desarrollo. Para usar
-    # Supabase basta con cambiar PERSISTENCIA_DB_URL en .env.
-    image: postgres:17-alpine
+    # Supabase basta con cambiar PERSISTENCIA_DB_URL en .env. Lleva PostGIS para los
+    # polígonos municipales (ADR-27); en Supabase PostGIS ya está disponible.
+    image: servired/postgres-postgis:17
+    build: ./postgres
     restart: unless-stopped
     networks: [interna]
     environment:
