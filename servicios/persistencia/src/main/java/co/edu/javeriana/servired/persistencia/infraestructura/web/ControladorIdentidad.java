@@ -1,5 +1,6 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.web;
 
+import co.edu.javeriana.servired.persistencia.dominio.Cuentas.AccesoRevocado;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionCuentas;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionSesiones;
 import co.edu.javeriana.servired.persistencia.dominio.Cuentas.CambiosCuenta;
@@ -21,6 +22,7 @@ import co.edu.javeriana.servired.persistencia.infraestructura.web.Solicitudes.Ev
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -107,7 +109,8 @@ public class ControladorIdentidad {
     @PostMapping("/sesiones/abrir")
     public ResponseEntity<Void> abrirSesion(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
                                             @Valid @RequestBody SolicitudSesion c) {
-        sesiones.abrir(s, new SesionNueva(c.idSesion(), c.idCuenta(), c.hashRefresco(), c.expiraEn()));
+        sesiones.abrir(s, new SesionNueva(c.idSesion(), c.idCuenta(), c.hashRefresco(), c.expiraEn(), c.jtiAcceso(),
+                c.accesoExpiraEn()));
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -115,7 +118,7 @@ public class ControladorIdentidad {
     public ResponseEntity<?> rotarSesion(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
                                          @Valid @RequestBody SolicitudRotar c) {
         var r = sesiones.rotar(s, new Rotacion(c.hashRefrescoActual(), c.idSesionNueva(), c.hashRefrescoNuevo(),
-                c.expiraEn()));
+                c.expiraEn(), c.jtiAcceso(), c.accesoExpiraEn()));
         if (r.esValida()) {
             return ResponseEntity.ok(Map.of("cuenta", r.cuenta()));
         }
@@ -123,6 +126,14 @@ public class ControladorIdentidad {
         p.setTitle("Sesión inválida");
         p.setProperty("motivo", r.motivo().name());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(p);
+    }
+
+    /** Tokens de acceso revocados y aún vigentes (ADR-26); desde = solo los revocados desde ese momento. */
+    @GetMapping("/sesiones/accesos-revocados")
+    public List<AccesoRevocado> accesosRevocados(
+            @RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant desde) {
+        return sesiones.accesosRevocados(s, desde);
     }
 
     @PostMapping("/sesiones/cerrar")
@@ -154,13 +165,13 @@ public class ControladorIdentidad {
 
     public record SolicitudSesion(@NotNull UUID idSesion, @NotNull UUID idCuenta,
                                   @NotBlank @Pattern(regexp = "[0-9a-f]{64}") String hashRefresco,
-                                  @NotNull Instant expiraEn) {
+                                  @NotNull Instant expiraEn, UUID jtiAcceso, Instant accesoExpiraEn) {
     }
 
     public record SolicitudRotar(@NotBlank @Pattern(regexp = "[0-9a-f]{64}") String hashRefrescoActual,
                                  @NotNull UUID idSesionNueva,
                                  @NotBlank @Pattern(regexp = "[0-9a-f]{64}") String hashRefrescoNuevo,
-                                 @NotNull Instant expiraEn) {
+                                 @NotNull Instant expiraEn, UUID jtiAcceso, Instant accesoExpiraEn) {
     }
 
     public record SolicitudCerrar(@NotBlank @Pattern(regexp = "[0-9a-f]{64}") String hashRefresco) {

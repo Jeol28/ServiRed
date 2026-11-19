@@ -38,11 +38,20 @@ public final class Cuentas {
     public record Pagina(List<Cuenta> elementos, long total, int pagina, int tamano) {
     }
 
-    public record SesionNueva(UUID idSesion, UUID idCuenta, String hashRefresco, Instant expiraEn) {
+    /**
+     * @param jtiAcceso       jti del token de acceso emitido con esta sesión (null si Identidad aún no lo envía)
+     * @param accesoExpiraEn  expiración de ese token de acceso
+     */
+    public record SesionNueva(UUID idSesion, UUID idCuenta, String hashRefresco, Instant expiraEn, UUID jtiAcceso,
+                              Instant accesoExpiraEn) {
     }
 
     public record Rotacion(String hashRefrescoActual, UUID idSesionNueva, String hashRefrescoNuevo,
-                           Instant expiraEn) {
+                           Instant expiraEn, UUID jtiAcceso, Instant accesoExpiraEn) {
+    }
+
+    /** Token de acceso revocado y aún vigente: el gateway debe rechazarlo hasta que expire. */
+    public record AccesoRevocado(UUID jti, Instant expiraEn, Instant revocadoEn) {
     }
 
     /** Resultado de rotar: la cuenta si la sesión era válida, o el motivo del rechazo. */

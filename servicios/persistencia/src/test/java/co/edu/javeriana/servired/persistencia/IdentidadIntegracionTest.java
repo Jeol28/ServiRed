@@ -236,6 +236,106 @@ class IdentidadIntegracionTest {
         rotar(h, hash()).andExpect(status().isConflict());
     }
 
+    // ---------------------------------------------------------- revocación de accesos (ADR-26)
+
+    /** Sesión con el jti de su token de acceso; devuelve {hashRefresco, jti}. */
+    private String[] abrirSesionConAcceso(UUID idCuenta, Instant accesoExpira) throws Exception {
+        String h = hash();
+        String jti = UUID.randomUUID().toString();
+        llamar("/interno/v1/sesiones/abrir", """
+                {"idSesion":"%s","idCuenta":"%s","hashRefresco":"%s","expiraEn":"%s","jtiAcceso":"%s",
+                 "accesoExpiraEn":"%s"}"""
+                .formatted(UUID.randomUUID(), idCuenta, h, Instant.now().plus(1, ChronoUnit.DAYS), jti, accesoExpira))
+                .andExpect(status().isCreated());
+        return new String[] {h, jti};
+    }
+
+    private String rotarConAcceso(String actual, String nuevo) throws Exception {
+        String jti = UUID.randomUUID().toString();
+        llamar("/interno/v1/sesiones/rotar", """
+                {"hashRefrescoActual":"%s","idSesionNueva":"%s","hashRefrescoNuevo":"%s","expiraEn":"%s",
+                 "jtiAcceso":"%s","accesoExpiraEn":"%s"}"""
+                .formatted(actual, UUID.randomUUID(), nuevo, Instant.now().plus(1, ChronoUnit.DAYS), jti,
+                        Instant.now().plus(15, ChronoUnit.MINUTES)))
+                .andExpect(status().isOk());
+        return jti;
+    }
+
+    private String revocados(String desde) throws Exception {
+        return mvc.perform(get("/interno/v1/sesiones/accesos-revocados" + (desde == null ? "" : "?desde=" + desde))
+                        .header("X-Clave-Servicio", CLAVE).header("X-Correlation-Id", UUID.randomUUID().toString()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+    }
+
+    private static Instant vigente() {
+        return Instant.now().plus(15, ChronoUnit.MINUTES);
+    }
+
+    @Test
+    void desactivarRevocaLosAccesosVigentesDeTodaLaCadenaDeRotaciones() throws Exception {
+        UUID id = registrar("CIUDADANO", null);
+        String[] primera = abrirSesionConAcceso(id, vigente());
+        String[] otroTelefono = abrirSesionConAcceso(id, vigente());
+        String vencido = abrirSesionConAcceso(id, Instant.now().minus(1, ChronoUnit.MINUTES))[1];
+        String segundoRefresco = hash();
+        String jtiRotado = rotarConAcceso(primera[0], segundoRefresco);
+
+        assertThat(revocados(null)).as("una rotación normal no revoca el acceso anterior")
+                .doesNotContain(primera[1]).doesNotContain(jtiRotado);
+
+        llamar("/interno/v1/cuentas/" + id + "/actualizar", "{\"activa\":false}").andExpect(status().isOk());
+
+        assertThat(revocados(null))
+                .as("el acceso anterior a la rotación sigue vigente: también se revoca").contains(primera[1])
+                .contains(jtiRotado).contains(otroTelefono[1])
+                .as("uno ya expirado no hace falta listarlo").doesNotContain(vencido);
+    }
+
+    @Test
+    void cerrarSesionRevocaElAccesoDeEseDispositivoYNoElDeOtros() throws Exception {
+        UUID id = registrar("CIUDADANO", null);
+        String[] telefono = abrirSesionConAcceso(id, vigente());
+        String[] portal = abrirSesionConAcceso(id, vigente());
+        String nuevo = hash();
+        String jtiNuevo = rotarConAcceso(telefono[0], nuevo);
+
+        llamar("/interno/v1/sesiones/cerrar", "{\"hashRefresco\":\"" + nuevo + "\"}").andExpect(status().isNoContent());
+
+        assertThat(revocados(null)).contains(jtiNuevo).contains(telefono[1]).doesNotContain(portal[1]);
+    }
+
+    @Test
+    void cambiarLaClaveYReutilizarUnRefrescoRevocanLosAccesos() throws Exception {
+        UUID a = registrar("CIUDADANO", null);
+        String jtiA = abrirSesionConAcceso(a, vigente())[1];
+        llamar("/interno/v1/cuentas/" + a + "/actualizar", "{\"hashClave\":\"$2a$10$otro\"}").andExpect(status().isOk());
+        assertThat(revocados(null)).contains(jtiA);
+
+        UUID b = registrar("CIUDADANO", null);
+        String[] sesion = abrirSesionConAcceso(b, vigente());
+        String jtiRotado = rotarConAcceso(sesion[0], hash());
+        rotar(sesion[0], hash()).andExpect(status().isConflict());   // refresco robado y reutilizado
+        assertThat(revocados(null)).contains(sesion[1]).contains(jtiRotado);
+    }
+
+    @Test
+    void conDesdeSoloEntregaLosRevocadosDesdeEseMomentoYSoloAIdentidad() throws Exception {
+        UUID viejo = registrar("CIUDADANO", null);
+        String jtiViejo = abrirSesionConAcceso(viejo, vigente())[1];
+        llamar("/interno/v1/cuentas/" + viejo + "/actualizar", "{\"activa\":false}").andExpect(status().isOk());
+        Thread.sleep(20);
+        Instant corte = jdbc.queryForObject("SELECT clock_timestamp()", java.sql.Timestamp.class).toInstant();
+        UUID nuevo = registrar("CIUDADANO", null);
+        String jtiNuevo = abrirSesionConAcceso(nuevo, vigente())[1];
+        llamar("/interno/v1/cuentas/" + nuevo + "/actualizar", "{\"activa\":false}").andExpect(status().isOk());
+
+        assertThat(revocados(corte.toString())).contains(jtiNuevo).doesNotContain(jtiViejo);
+
+        mvc.perform(get("/interno/v1/sesiones/accesos-revocados").header("X-Clave-Servicio", "clave-reportes-de-prueba")
+                        .header("X-Correlation-Id", UUID.randomUUID().toString()))
+                .andExpect(status().isForbidden());
+    }
+
     @Test
     void eliminarAnonimizaLosDatosPersonales() throws Exception {
         UUID id = registrar("CIUDADANO", null);

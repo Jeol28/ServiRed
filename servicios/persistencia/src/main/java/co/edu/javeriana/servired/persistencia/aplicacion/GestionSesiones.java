@@ -1,5 +1,8 @@
 package co.edu.javeriana.servired.persistencia.aplicacion;
 
+import java.util.List;
+import java.time.Instant;
+import co.edu.javeriana.servired.persistencia.dominio.Cuentas.AccesoRevocado;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioCuentas;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioSesiones;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.UnidadDeTrabajo;
@@ -62,7 +65,7 @@ public class GestionSesiones {
             }
             UUID nueva = rotacion.idSesionNueva();
             sesiones.insertar(new SesionNueva(nueva, sesion.idCuenta(), rotacion.hashRefrescoNuevo(),
-                    rotacion.expiraEn()));
+                    rotacion.expiraEn(), rotacion.jtiAcceso(), rotacion.accesoExpiraEn()));
             sesiones.revocar(sesion.idSesion(), nueva);
             return ResultadoRotacion.valida(cuenta.get());
         });
@@ -73,8 +76,14 @@ public class GestionSesiones {
         transaccion.ejecutar(() -> {
             sesiones.bloquearPorHash(hashRefresco)
                     .filter(s -> !s.revocada())
-                    .ifPresent(s -> sesiones.revocar(s.idSesion(), null));
+                    .ifPresent(s -> sesiones.cerrar(s.idSesion()));
             return null;
         });
+    }
+
+    /** Lista de revocación de tokens de acceso que Identidad entrega al gateway (ADR-26). */
+    public List<AccesoRevocado> accesosRevocados(ServicioCliente servicio, Instant desde) {
+        OperacionNegocio.LISTAR_ACCESOS_REVOCADOS.autorizar(servicio);
+        return sesiones.accesosRevocados(desde);
     }
 }

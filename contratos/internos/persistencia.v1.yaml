@@ -418,6 +418,8 @@ paths:
                 idCuenta: { type: string, format: uuid }
                 hashRefresco: { type: string, pattern: "^[0-9a-f]{64}$" }
                 expiraEn: { type: string, format: date-time }
+                jtiAcceso: { type: string, format: uuid, description: "jti del token de acceso que se emite con esta sesión (ADR-26)" }
+                accesoExpiraEn: { type: string, format: date-time, description: Expiración de ese token de acceso }
       responses:
         "201": { description: Sesión abierta }
 
@@ -440,6 +442,8 @@ paths:
                 idSesionNueva: { type: string, format: uuid }
                 hashRefrescoNuevo: { type: string, pattern: "^[0-9a-f]{64}$" }
                 expiraEn: { type: string, format: date-time }
+                jtiAcceso: { type: string, format: uuid, description: "jti del token de acceso de la sesión nueva (ADR-26)" }
+                accesoExpiraEn: { type: string, format: date-time }
       responses:
         "200":
           description: Rotada
@@ -455,6 +459,37 @@ paths:
                 properties:
                   motivo: { type: string, enum: [INEXISTENTE, EXPIRADA, CUENTA_INACTIVA, REUTILIZADA] }
 
+  /interno/v1/sesiones/accesos-revocados:
+    get:
+      operationId: listarAccesosRevocados
+      description: |
+        Tokens de acceso revocados que aún no expiran (ADR-26), para la lista de revocación del
+        gateway, que Identidad le entrega. Un acceso se revoca cuando se revocan las sesiones de
+        la cuenta (desactivarla, suprimirla, cambiar la clave, reutilizar un refresco) o al cerrar
+        sesión (esa sesión y las que reemplazó). Una rotación normal no revoca el acceso anterior.
+        Solo `identidad`.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - name: desde
+          in: query
+          required: false
+          description: Solo los revocados desde este momento (sincronización incremental)
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [jti, expiraEn, revocadoEn]
+                  properties:
+                    jti: { type: string, format: uuid }
+                    expiraEn: { type: string, format: date-time }
+                    revocadoEn: { type: string, format: date-time }
+
   /interno/v1/sesiones/cerrar:
     post:
       operationId: cerrarSesion
@@ -464,6 +499,7 @@ paths:
         content:
           application/json:
             schema: { type: object, required: [hashRefresco], properties: { hashRefresco: { type: string } } }
+      description: Revoca la sesión y los tokens de acceso aún vigentes de ella y de las sesiones que reemplazó (ADR-26).
       responses:
         "204": { description: Cerrada (idempotente) }
 
