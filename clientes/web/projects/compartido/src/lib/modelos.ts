@@ -32,7 +32,8 @@ export interface Sesion {
   tokenAcceso: string;
   tipoToken: 'Bearer';
   expiraEn: number;
-  tokenRefresco: string;
+  /** Solo para las apps: en los portales viaja en una cookie HttpOnly y no llega aquí (ADR-30). */
+  tokenRefresco?: string;
   cuenta: ResumenCuenta;
 }
 

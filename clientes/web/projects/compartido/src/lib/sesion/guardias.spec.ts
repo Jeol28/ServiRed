@@ -27,8 +27,8 @@ describe('guardias', () => {
     expect(TestBed.inject(Router).serializeUrl(r as UrlTree)).toBe('/ingreso?volver=%2Fcasos%2F1');
   });
 
-  it('tras recargar la pestaña restaura la sesión con el refresco', async () => {
-    sessionStorage.setItem('servired.refresco', 'R1');
+  it('tras recargar la pestaña restaura la sesión con el refresco de la cookie', async () => {
+    sessionStorage.setItem('servired.sesion', '1');
     const promesa = resolver(TestBed.runInInjectionContext(() => guardiaAutenticado(ruta, estado)));
     backend.expectOne('/api/v1/auth/refrescar').flush({
       tokenAcceso: 'A', tipoToken: 'Bearer', expiraEn: 900, tokenRefresco: 'R2', cuenta: { idCuenta: 'c', rol: 'REGULADOR' },

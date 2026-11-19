@@ -931,7 +931,17 @@ paths:
       description: |
         Pública. Un correo inexistente, una clave incorrecta o una cuenta
         desactivada responden igual (401), para no revelar qué cuentas existen.
+        Con `X-Sesion-Web: cookie`, `tokenRefresco` no viene en la respuesta: llega en la cookie.
       security: []
+      parameters:
+        - name: X-Sesion-Web
+          in: header
+          required: false
+          description: |
+            `cookie` (portales web, ADR-30): el token de refresco no viaja en el JSON sino en la
+            cookie `servired_refresco` (HttpOnly, SameSite=Strict, Path=/api/v1/auth, Secure salvo en
+            localhost), que fija el gateway. Las apps no la envían y siguen con el refresco en el cuerpo.
+          schema: { type: string, enum: [cookie] }
       requestBody:
         required: true
         content:
@@ -954,13 +964,27 @@ paths:
       description: |
         Pública. Rota el token: el anterior deja de servir. Presentar un token ya
         usado revoca todas las sesiones de la cuenta (posible robo) y responde 401.
-        No reintente automáticamente con el mismo token.
+        No reintente automáticamente con el mismo token. Con `X-Sesion-Web: cookie`, el cuerpo
+        es `{}`: el gateway toma el refresco de la cookie y devuelve el nuevo también en la
+        cookie; si la renovación falla, la borra. Sin cookie responde 401.
       security: []
+      parameters:
+        - name: X-Sesion-Web
+          in: header
+          required: false
+          description: |
+            `cookie` (portales web, ADR-30): el token de refresco no viaja en el JSON sino en la
+            cookie `servired_refresco` (HttpOnly, SameSite=Strict, Path=/api/v1/auth, Secure salvo en
+            localhost), que fija el gateway. Las apps no la envían y siguen con el refresco en el cuerpo.
+          schema: { type: string, enum: [cookie] }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/SolicitudRefresco" }
+            schema:
+              oneOf:
+                - { $ref: "#/components/schemas/SolicitudRefresco" }
+                - { type: object, description: "Vacío con X-Sesion-Web: cookie", maxProperties: 0 }
       responses:
         "200":
           description: Nuevo par de tokens
@@ -975,12 +999,25 @@ paths:
       tags: [autenticacion]
       operationId: cerrarSesion
       summary: Cerrar la sesión (revoca el token de refresco)
+      description: Con `X-Sesion-Web: cookie`, el cuerpo es `{}`; el gateway revoca el refresco de la cookie y la borra.
       security: []
+      parameters:
+        - name: X-Sesion-Web
+          in: header
+          required: false
+          description: |
+            `cookie` (portales web, ADR-30): el token de refresco no viaja en el JSON sino en la
+            cookie `servired_refresco` (HttpOnly, SameSite=Strict, Path=/api/v1/auth, Secure salvo en
+            localhost), que fija el gateway. Las apps no la envían y siguen con el refresco en el cuerpo.
+          schema: { type: string, enum: [cookie] }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/SolicitudRefresco" }
+            schema:
+              oneOf:
+                - { $ref: "#/components/schemas/SolicitudRefresco" }
+                - { type: object, description: "Vacío con X-Sesion-Web: cookie", maxProperties: 0 }
       responses:
         "204": { description: Sesión cerrada (también si el token no existía) }
 
@@ -1537,12 +1574,12 @@ components:
 
     Sesion:
       type: object
-      required: [tokenAcceso, tipoToken, expiraEn, tokenRefresco, cuenta]
+      required: [tokenAcceso, tipoToken, expiraEn, cuenta]
       properties:
         tokenAcceso: { type: string, description: JWT para la cabecera Authorization }
         tipoToken: { type: string, const: Bearer }
         expiraEn: { type: integer, description: Segundos de vigencia del token de acceso }
-        tokenRefresco: { type: string, description: Opaco, de un solo uso; guárdelo de forma segura }
+        tokenRefresco: { type: string, description: "Opaco, de un solo uso; guárdelo de forma segura. Siempre viene salvo con X-Sesion-Web: cookie (portales), donde va en una cookie HttpOnly" }
         cuenta:
           type: object
           required: [idCuenta, rol]

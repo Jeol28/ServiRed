@@ -1,20 +1,25 @@
-import { HttpBackend, HttpClient } from '@angular/common/http';
+import { HttpBackend, HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, finalize, from, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { API_BASE } from '../configuracion';
 import { ResumenCuenta, Rol, Sesion } from '../modelos';
 
-const CLAVE_REFRESCO = 'servired.refresco';
+/** Marca no secreta: «esta pestaña tenía sesión», para intentar restaurarla tras una recarga. */
+const CLAVE_SESION = 'servired.sesion';
+/** Pide al gateway que maneje el refresco en una cookie HttpOnly (ADR-30). */
+const SESION_WEB = new HttpHeaders({ 'X-Sesion-Web': 'cookie' });
+/** Candado entre pestañas: comparten la cookie y el refresco es de un solo uso. */
+const CANDADO = 'servired-renovacion';
 
 /**
- * Sesión del usuario. Decisiones de seguridad (ADR-17):
- * - El token de acceso (JWT, 15 min) vive solo en memoria: no queda en disco ni
- *   lo puede leer otra pestaña.
- * - El token de refresco se guarda en sessionStorage para sobrevivir a una
- *   recarga; se borra al cerrar la pestaña y al cerrar sesión.
- * - El refresco es de un solo uso: las peticiones simultáneas comparten una
- *   única renovación y NUNCA se reintenta con el mismo token (el servidor lo
- *   trataría como robo y cerraría todas las sesiones).
+ * Sesión del usuario. Decisiones de seguridad (ADR-17, ADR-30):
+ * - El token de acceso (JWT, 15 min) vive solo en memoria.
+ * - El token de refresco nunca llega a JavaScript: el gateway lo guarda en una cookie
+ *   HttpOnly, SameSite=Strict, limitada a /api/v1/auth. Una XSS no puede leerlo.
+ * - El refresco es de un solo uso: las renovaciones de esta pestaña comparten una sola
+ *   petición, y las de distintas pestañas (que comparten la cookie) se turnan con un candado
+ *   (Web Locks). Si dos lo usaran a la vez, el servidor lo trataría como robo y cerraría todas
+ *   las sesiones.
  */
 @Injectable({ providedIn: 'root' })
 export class ServicioSesion {
@@ -39,15 +44,19 @@ export class ServicioSesion {
   }
 
   iniciar(correo: string, clave: string): Observable<ResumenCuenta> {
-    return this.http.post<Sesion>(`${this.base}/api/v1/auth/login`, { correo, clave }).pipe(
+    return this.http.post<Sesion>(`${this.base}/api/v1/auth/login`, { correo, clave }, { headers: SESION_WEB }).pipe(
       tap((s) => this.guardar(s)),
       map((s) => s.cuenta),
     );
   }
 
-  /** ¿Hay un token de refresco de una sesión anterior de esta pestaña? */
+  /** ¿Esta pestaña tenía sesión? (la cookie no se puede leer: se intenta renovar). */
   puedeRestaurar(): boolean {
-    return this.leerRefresco() !== null;
+    try {
+      return sessionStorage.getItem(CLAVE_SESION) !== null;
+    } catch {
+      return false;
+    }
   }
 
   /** Renueva la sesión. Devuelve el nuevo token de acceso; si falla, la sesión termina. */
@@ -55,13 +64,9 @@ export class ServicioSesion {
     if (this.renovacion) {
       return this.renovacion;
     }
-    const refresco = this.leerRefresco();
-    if (!refresco) {
-      return throwError(() => new Error('Sin sesión'));
-    }
-    // Se retira antes de usarlo: pase lo que pase, este token no se vuelve a enviar.
-    this.borrarRefresco();
-    this.renovacion = this.http.post<Sesion>(`${this.base}/api/v1/auth/refrescar`, { tokenRefresco: refresco }).pipe(
+    this.renovacion = this.conCandado(() =>
+      this.http.post<Sesion>(`${this.base}/api/v1/auth/refrescar`, {}, { headers: SESION_WEB }),
+    ).pipe(
       tap({ next: (s) => this.guardar(s), error: () => this.limpiar() }),
       map((s) => s.tokenAcceso),
       finalize(() => (this.renovacion = undefined)),
@@ -71,42 +76,42 @@ export class ServicioSesion {
   }
 
   cerrar(): Observable<void> {
-    const refresco = this.leerRefresco();
+    const habia = this.autenticado() || this.puedeRestaurar();
     this.limpiar();
-    if (!refresco) {
+    if (!habia) {
       return of(undefined);
     }
-    return this.http.post<void>(`${this.base}/api/v1/auth/cerrar-sesion`, { tokenRefresco: refresco });
+    // El gateway revoca el refresco de la cookie en Identidad y la borra.
+    return this.http.post<void>(`${this.base}/api/v1/auth/cerrar-sesion`, {}, { headers: SESION_WEB });
   }
 
   /** Termina la sesión local sin llamar al servidor (p. ej. tras un 401 definitivo). */
   limpiar(): void {
     this.sesion.set(null);
-    this.borrarRefresco();
+    try {
+      sessionStorage.removeItem(CLAVE_SESION);
+    } catch {
+      // nada que borrar
+    }
   }
 
   private guardar(s: Sesion): void {
     this.sesion.set(s);
     try {
-      sessionStorage.setItem(CLAVE_REFRESCO, s.tokenRefresco);
+      sessionStorage.setItem(CLAVE_SESION, '1');
     } catch {
-      // Sin almacenamiento (modo privado estricto): la sesión dura hasta recargar.
+      // Sin almacenamiento (modo privado estricto): tras recargar habrá que ingresar de nuevo.
     }
   }
 
-  private leerRefresco(): string | null {
-    try {
-      return sessionStorage.getItem(CLAVE_REFRESCO);
-    } catch {
-      return null;
+  /** Ejecuta la renovación con el candado entre pestañas, si el navegador lo ofrece. */
+  private conCandado<T>(peticion: () => Observable<T>): Observable<T> {
+    const candados = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+    if (!candados) {
+      return peticion();
     }
-  }
-
-  private borrarRefresco(): void {
-    try {
-      sessionStorage.removeItem(CLAVE_REFRESCO);
-    } catch {
-      // nada que borrar
-    }
+    return from(candados.request(CANDADO, () => new Promise<T>((resolver, rechazar) => {
+      peticion().subscribe({ next: resolver, error: rechazar });
+    })));
   }
 }

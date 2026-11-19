@@ -74,6 +74,8 @@ Los portales adoptan la apariencia de las apps móviles (ADR-18):
 - Una XSS podría leer el refresco de `sessionStorage`; la CSP estricta y no usar
   `innerHTML` (el mapa inserta texto con `textContent`) reducen ese riesgo. Una
   cookie `HttpOnly` exigiría cambiar Identidad y el contrato; queda como mejora.
+  **Resuelto en [ADR-30](ADR-30-refresco-en-cookie-httponly.md):** el refresco va en una cookie
+  HttpOnly que maneja el gateway, sin cambiar Identidad.
 - Con varios gateways o proxies, `PROXIES_CONFIABLES` debe listarlos todos.
 - Al compartir origen, los dos portales comparten `sessionStorage` en una misma pestaña. El
   portal público no guarda nada ahí, y la CSP sin scripts en línea limita el riesgo de que
