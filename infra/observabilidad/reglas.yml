@@ -72,6 +72,19 @@ groups:
         annotations:
           summary: "Un evento lleva {{ $value | humanizeDuration }} guardado sin publicar: revisar RabbitMQ y el relay del outbox"
 
+      # Archivado del registro de auditoría (ADR-29).
+      - alert: ArchivoDeAuditoriaDetenido
+        expr: increase(servired_auditoria_archivo_detenidos_total[2d]) > 0
+        labels: { severity: critica, servicio: persistencia }
+        annotations:
+          summary: "El archivado de auditoría se detuvo porque la cadena de huellas está rota: verificar la integridad (posible manipulación del registro)"
+
+      - alert: ArchivoDeAuditoriaFallando
+        expr: increase(servired_auditoria_archivo_fallas_total[3d]) >= 2
+        labels: { severity: media, servicio: persistencia }
+        annotations:
+          summary: "El archivado de auditoría falló {{ $value }} veces en 3 días: revisar el almacén y la base (el registro sigue creciendo en la base)"
+
       # Lista de revocación de tokens en el gateway (ADR-26).
       - alert: ListaDeRevocacionDesactualizada
         expr: max by (instance) (servired_revocacion_antiguedad_segundos) > 60

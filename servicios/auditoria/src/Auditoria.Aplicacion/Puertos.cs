@@ -13,7 +13,9 @@ public sealed record RegistroConsultado(long Secuencia, Guid IdEvento, string Ti
 
 public sealed record PaginaAuditoria(IReadOnlyList<RegistroConsultado> Elementos, long Total, int Pagina, int Tamano);
 
-public sealed record Verificacion(long Registros, bool Integra, long? PrimeraRota, string? UltimoHash);
+/// <summary>Integridad de toda la cadena: la parte en la base y la archivada en segmentos (ADR-29).</summary>
+public sealed record Verificacion(long Registros, bool Integra, long? PrimeraRota, string? UltimoHash,
+    long? RegistrosEnBase = null, long? RegistrosArchivados = null, int? Segmentos = null, long? SegmentoRoto = null);
 
 /// <summary>Registro de auditoría en Persistencia (registrarAuditoria, consultarAuditoria, verificarIntegridad).</summary>
 public interface IRepositorioAuditoria

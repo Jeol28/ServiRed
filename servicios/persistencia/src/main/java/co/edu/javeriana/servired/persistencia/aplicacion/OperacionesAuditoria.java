@@ -40,6 +40,11 @@ public class OperacionesAuditoria {
         return repositorio.consultar(f);
     }
 
+    public java.util.List<co.edu.javeriana.servired.persistencia.dominio.Auditoria.Segmento> segmentos(ServicioCliente s) {
+        OperacionNegocio.CONSULTAR_AUDITORIA.autorizar(s);
+        return repositorio.segmentos();
+    }
+
     public Verificacion verificar(ServicioCliente s) {
         OperacionNegocio.VERIFICAR_AUDITORIA.autorizar(s);
         return repositorio.verificar();

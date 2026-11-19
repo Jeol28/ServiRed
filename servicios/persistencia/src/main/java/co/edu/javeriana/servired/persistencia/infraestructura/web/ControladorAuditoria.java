@@ -1,5 +1,10 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.web;
 
+import java.util.List;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.VerificacionArchivo;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Segmento;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.ResultadoArchivo;
+import co.edu.javeriana.servired.persistencia.aplicacion.ArchivoAuditoria;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAuditoria;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Filtro;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Pagina;
@@ -34,10 +39,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ControladorAuditoria {
 
     private final OperacionesAuditoria auditoria;
+    private final ArchivoAuditoria archivo;
     private final Solicitudes solicitudes;
 
-    public ControladorAuditoria(OperacionesAuditoria auditoria, Solicitudes solicitudes) {
+    public ControladorAuditoria(OperacionesAuditoria auditoria, ArchivoAuditoria archivo, Solicitudes solicitudes) {
         this.auditoria = auditoria;
+        this.archivo = archivo;
         this.solicitudes = solicitudes;
     }
 
@@ -68,6 +75,29 @@ public class ControladorAuditoria {
     @GetMapping("/auditoria/integridad")
     public Verificacion verificar(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
         return auditoria.verificar(s);
+    }
+
+    /** Segmentos archivados del registro (ADR-29). */
+    @GetMapping("/auditoria/segmentos")
+    public List<Segmento> segmentos(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
+        return auditoria.segmentos(s);
+    }
+
+    /** Archiva ahora; sin cuerpo, lo más viejo que la ventana configurada; con «hasta», todo lo registrado antes. */
+    @PostMapping("/auditoria/archivo")
+    public ResultadoArchivo archivar(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
+                                     @RequestBody(required = false) SolicitudArchivo cuerpo) {
+        return archivo.archivar(s, cuerpo == null ? null : cuerpo.hasta());
+    }
+
+    /** Verificación profunda: descarga cada segmento y recalcula sus huellas. */
+    @PostMapping("/auditoria/archivo/verificacion")
+    public VerificacionArchivo verificarArchivo(
+            @RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
+        return archivo.verificar(s);
+    }
+
+    public record SolicitudArchivo(Instant hasta) {
     }
 
     @PostMapping("/acciones-auditadas")

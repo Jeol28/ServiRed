@@ -41,3 +41,21 @@ python3 infra/operacion/reconstruir-indicadores.py --aplicar  # reconstruir desd
 - **Cómo lo hace:** lo ejecuta Persistencia (operación `reconstruirVistaIndicadores`, solo
   para el servicio Indicadores) en una transacción.
 - **Qué informa:** por columna, cuántas filas faltan, sobran o difieren.
+
+## Archivo de la auditoría (ADR-29): `auditoria-archivo.py`
+
+Persistencia archiva sola, cada día, los meses del registro de auditoría más viejos que
+`AUDITORIA_MESES_EN_BASE` (12 por defecto). Pasan a segmentos en el almacén, bajo
+`auditoria/segmentos/`, sin romper la cadena de huellas.
+
+```bash
+python3 infra/operacion/auditoria-archivo.py listar
+python3 infra/operacion/auditoria-archivo.py verificar      # descarga cada segmento y recalcula sus huellas
+python3 infra/operacion/auditoria-archivo.py archivar       # ahora, con la ventana configurada
+python3 infra/operacion/auditoria-archivo.py archivar --hasta 2026-06-01T00:00:00Z
+```
+
+- **Si se detiene:** `archivar` se detiene con el código 2 si la cadena está rota y no
+  archiva el tramo alterado. Revise la integridad (`GET /api/v1/auditoria/integridad`).
+- **Lo archivado:** cada segmento es un JSONL comprimido y legible. La API de consulta solo
+  muestra lo que sigue en la base.

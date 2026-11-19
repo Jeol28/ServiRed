@@ -64,6 +64,15 @@ servired:
       gracia: PT1H
       freno-minimo: 5
       freno-proporcion: 0.2
+  # Archivado del registro de auditoría conservando la cadena de huellas (ADR-29): cada día,
+  # los meses más viejos que la ventana pasan a segmentos en el almacén (auditoria/segmentos/).
+  auditoria:
+    archivo:
+      activo: ${AUDITORIA_ARCHIVO_ACTIVO:true}
+      meses-en-base: ${AUDITORIA_MESES_EN_BASE:12}
+      maximo-por-segmento: 50000
+      intervalo: P1D
+      retraso-inicial: PT20M
   outbox:
     intervalo-ms: 500
     tamano-lote: 50

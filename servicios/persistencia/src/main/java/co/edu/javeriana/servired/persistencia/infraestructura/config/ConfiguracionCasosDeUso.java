@@ -1,5 +1,7 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.config;
 
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.CodificadorSegmentos;
+import co.edu.javeriana.servired.persistencia.aplicacion.ArchivoAuditoria;
 import co.edu.javeriana.servired.persistencia.aplicacion.AbrirCaso;
 import co.edu.javeriana.servired.persistencia.aplicacion.ConsultarReporte;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionCuentas;
@@ -62,6 +64,14 @@ public class ConfiguracionCasosDeUso {
             @Value("${servired.almacen.limpieza.freno-minimo:5}") int frenoMinimo,
             @Value("${servired.almacen.limpieza.freno-proporcion:0.2}") double frenoProporcion) {
         return new LimpiezaAlmacen(a, r, reloj, gracia, frenoMinimo, frenoProporcion);
+    }
+
+    @Bean
+    ArchivoAuditoria archivoAuditoria(UnidadDeTrabajo t, RepositorioAuditoria r, AlmacenEvidencias a,
+            CodificadorSegmentos c, Clock reloj,
+            @Value("${servired.auditoria.archivo.meses-en-base:12}") int mesesEnBase,
+            @Value("${servired.auditoria.archivo.maximo-por-segmento:50000}") int maximoPorSegmento) {
+        return new ArchivoAuditoria(t, r, a, c, reloj, mesesEnBase, maximoPorSegmento);
     }
 
     @Bean

@@ -56,3 +56,5 @@ administrativas no tenían evento de dominio.
 - Sin el perfil de observabilidad no hay alertas operativas por Prometheus, pero
   las de seguridad siguen activas en Auditoría.
 - El registro crece sin límite; la retención y el archivado quedan como mejora.
+  **Resuelto en [ADR-29](ADR-29-archivado-de-auditoria.md):** los meses viejos pasan a segmentos
+  en el almacén sin romper la cadena.

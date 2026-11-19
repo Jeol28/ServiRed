@@ -886,6 +886,40 @@ paths:
       responses:
         "200": { description: "{registros, integra, primeraRota, ultimoHash}" }
 
+  /interno/v1/auditoria/segmentos:
+    get:
+      operationId: listarSegmentosAuditoria
+      description: Segmentos archivados del registro de auditoría (ADR-29). Solo `auditoria`.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      responses:
+        "200": { description: "Lista: secuenciaDesde, secuenciaHasta, registros, hashAnteriorInicial, hashFinal, claveObjeto, sha256Archivo, bytes, archivadoEn" }
+
+  /interno/v1/auditoria/archivo:
+    post:
+      operationId: archivarAuditoria
+      description: |
+        Archiva ahora (ADR-29): sin cuerpo, los meses más viejos que la ventana en la base
+        (servired.auditoria.archivo.meses-en-base); con `hasta`, todo lo registrado antes. Cada
+        segmento se sube al almacén (auditoria/segmentos/), se comprueba y solo entonces se
+        borran de la base los registros que cubre. No archiva un tramo cuya cadena esté rota
+        (`detenidoPor`). Solo `auditoria`.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { hasta: { type: string, format: date-time } } }
+      responses:
+        "200": { description: "{segmentosNuevos, registrosArchivados, limite, detenidoPor}" }
+
+  /interno/v1/auditoria/archivo/verificacion:
+    post:
+      operationId: verificarArchivoAuditoria
+      description: Descarga cada segmento, compara su SHA-256 con el índice y recalcula sus huellas y enlaces. Solo `auditoria`.
+      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
+      responses:
+        "200": { description: "{segmentos, registros, integro, segmentoConProblema, problema}" }
+
   /interno/v1/acciones-auditadas:
     post:
       operationId: publicarAccionAuditada

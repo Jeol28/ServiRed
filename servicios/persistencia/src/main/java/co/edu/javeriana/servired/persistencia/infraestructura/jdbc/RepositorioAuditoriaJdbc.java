@@ -1,5 +1,11 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.jdbc;
 
+import java.util.Optional;
+import java.util.List;
+import java.time.Instant;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Segmento;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.RegistroArchivado;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Rango;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAuditoria;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Filtro;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Pagina;
@@ -37,7 +43,11 @@ public class RepositorioAuditoriaJdbc implements RepositorioAuditoria {
                                auditoria.huella(previo.hash, :id, :tipo, :origen, :categoria, :accion, :resultado,
                                                 :actor, :rol, :recursoTipo, :recursoId, CAST(:detalle AS jsonb),
                                                 CAST(:ocurrido AS timestamptz))
-                        FROM (SELECT (SELECT hash FROM auditoria.registros ORDER BY secuencia DESC LIMIT 1) AS hash) previo
+                        FROM (SELECT coalesce(
+                                (SELECT hash FROM auditoria.registros ORDER BY secuencia DESC LIMIT 1),
+                                -- Si todo está archivado, el anterior es el último registro archivado (ADR-29).
+                                (SELECT hash_final FROM auditoria.segmentos ORDER BY secuencia_hasta DESC LIMIT 1))
+                              AS hash) previo
                         ON CONFLICT (id_evento) DO NOTHING
                         """)
                 .param("id", r.idEvento()).param("tipo", r.tipo()).param("version", r.version())
@@ -85,29 +95,188 @@ public class RepositorioAuditoriaJdbc implements RepositorioAuditoria {
                 .param("hasta", f.hasta() == null ? null : Timestamp.from(f.hasta()));
     }
 
-    /** Recalcula toda la cadena: cada huella debe coincidir y apuntar al hash del registro anterior. */
+    /**
+     * Recalcula la cadena que sigue en la base (cada huella y su enlace; el primer registro debe
+     * enlazar con el último segmento archivado) y los enlaces entre segmentos (ADR-29).
+     */
     @Override
     public Verificacion verificar() {
         return jdbc.sql("""
-                        WITH cadena AS (
+                        WITH ancla AS (
+                            SELECT hash_final, secuencia_hasta FROM auditoria.segmentos
+                            ORDER BY secuencia_hasta DESC LIMIT 1),
+                        cadena AS (
                             SELECT secuencia, hash, hash_anterior,
-                                   lag(hash) OVER (ORDER BY secuencia) AS anterior_real,
+                                   CASE WHEN row_number() OVER (ORDER BY secuencia) = 1
+                                        THEN (SELECT hash_final FROM ancla)
+                                        ELSE lag(hash) OVER (ORDER BY secuencia) END AS anterior_real,
                                    auditoria.huella(hash_anterior, id_evento, tipo, origen, categoria, accion, resultado,
                                                     actor_id, actor_rol, recurso_tipo, recurso_id, detalle,
                                                     ocurrido_en) AS recalculado
-                            FROM auditoria.registros)
-                        SELECT count(*) AS registros,
-                               min(secuencia) FILTER (WHERE hash <> recalculado
-                                   OR hash_anterior IS DISTINCT FROM anterior_real) AS primera_rota,
-                               (SELECT hash FROM auditoria.registros ORDER BY secuencia DESC LIMIT 1) AS ultimo
-                        FROM cadena
+                            FROM auditoria.registros),
+                        seg AS (
+                            SELECT id, hash_anterior_inicial, secuencia_desde,
+                                   lag(hash_final) OVER (ORDER BY secuencia_desde) AS previo,
+                                   lag(secuencia_hasta) OVER (ORDER BY secuencia_desde) AS hasta_previo
+                            FROM auditoria.segmentos)
+                        SELECT (SELECT count(*) FROM cadena) AS en_base,
+                               (SELECT min(secuencia) FROM cadena
+                                WHERE hash <> recalculado OR hash_anterior IS DISTINCT FROM anterior_real
+                                   OR secuencia <= coalesce((SELECT secuencia_hasta FROM ancla), 0)) AS primera_rota,
+                               (SELECT coalesce(sum(registros), 0) FROM auditoria.segmentos) AS archivados,
+                               (SELECT count(*) FROM auditoria.segmentos) AS segmentos,
+                               (SELECT min(id) FROM seg
+                                WHERE hash_anterior_inicial IS DISTINCT FROM previo
+                                   OR secuencia_desde <= coalesce(hasta_previo, 0)) AS segmento_roto,
+                               coalesce((SELECT hash FROM auditoria.registros ORDER BY secuencia DESC LIMIT 1),
+                                        (SELECT hash_final FROM ancla)) AS ultimo
                         """)
                 .query((rs, n) -> {
-                    long rota = rs.getLong("primera_rota");
-                    boolean hayRota = !rs.wasNull();
-                    return new Verificacion(rs.getLong("registros"), !hayRota, hayRota ? rota : null,
-                            rs.getString("ultimo"));
+                    long enBase = rs.getLong("en_base");
+                    long archivados = rs.getLong("archivados");
+                    Long rota = (Long) rs.getObject("primera_rota");
+                    Long segmentoRoto = (Long) rs.getObject("segmento_roto");
+                    return new Verificacion(enBase + archivados, rota == null && segmentoRoto == null, rota,
+                            rs.getString("ultimo"), enBase, archivados, rs.getInt("segmentos"), segmentoRoto);
                 })
                 .single();
+    }
+
+    // -------------------------------------------------------------- archivado (ADR-29)
+
+    private static final String SEGMENTO = """
+            SELECT id, secuencia_desde, secuencia_hasta, registros, hash_anterior_inicial, hash_final, ocurrido_desde,
+                   ocurrido_hasta, clave_objeto, sha256_archivo, bytes, archivado_en
+            FROM auditoria.segmentos""";
+
+    private static Segmento segmento(java.sql.ResultSet rs, int fila) throws java.sql.SQLException {
+        return new Segmento(rs.getLong("id"), rs.getLong("secuencia_desde"), rs.getLong("secuencia_hasta"),
+                rs.getInt("registros"), rs.getString("hash_anterior_inicial"), rs.getString("hash_final"),
+                rs.getTimestamp("ocurrido_desde").toInstant(), rs.getTimestamp("ocurrido_hasta").toInstant(),
+                rs.getString("clave_objeto"), rs.getString("sha256_archivo"), rs.getLong("bytes"),
+                rs.getTimestamp("archivado_en").toInstant());
+    }
+
+    @Override
+    public Optional<Segmento> ultimoSegmento() {
+        return jdbc.sql(SEGMENTO + " ORDER BY secuencia_hasta DESC LIMIT 1").query(RepositorioAuditoriaJdbc::segmento)
+                .optional();
+    }
+
+    @Override
+    public List<Segmento> segmentos() {
+        return jdbc.sql(SEGMENTO + " ORDER BY secuencia_desde").query(RepositorioAuditoriaJdbc::segmento).list();
+    }
+
+    @Override
+    public Optional<Rango> proximoRango(Instant limite, int maximo) {
+        return jdbc.sql("""
+                        WITH u AS (SELECT coalesce(max(secuencia_hasta), 0) AS hasta FROM auditoria.segmentos),
+                        p AS (SELECT r.secuencia, r.registrado_en FROM auditoria.registros r, u
+                              WHERE r.secuencia > u.hasta ORDER BY r.secuencia LIMIT 1),
+                        corte AS (SELECT p.secuencia AS desde, p.registrado_en,
+                                         least(date_trunc('month', p.registrado_en, 'UTC') + interval '1 month',
+                                               CAST(:limite AS timestamptz)) AS fin
+                                  FROM p)
+                        SELECT corte.desde,
+                               (SELECT max(x.secuencia) FROM (
+                                    SELECT r.secuencia FROM auditoria.registros r, u
+                                    WHERE r.secuencia > u.hasta AND r.registrado_en < corte.fin
+                                    ORDER BY r.secuencia LIMIT :maximo) x) AS hasta
+                        FROM corte
+                        WHERE corte.registrado_en < corte.fin
+                        """)
+                .param("limite", Timestamp.from(limite)).param("maximo", maximo)
+                .query((rs, n) -> new Rango(rs.getLong("desde"), rs.getLong("hasta")))
+                .optional();
+    }
+
+    @Override
+    public List<RegistroArchivado> leer(Rango rango) {
+        return jdbc.sql("""
+                        SELECT secuencia, id_evento::text AS id_evento, tipo, version, origen,
+                               correlation_id::text AS correlation_id, categoria, accion, resultado,
+                               actor_id::text AS actor_id, actor_rol, recurso_tipo, recurso_id, detalle::text AS detalle,
+                               to_char(ocurrido_en AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS ocurrido,
+                               to_char(registrado_en AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS registrado,
+                               hash_anterior, hash
+                        FROM auditoria.registros WHERE secuencia BETWEEN :desde AND :hasta ORDER BY secuencia
+                        """)
+                .param("desde", rango.desde()).param("hasta", rango.hasta())
+                .query((rs, n) -> new RegistroArchivado(rs.getLong("secuencia"), rs.getString("id_evento"),
+                        rs.getString("tipo"), rs.getInt("version"), rs.getString("origen"),
+                        rs.getString("correlation_id"), rs.getString("categoria"), rs.getString("accion"),
+                        rs.getString("resultado"), rs.getString("actor_id"), rs.getString("actor_rol"),
+                        rs.getString("recurso_tipo"), rs.getString("recurso_id"), rs.getString("detalle"),
+                        rs.getString("ocurrido"), rs.getString("registrado"), rs.getString("hash_anterior"),
+                        rs.getString("hash")))
+                .list();
+    }
+
+    @Override
+    public Long primeraRota(List<RegistroArchivado> r, String anteriorEsperado) {
+        if (r.isEmpty()) {
+            return null;
+        }
+        return jdbc.sql("""
+                        WITH f AS (
+                            SELECT * FROM unnest(CAST(:sec AS bigint[]), CAST(:id AS text[]), CAST(:tipo AS text[]),
+                                                 CAST(:origen AS text[]), CAST(:cat AS text[]), CAST(:acc AS text[]),
+                                                 CAST(:res AS text[]), CAST(:actor AS text[]), CAST(:rol AS text[]),
+                                                 CAST(:rtipo AS text[]), CAST(:rid AS text[]), CAST(:det AS text[]),
+                                                 CAST(:ocu AS text[]), CAST(:ant AS text[]), CAST(:hash AS text[]))
+                                AS t(secuencia, id_evento, tipo, origen, categoria, accion, resultado, actor_id,
+                                     actor_rol, recurso_tipo, recurso_id, detalle, ocurrido_en, hash_anterior, hash)),
+                        c AS (
+                            SELECT secuencia, hash, hash_anterior,
+                                   CASE WHEN row_number() OVER (ORDER BY secuencia) = 1 THEN CAST(:inicio AS text)
+                                        ELSE lag(hash) OVER (ORDER BY secuencia) END AS anterior_real,
+                                   auditoria.huella(hash_anterior, id_evento::uuid, tipo, origen, categoria, accion,
+                                                    resultado, actor_id::uuid, actor_rol, recurso_tipo, recurso_id,
+                                                    detalle::jsonb, ocurrido_en::timestamptz) AS recalculado
+                            FROM f)
+                        SELECT min(secuencia) FROM c
+                        WHERE hash IS DISTINCT FROM recalculado OR hash_anterior IS DISTINCT FROM anterior_real
+                        """)
+                .param("sec", r.stream().map(RegistroArchivado::secuencia).toArray(Long[]::new))
+                .param("id", r.stream().map(RegistroArchivado::idEvento).toArray(String[]::new))
+                .param("tipo", r.stream().map(RegistroArchivado::tipo).toArray(String[]::new))
+                .param("origen", r.stream().map(RegistroArchivado::origen).toArray(String[]::new))
+                .param("cat", r.stream().map(RegistroArchivado::categoria).toArray(String[]::new))
+                .param("acc", r.stream().map(RegistroArchivado::accion).toArray(String[]::new))
+                .param("res", r.stream().map(RegistroArchivado::resultado).toArray(String[]::new))
+                .param("actor", r.stream().map(RegistroArchivado::actorId).toArray(String[]::new))
+                .param("rol", r.stream().map(RegistroArchivado::actorRol).toArray(String[]::new))
+                .param("rtipo", r.stream().map(RegistroArchivado::recursoTipo).toArray(String[]::new))
+                .param("rid", r.stream().map(RegistroArchivado::recursoId).toArray(String[]::new))
+                .param("det", r.stream().map(RegistroArchivado::detalle).toArray(String[]::new))
+                .param("ocu", r.stream().map(RegistroArchivado::ocurridoEn).toArray(String[]::new))
+                .param("ant", r.stream().map(RegistroArchivado::hashAnterior).toArray(String[]::new))
+                .param("hash", r.stream().map(RegistroArchivado::hash).toArray(String[]::new))
+                .param("inicio", anteriorEsperado)
+                // null (ninguna rota) es un resultado válido: single() no lo admite.
+                .query((rs, n) -> (Long) rs.getObject(1))
+                .list().getFirst();
+    }
+
+    @Override
+    public int archivar(Segmento s) {
+        jdbc.sql("""
+                        INSERT INTO auditoria.segmentos (secuencia_desde, secuencia_hasta, registros, hash_anterior_inicial,
+                            hash_final, ocurrido_desde, ocurrido_hasta, clave_objeto, sha256_archivo, bytes)
+                        VALUES (:desde, :hasta, :registros, :anterior, :final, :ocurridoDesde, :ocurridoHasta, :clave,
+                                :sha, :bytes)
+                        """)
+                .param("desde", s.secuenciaDesde()).param("hasta", s.secuenciaHasta()).param("registros", s.registros())
+                .param("anterior", s.hashAnteriorInicial()).param("final", s.hashFinal())
+                .param("ocurridoDesde", Timestamp.from(s.ocurridoDesde()))
+                .param("ocurridoHasta", Timestamp.from(s.ocurridoHasta()))
+                .param("clave", s.claveObjeto()).param("sha", s.sha256Archivo()).param("bytes", s.bytes())
+                .update();
+        // El trigger solo deja borrar con esta marca y si un segmento ya cubre la fila.
+        jdbc.sql("SELECT set_config('servired.archivando_auditoria', 'si', true)").query(String.class).single();
+        return jdbc.sql("DELETE FROM auditoria.registros WHERE secuencia BETWEEN :desde AND :hasta")
+                .param("desde", s.secuenciaDesde()).param("hasta", s.secuenciaHasta())
+                .update();
     }
 }

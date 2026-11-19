@@ -871,7 +871,12 @@ paths:
       tags: [auditoria]
       operationId: verificarIntegridadAuditoria
       summary: Verifica la cadena de hashes del registro
-      description: Solo ADMINISTRADOR. `primeraRota` indica el primer registro alterado.
+      description: |
+        Solo ADMINISTRADOR. Verifica toda la cadena (ADR-29): los registros que siguen en la base
+        (cada huella y su enlace; el primero debe enlazar con el último segmento archivado) y los
+        enlaces entre segmentos archivados. `primeraRota` indica el primer registro alterado en la
+        base y `segmentoRoto` el primer segmento que no enlaza. La verificación profunda de los
+        archivos (descargarlos y recalcular sus huellas) se hace con infra/operacion/auditoria-archivo.py.
       responses:
         "200":
           description: Resultado
@@ -880,10 +885,14 @@ paths:
               schema:
                 type: object
                 properties:
-                  registros: { type: integer }
+                  registros: { type: integer, description: Total de la cadena (en la base + archivados) }
                   integra: { type: boolean }
                   primeraRota: { type: integer }
                   ultimoHash: { type: string }
+                  registrosEnBase: { type: integer }
+                  registrosArchivados: { type: integer }
+                  segmentos: { type: integer, description: Segmentos archivados en el almacén }
+                  segmentoRoto: { type: integer }
         "401": { $ref: "#/components/responses/NoAutenticado" }
         "403": { $ref: "#/components/responses/Prohibido" }
 
