@@ -82,6 +82,15 @@ class GestionEvidenciasTest {
         public void borrar(String clave) {
             operaciones.add("borrar" + (transaccion.abierta ? " EN TRANSACCIÓN" : ""));
         }
+
+        @Override
+        public void eliminar(String clave) {
+            borrar(clave);
+        }
+
+        @Override
+        public void recorrer(String prefijo, java.util.function.Consumer<List<co.edu.javeriana.servired.persistencia.dominio.ObjetoAlmacenado>> porPagina) {
+        }
     }
 
     private final TransaccionFalsa transaccion = new TransaccionFalsa();

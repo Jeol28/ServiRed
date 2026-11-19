@@ -54,6 +54,16 @@ servired:
     secreto: ${ALMACEN_S3_SECRETO:servired}
     bucket: ${ALMACEN_S3_BUCKET:evidencias}
     crear-bucket: ${ALMACEN_S3_CREAR_BUCKET:true}
+    # Borra las fotos sin evidencia en la base (objetos huérfanos, ADR-25). No toca las
+    # subidas en la última hora (gracia) y no borra nada si los huérfanos son 5 o más y
+    # superan el 20 % de lo revisado (freno ante una base y un bucket cruzados).
+    limpieza:
+      activa: ${ALMACEN_LIMPIEZA_ACTIVA:true}
+      intervalo: ${ALMACEN_LIMPIEZA_INTERVALO:PT6H}
+      retraso-inicial: PT10M
+      gracia: PT1H
+      freno-minimo: 5
+      freno-proporcion: 0.2
   outbox:
     intervalo-ms: 500
     tamano-lote: 50

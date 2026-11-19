@@ -11,6 +11,7 @@ import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesIndicadores;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioIndicadores;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesReporte;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAtencion;
+import co.edu.javeriana.servired.persistencia.aplicacion.LimpiezaAlmacen;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.AlmacenEvidencias;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioFase4;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionSesiones;
@@ -25,6 +26,8 @@ import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioRepo
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioSesiones;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.UnidadDeTrabajo;
 import java.time.Clock;
+import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -51,6 +54,14 @@ public class ConfiguracionCasosDeUso {
     AbrirCaso abrirCaso(UnidadDeTrabajo t, RegistroIdempotencia i, RepositorioCasos r, CatalogoTerritorial c,
                         Outbox o) {
         return new AbrirCaso(t, i, r, c, o);
+    }
+
+    @Bean
+    LimpiezaAlmacen limpiezaAlmacen(AlmacenEvidencias a, RepositorioFase4 r, Clock reloj,
+            @Value("${servired.almacen.limpieza.gracia:PT1H}") Duration gracia,
+            @Value("${servired.almacen.limpieza.freno-minimo:5}") int frenoMinimo,
+            @Value("${servired.almacen.limpieza.freno-proporcion:0.2}") double frenoProporcion) {
+        return new LimpiezaAlmacen(a, r, reloj, gracia, frenoMinimo, frenoProporcion);
     }
 
     @Bean

@@ -26,3 +26,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-22](ADR-22-abuso-con-varias-cuentas.md) | Abuso con varias cuentas: límites por cuenta y antigüedad para validar | Aceptada |
 | [ADR-23](ADR-23-idempotencia-del-titular.md) | La idempotencia pertenece a quien hace la solicitud | Aceptada |
 | [ADR-24](ADR-24-operacion-y-carga.md) | Operación de colas de fallidos, reconstrucción de Indicadores y prueba de carga 10× | Aceptada |
+| [ADR-25](ADR-25-limpieza-de-objetos-huerfanos.md) | Limpieza de objetos huérfanos del almacén de evidencias | Aceptada |

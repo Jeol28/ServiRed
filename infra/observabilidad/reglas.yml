@@ -72,6 +72,19 @@ groups:
         annotations:
           summary: "Un evento lleva {{ $value | humanizeDuration }} guardado sin publicar: revisar RabbitMQ y el relay del outbox"
 
+      # Limpieza de objetos huérfanos del almacén (ADR-25).
+      - alert: LimpiezaDelAlmacenFrenada
+        expr: increase(servired_almacen_limpieza_frenadas_total[12h]) > 0
+        labels: { severity: alta, servicio: persistencia }
+        annotations:
+          summary: "La limpieza del almacén encontró demasiadas fotos sin referencia y no borró nada: revisar que la base y el bucket sean del mismo entorno"
+
+      - alert: LimpiezaDelAlmacenFallando
+        expr: increase(servired_almacen_limpieza_fallas_total[1d]) >= 3
+        labels: { severity: media, servicio: persistencia }
+        annotations:
+          summary: "La limpieza del almacén no pudo completarse {{ $value }} veces en un día: revisar el almacén y la base"
+
       - alert: ColaDeEventosAcumulada
         expr: rabbitmq_queue_messages_ready{queue=~"[a-z]+\\.eventos(-[a-z]+)?"} > 500
         for: 5m

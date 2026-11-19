@@ -12,8 +12,11 @@ import co.edu.javeriana.servired.persistencia.dominio.Fase4.VotoNuevo;
 import co.edu.javeriana.servired.persistencia.dominio.ReporteGuardado.Conteo;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -192,6 +195,15 @@ public class RepositorioFase4Jdbc implements RepositorioFase4 {
     public boolean existeClaveEvidencia(String clave) {
         return jdbc.sql("SELECT EXISTS (SELECT 1 FROM reportes.evidencias WHERE clave_objeto = :clave)")
                 .param("clave", clave).query(Boolean.class).single();
+    }
+
+    @Override
+    public Set<String> clavesReferenciadas(Collection<String> claves) {
+        if (claves.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(jdbc.sql("SELECT clave_objeto FROM reportes.evidencias WHERE clave_objeto IN (:claves)")
+                .param("claves", claves).query(String.class).list());
     }
 
     @Override

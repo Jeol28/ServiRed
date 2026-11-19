@@ -1,8 +1,11 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.almacen;
 
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.AlmacenEvidencias;
+import co.edu.javeriana.servired.persistencia.dominio.ObjetoAlmacenado;
 import java.net.URI;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -95,6 +98,19 @@ public class AlmacenS3 implements AlmacenEvidencias {
             return Optional.of(s3.getObjectAsBytes(b -> b.bucket(bucket).key(clave)).asByteArray());
         } catch (NoSuchKeyException e) {
             return Optional.empty();
+        }
+    }
+
+    @Override
+    public void eliminar(String clave) {
+        s3.deleteObject(b -> b.bucket(bucket).key(clave));
+    }
+
+    @Override
+    public void recorrer(String prefijo, Consumer<List<ObjetoAlmacenado>> porPagina) {
+        for (var pagina : s3.listObjectsV2Paginator(b -> b.bucket(bucket).prefix(prefijo).maxKeys(1000))) {
+            porPagina.accept(pagina.contents().stream()
+                    .map(o -> new ObjetoAlmacenado(o.key(), o.lastModified())).toList());
         }
     }
 

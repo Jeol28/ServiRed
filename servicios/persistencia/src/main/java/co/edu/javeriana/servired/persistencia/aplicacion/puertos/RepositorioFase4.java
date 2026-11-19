@@ -7,8 +7,10 @@ import co.edu.javeriana.servired.persistencia.dominio.Fase4.ReporteCercano;
 import co.edu.javeriana.servired.persistencia.dominio.Fase4.Restablecimiento;
 import co.edu.javeriana.servired.persistencia.dominio.Fase4.VotoNuevo;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /** Tablas del dominio de reportes añadidas en la fase 4. */
@@ -46,6 +48,9 @@ public interface RepositorioFase4 {
 
     /** ¿Alguna evidencia guardada apunta a este objeto del almacén? */
     boolean existeClaveEvidencia(String clave);
+
+    /** De esas claves de objeto, las que alguna evidencia referencia. */
+    Set<String> clavesReferenciadas(Collection<String> claves);
 
     void insertarDenuncia(DenunciaNueva d);
 

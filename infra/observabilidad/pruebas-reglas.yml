@@ -109,3 +109,19 @@ tests:
           - exp_labels: { severity: alta, servicio: persistencia }
             exp_annotations:
               summary: "Un evento lleva 57s guardado sin publicar: revisar RabbitMQ y el relay del outbox"
+
+  # Limpieza del almacén (ADR-25): una ejecución frenada alerta de inmediato.
+  - interval: 1h
+    input_series:
+      - series: 'servired_almacen_limpieza_frenadas_total{job="persistencia", instance="p1"}'
+        values: '0 0 0 1 1 1'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: LimpiezaDelAlmacenFrenada
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: LimpiezaDelAlmacenFrenada
+        exp_alerts:
+          - exp_labels: { severity: alta, servicio: persistencia, job: persistencia, instance: p1 }
+            exp_annotations:
+              summary: "La limpieza del almacén encontró demasiadas fotos sin referencia y no borró nada: revisar que la base y el bucket sean del mismo entorno"
