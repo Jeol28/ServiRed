@@ -73,6 +73,15 @@ public class ApiPruebas : IClassFixture<ApiPruebas.Fabrica>
     }
 
     [Fact]
+    public async Task LasAnclasSonPublicasSinToken()
+    {
+        var r = await Get("/api/v1/auditoria/anclas", null);
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        // El resto de la auditoría sigue exigiendo rol.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Get("/api/v1/auditoria/registros", null)).StatusCode);
+    }
+
+    [Fact]
     public async Task ElWebhookDeAlertmanagerExigeElToken()
     {
         const string cuerpo = """

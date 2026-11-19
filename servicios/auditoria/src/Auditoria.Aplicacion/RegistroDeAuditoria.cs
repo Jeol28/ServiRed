@@ -74,4 +74,8 @@ public sealed class ConsultasAuditoria(IRepositorioAuditoria repositorio)
         if (actor.Rol != Rol.ADMINISTRADOR) throw new AccesoDenegado("Solo un administrador verifica la integridad");
         return repositorio.VerificarAsync(c, ct);
     }
+
+    /// <summary>Anclas de la cadena (ADR-31): públicas, para que cualquiera las guarde y compare.</summary>
+    public Task<IReadOnlyList<AnclaPublica>> AnclasAsync(IdCorrelacion c, CancellationToken ct) =>
+        repositorio.AnclasAsync(c, ct);
 }

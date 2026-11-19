@@ -73,6 +73,16 @@ servired:
       maximo-por-segmento: 50000
       intervalo: P1D
       retraso-inicial: PT20M
+    # Anclas diarias de la cadena, publicadas fuera del sistema (ADR-31).
+    anclas:
+      activo: ${AUDITORIA_ANCLAS_ACTIVO:true}
+      intervalo: PT6H
+      retraso-inicial: PT30M
+      github:
+        repositorio: ${AUDITORIA_ANCLAS_GITHUB_REPOSITORIO:}
+        token: ${AUDITORIA_ANCLAS_GITHUB_TOKEN:}
+        rama: anclas-auditoria
+        ruta: auditoria/anclas.jsonl
   outbox:
     intervalo-ms: 500
     tamano-lote: 50

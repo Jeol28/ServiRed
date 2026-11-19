@@ -29,6 +29,10 @@ public static class EndpointsAuditoria
                 c.VerificarAsync(ActorActual.De(h), Correlacion(h), ct))
             .RequireAuthorization(ConfiguracionJwt.PoliticaAdministrar);
 
+        // Pública (ADR-31): el último hash de cada día, para que cualquiera lo guarde fuera del sistema.
+        app.MapGet("/api/v1/auditoria/anclas", (HttpContext h, ConsultasAuditoria c, CancellationToken ct) =>
+            c.AnclasAsync(Correlacion(h), ct));
+
         app.MapPost("/interno/v1/alertas", async (HttpContext h, RegistroDeAuditoria registro, IConfiguration config,
             CancellationToken ct) =>
         {

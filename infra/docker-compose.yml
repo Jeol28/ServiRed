@@ -131,6 +131,9 @@ services:
       ALMACEN_S3_SECRETO: ${ALMACEN_S3_SECRETO:?definir en .env}
       ALMACEN_S3_BUCKET: ${ALMACEN_S3_BUCKET:-evidencias}
       ALMACEN_S3_CREAR_BUCKET: ${ALMACEN_S3_CREAR_BUCKET:-true}
+      # Anclas de la cadena de auditoría en GitHub (ADR-31); vacías = solo base y API pública.
+      AUDITORIA_ANCLAS_GITHUB_REPOSITORIO: ${AUDITORIA_ANCLAS_GITHUB_REPOSITORIO:-}
+      AUDITORIA_ANCLAS_GITHUB_TOKEN: ${AUDITORIA_ANCLAS_GITHUB_TOKEN:-}
     depends_on:
       <<: *depende-rabbit
       postgres-local:

@@ -200,6 +200,8 @@ class GatewaySeguridadTest {
         get("/api/v1/auditoria/registros", token("REGULADOR")).expectStatus().isOk();
         get("/api/v1/auditoria/registros", token("OPERADOR")).expectStatus().isForbidden();
         get("/api/v1/auditoria/registros", null).expectStatus().isUnauthorized();
+        get("/api/v1/auditoria/anclas", null).expectStatus().isOk();   // ADR-31: públicas
+        get("/api/v1/auditoria/anclas/otra", null).expectStatus().isUnauthorized();
         cliente.post().uri("/api/v1/auditoria/registros").header("Authorization", token("ADMINISTRADOR")).exchange()
                 .expectStatus().isForbidden();
         get("/interno/v1/alertas", token("ADMINISTRADOR")).expectStatus().isForbidden();

@@ -56,6 +56,9 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioAuditoria
     public async Task<Verificacion> VerificarAsync(IdCorrelacion correlacion, CancellationToken ct) =>
         (await EnviarAsync<Verificacion>(HttpMethod.Get, "/interno/v1/auditoria/integridad", null, correlacion, ct))!;
 
+    public async Task<IReadOnlyList<AnclaPublica>> AnclasAsync(IdCorrelacion correlacion, CancellationToken ct) =>
+        (await EnviarAsync<List<AnclaPublica>>(HttpMethod.Get, "/interno/v1/auditoria/anclas", null, correlacion, ct))!;
+
     private async Task<T?> EnviarAsync<T>(HttpMethod metodo, string ruta, object? cuerpo, IdCorrelacion correlacion,
         CancellationToken ct)
     {

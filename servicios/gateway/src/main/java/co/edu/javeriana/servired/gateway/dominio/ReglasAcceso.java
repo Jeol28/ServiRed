@@ -55,6 +55,8 @@ public final class ReglasAcceso {
             // Moderación de denuncias anónimas (RF-5): el regulador solo consulta
             Regla.roles("GET", Set.of(OPERADOR, REGULADOR, ADMINISTRADOR), "/api/v1/moderacion/**"),
             Regla.roles(null, Set.of(OPERADOR, ADMINISTRADOR), "/api/v1/moderacion/**"),
+            // Anclas de la cadena de auditoría (ADR-31): públicas, para que cualquiera las guarde afuera
+            Regla.publica("GET", "/api/v1/auditoria/anclas"),
             // Auditoría (RF-12): solo lectura; el webhook interno de alertas nunca se enruta
             Regla.roles("GET", Set.of(REGULADOR, ADMINISTRADOR), "/api/v1/auditoria/**"),
             // Cuentas (RF-11)

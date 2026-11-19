@@ -866,6 +866,36 @@ paths:
         "401": { $ref: "#/components/responses/NoAutenticado" }
         "403": { $ref: "#/components/responses/Prohibido" }
 
+  /api/v1/auditoria/anclas:
+    get:
+      tags: [auditoria]
+      operationId: anclasAuditoria
+      summary: Anclas diarias de la cadena de auditoría (ADR-31)
+      description: |
+        Pública. Cada día se fija el último hash de la cadena de auditoría y se publica fuera del
+        sistema (un archivo en GitHub) y aquí, para que cualquiera lo guarde. Si alguien reescribiera
+        registros archivados y recalculara la cadena, el hash de esa secuencia ya no coincidiría con
+        el publicado. Solo hashes y conteos: ningún dato de personas.
+      security: []
+      responses:
+        "200":
+          description: Anclas, de la más vieja a la más reciente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    fecha: { type: string, format: date }
+                    secuencia: { type: integer, description: Último registro de la cadena ese día }
+                    hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+                    registros: { type: integer }
+                    segmentos: { type: integer }
+                    publicadaEn: { type: string, format: date-time, description: Cuándo se publicó afuera (null si no se pudo) }
+                    destino: { type: string, example: "github:dueño/repo@anclas-auditoria:auditoria/anclas.jsonl" }
+                    referencia: { type: string, description: Commit de GitHub con el ancla }
+
   /api/v1/auditoria/integridad:
     get:
       tags: [auditoria]

@@ -1,5 +1,8 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.jdbc;
 
+import java.util.Map;
+import java.time.LocalDate;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Ancla;
 import java.util.Optional;
 import java.util.List;
 import java.time.Instant;
@@ -277,6 +280,71 @@ public class RepositorioAuditoriaJdbc implements RepositorioAuditoria {
         jdbc.sql("SELECT set_config('servired.archivando_auditoria', 'si', true)").query(String.class).single();
         return jdbc.sql("DELETE FROM auditoria.registros WHERE secuencia BETWEEN :desde AND :hasta")
                 .param("desde", s.secuenciaDesde()).param("hasta", s.secuenciaHasta())
+                .update();
+    }
+
+    // ------------------------------------------------------------------ anclas (ADR-31)
+
+    @Override
+    public Optional<Map.Entry<Long, String>> ultimoRegistro() {
+        return jdbc.sql("""
+                        SELECT secuencia, hash FROM auditoria.registros
+                        UNION ALL
+                        SELECT secuencia_hasta, hash_final FROM auditoria.segmentos
+                        ORDER BY secuencia DESC LIMIT 1
+                        """)
+                .query((rs, n) -> Map.entry(rs.getLong("secuencia"), rs.getString("hash")))
+                .optional();
+    }
+
+    @Override
+    public Optional<String> hashEnBase(long secuencia) {
+        return jdbc.sql("SELECT hash FROM auditoria.registros WHERE secuencia = :s").param("s", secuencia)
+                .query(String.class).optional();
+    }
+
+    @Override
+    public Optional<Segmento> segmentoQueCubre(long secuencia) {
+        return jdbc.sql(SEGMENTO + " WHERE :s BETWEEN secuencia_desde AND secuencia_hasta").param("s", secuencia)
+                .query(RepositorioAuditoriaJdbc::segmento).optional();
+    }
+
+    private static final String ANCLA = """
+            SELECT fecha, secuencia, hash, registros, segmentos, creada_en, publicada_en, destino, referencia
+            FROM auditoria.anclas""";
+
+    private static Ancla ancla(java.sql.ResultSet rs, int fila) throws java.sql.SQLException {
+        var publicada = rs.getTimestamp("publicada_en");
+        return new Ancla(rs.getObject("fecha", LocalDate.class), rs.getLong("secuencia"), rs.getString("hash"),
+                rs.getLong("registros"), rs.getInt("segmentos"), rs.getTimestamp("creada_en").toInstant(),
+                publicada == null ? null : publicada.toInstant(), rs.getString("destino"), rs.getString("referencia"));
+    }
+
+    @Override
+    public Optional<Ancla> ancla(LocalDate fecha) {
+        return jdbc.sql(ANCLA + " WHERE fecha = :f").param("f", fecha).query(RepositorioAuditoriaJdbc::ancla).optional();
+    }
+
+    @Override
+    public List<Ancla> anclas() {
+        return jdbc.sql(ANCLA + " ORDER BY fecha").query(RepositorioAuditoriaJdbc::ancla).list();
+    }
+
+    @Override
+    public void insertarAncla(Ancla a) {
+        jdbc.sql("""
+                        INSERT INTO auditoria.anclas (fecha, secuencia, hash, registros, segmentos)
+                        VALUES (:f, :s, :h, :r, :g) ON CONFLICT (fecha) DO NOTHING
+                        """)
+                .param("f", a.fecha()).param("s", a.secuencia()).param("h", a.hash()).param("r", a.registros())
+                .param("g", a.segmentos()).update();
+    }
+
+    @Override
+    public void marcarPublicada(LocalDate fecha, Instant publicadaEn, String destino, String referencia) {
+        jdbc.sql("UPDATE auditoria.anclas SET publicada_en = :p, destino = :d, referencia = :r "
+                        + "WHERE fecha = :f AND publicada_en IS NULL")
+                .param("p", Timestamp.from(publicadaEn)).param("d", destino).param("r", referencia).param("f", fecha)
                 .update();
     }
 }

@@ -72,6 +72,20 @@ groups:
         annotations:
           summary: "Un evento lleva {{ $value | humanizeDuration }} guardado sin publicar: revisar RabbitMQ y el relay del outbox"
 
+      # Anclas externas de la cadena de auditoría (ADR-31).
+      - alert: AnclaDeAuditoriaSinPublicar
+        expr: max(servired_auditoria_ancla_antiguedad_segundos) > 2 * 86400
+        for: 1h
+        labels: { severity: alta, servicio: persistencia }
+        annotations:
+          summary: "Hace {{ $value | humanizeDuration }} que no se publica un ancla de la cadena de auditoría fuera del sistema: revisar AUDITORIA_ANCLAS_GITHUB_* y el token"
+
+      - alert: AnclaNoFijadaPorCadenaRota
+        expr: increase(servired_auditoria_anclas_cadena_rota_total[1d]) > 0
+        labels: { severity: critica, servicio: persistencia }
+        annotations:
+          summary: "No se fijó el ancla del día porque la cadena de auditoría está rota: verificar la integridad (posible manipulación)"
+
       # Archivado del registro de auditoría (ADR-29).
       - alert: ArchivoDeAuditoriaDetenido
         expr: increase(servired_auditoria_archivo_detenidos_total[2d]) > 0

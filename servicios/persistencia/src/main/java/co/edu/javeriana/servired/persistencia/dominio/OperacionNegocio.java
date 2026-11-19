@@ -48,6 +48,7 @@ public enum OperacionNegocio {
     CONSULTAR_AUDITORIA("consultarAuditoria", EnumSet.of(ServicioCliente.AUDITORIA)),
     VERIFICAR_AUDITORIA("verificarIntegridadAuditoria", EnumSet.of(ServicioCliente.AUDITORIA)),
     ARCHIVAR_AUDITORIA("archivarAuditoria", EnumSet.of(ServicioCliente.AUDITORIA)),
+    ANCLAR_AUDITORIA("anclarAuditoria", EnumSet.of(ServicioCliente.AUDITORIA)),
     PUBLICAR_ACCION_AUDITADA("publicarAccionAuditada", EnumSet.of(ServicioCliente.IDENTIDAD, ServicioCliente.REPORTES,
             ServicioCliente.ATENCION, ServicioCliente.INDICADORES)),
     RESOLVER_MUNICIPIO("resolverMunicipio",

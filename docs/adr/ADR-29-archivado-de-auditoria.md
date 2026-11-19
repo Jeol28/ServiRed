@@ -77,6 +77,8 @@ almacén de objetos, y la cadena sigue siendo verificable de punta a punta.
   objetos (S3 Object Lock). Una alteración del archivo se detecta (SHA-256 en la base,
   enlaces de la cadena), pero no se impide. Para una garantía mayor, se puede copiar cada
   segmento a un almacenamiento WORM externo o publicar periódicamente el último hash.
+  **Hecho en [ADR-31](ADR-31-anclas-externas-de-auditoria.md):** el último hash se publica cada día
+  en GitHub y en la API pública.
 - **Pruebas:**
   - Integración, `ArchivoAuditoriaIntegracionTest` contra PostgreSQL y SeaweedFS:
     - archiva y la cadena sigue íntegra;

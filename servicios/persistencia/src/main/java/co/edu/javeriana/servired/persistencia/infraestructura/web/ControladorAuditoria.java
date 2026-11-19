@@ -1,5 +1,8 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.web;
 
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.VerificacionAnclas;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Ancla;
+import co.edu.javeriana.servired.persistencia.aplicacion.AnclasAuditoria;
 import java.util.List;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.VerificacionArchivo;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Segmento;
@@ -40,11 +43,14 @@ public class ControladorAuditoria {
 
     private final OperacionesAuditoria auditoria;
     private final ArchivoAuditoria archivo;
+    private final AnclasAuditoria anclas;
     private final Solicitudes solicitudes;
 
-    public ControladorAuditoria(OperacionesAuditoria auditoria, ArchivoAuditoria archivo, Solicitudes solicitudes) {
+    public ControladorAuditoria(OperacionesAuditoria auditoria, ArchivoAuditoria archivo, AnclasAuditoria anclas,
+                                Solicitudes solicitudes) {
         this.auditoria = auditoria;
         this.archivo = archivo;
+        this.anclas = anclas;
         this.solicitudes = solicitudes;
     }
 
@@ -98,6 +104,24 @@ public class ControladorAuditoria {
     }
 
     public record SolicitudArchivo(Instant hasta) {
+    }
+
+    /** Anclas diarias de la cadena (ADR-31): las sirve la API pública por medio de Auditoría. */
+    @GetMapping("/auditoria/anclas")
+    public List<Ancla> anclas(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
+        return anclas.anclas(s);
+    }
+
+    /** Fija y publica el ancla de hoy ahora (si ya existe y está publicada, la devuelve). */
+    @PostMapping("/auditoria/anclas")
+    public ResponseEntity<Ancla> anclar(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
+        return ResponseEntity.of(anclas.anclar(s));
+    }
+
+    /** Compara las anclas publicadas afuera con el hash que hoy tiene cada secuencia. */
+    @PostMapping("/auditoria/anclas/verificacion")
+    public VerificacionAnclas verificarAnclas(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
+        return anclas.verificar(s);
     }
 
     @PostMapping("/acciones-auditadas")

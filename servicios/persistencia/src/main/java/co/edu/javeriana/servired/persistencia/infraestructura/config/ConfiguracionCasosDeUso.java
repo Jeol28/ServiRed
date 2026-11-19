@@ -1,5 +1,9 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.config;
 
+import co.edu.javeriana.servired.persistencia.infraestructura.anclas.PublicadorAnclasGitHub;
+import co.edu.javeriana.servired.persistencia.infraestructura.anclas.PropiedadesAnclas;
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.PublicadorAnclas;
+import co.edu.javeriana.servired.persistencia.aplicacion.AnclasAuditoria;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.CodificadorSegmentos;
 import co.edu.javeriana.servired.persistencia.aplicacion.ArchivoAuditoria;
 import co.edu.javeriana.servired.persistencia.aplicacion.AbrirCaso;
@@ -38,7 +42,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /** Composición: conecta los casos de uso (sin Spring) con sus adaptadores. */
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(ClavesServicio.class)
+@EnableConfigurationProperties({ClavesServicio.class, PropiedadesAnclas.class})
 public class ConfiguracionCasosDeUso {
 
     @Bean
@@ -72,6 +76,17 @@ public class ConfiguracionCasosDeUso {
             @Value("${servired.auditoria.archivo.meses-en-base:12}") int mesesEnBase,
             @Value("${servired.auditoria.archivo.maximo-por-segmento:50000}") int maximoPorSegmento) {
         return new ArchivoAuditoria(t, r, a, c, reloj, mesesEnBase, maximoPorSegmento);
+    }
+
+    @Bean
+    PublicadorAnclas publicadorAnclas(PropiedadesAnclas propiedades) {
+        return new PublicadorAnclasGitHub(propiedades);
+    }
+
+    @Bean
+    AnclasAuditoria anclasAuditoria(RepositorioAuditoria r, AlmacenEvidencias a, CodificadorSegmentos c,
+                                    PublicadorAnclas p, Clock reloj) {
+        return new AnclasAuditoria(r, a, c, p, reloj);
     }
 
     @Bean

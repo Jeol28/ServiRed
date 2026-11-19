@@ -66,6 +66,22 @@ public final class Auditoria {
     public record ResultadoArchivo(int segmentosNuevos, long registrosArchivados, Instant limite, String detenidoPor) {
     }
 
+    /**
+     * Ancla diaria de la cadena (ADR-31): el último registro de ese día y su hash, publicados fuera
+     * del sistema para detectar una reescritura de la historia.
+     */
+    public record Ancla(java.time.LocalDate fecha, long secuencia, String hash, long registros, int segmentos,
+                        Instant creadaEn, Instant publicadaEn, String destino, String referencia) {
+    }
+
+    /** Resultado de comparar una ancla publicada con la cadena actual. */
+    public record ComprobacionAncla(java.time.LocalDate fecha, long secuencia, String hashPublicado, String hashActual,
+                                    String ubicacion, boolean coincide) {
+    }
+
+    public record VerificacionAnclas(String fuente, int anclas, boolean coinciden, List<ComprobacionAncla> distintas) {
+    }
+
     /** Verificación profunda del archivo: descarga cada segmento, compara su SHA-256 y recalcula las huellas. */
     public record VerificacionArchivo(int segmentos, long registros, boolean integro, Long segmentoConProblema,
                                       String problema) {

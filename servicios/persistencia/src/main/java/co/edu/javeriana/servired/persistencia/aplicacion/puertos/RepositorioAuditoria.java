@@ -1,5 +1,8 @@
 package co.edu.javeriana.servired.persistencia.aplicacion.puertos;
 
+import java.util.Map;
+import java.time.LocalDate;
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Ancla;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Rango;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.RegistroArchivado;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Segmento;
@@ -44,4 +47,22 @@ public interface RepositorioAuditoria {
 
     /** Inserta el segmento y borra de la base los registros que cubre; devuelve cuántos borró. */
     int archivar(Segmento segmento);
+
+    // --------------------------------------------------------------- anclas (ADR-31)
+
+    /** Secuencia y hash del último registro de la cadena (en la base o, si está vacía, el último archivado). */
+    Optional<Map.Entry<Long, String>> ultimoRegistro();
+
+    /** Hash del registro con esa secuencia, si sigue en la base. */
+    Optional<String> hashEnBase(long secuencia);
+
+    Optional<Segmento> segmentoQueCubre(long secuencia);
+
+    Optional<Ancla> ancla(LocalDate fecha);
+
+    List<Ancla> anclas();
+
+    void insertarAncla(Ancla ancla);
+
+    void marcarPublicada(LocalDate fecha, Instant publicadaEn, String destino, String referencia);
 }

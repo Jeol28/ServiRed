@@ -17,6 +17,13 @@ public sealed record PaginaAuditoria(IReadOnlyList<RegistroConsultado> Elementos
 public sealed record Verificacion(long Registros, bool Integra, long? PrimeraRota, string? UltimoHash,
     long? RegistrosEnBase = null, long? RegistrosArchivados = null, int? Segmentos = null, long? SegmentoRoto = null);
 
+/// <summary>
+/// Ancla diaria de la cadena (ADR-31): el último hash de ese día, publicado también fuera del
+/// sistema. Pública: solo hashes y conteos, sin datos de personas.
+/// </summary>
+public sealed record AnclaPublica(DateOnly Fecha, long Secuencia, string Hash, long Registros, int Segmentos,
+    DateTimeOffset? PublicadaEn, string? Destino, string? Referencia);
+
 /// <summary>Registro de auditoría en Persistencia (registrarAuditoria, consultarAuditoria, verificarIntegridad).</summary>
 public interface IRepositorioAuditoria
 {
@@ -26,6 +33,8 @@ public interface IRepositorioAuditoria
     Task<PaginaAuditoria> ConsultarAsync(FiltroAuditoria filtro, IdCorrelacion correlacion, CancellationToken ct);
 
     Task<Verificacion> VerificarAsync(IdCorrelacion correlacion, CancellationToken ct);
+
+    Task<IReadOnlyList<AnclaPublica>> AnclasAsync(IdCorrelacion correlacion, CancellationToken ct);
 }
 
 /// <summary>Expone las alertas como métrica para Prometheus/Alertmanager.</summary>

@@ -59,3 +59,20 @@ python3 infra/operacion/auditoria-archivo.py archivar --hasta 2026-06-01T00:00:0
   archiva el tramo alterado. Revise la integridad (`GET /api/v1/auditoria/integridad`).
 - **Lo archivado:** cada segmento es un JSONL comprimido y legible. La API de consulta solo
   muestra lo que sigue en la base.
+
+## Anclas externas de la auditoría (ADR-31): `auditoria-anclas.py`
+
+Cada día Persistencia fija el último hash de la cadena de auditoría y lo publica fuera del
+sistema:
+- en GitHub, en la rama `anclas-auditoria`, archivo `auditoria/anclas.jsonl`, si
+  `AUDITORIA_ANCLAS_GITHUB_*` está configurado;
+- en la API pública `GET /api/v1/auditoria/anclas`.
+
+```bash
+python3 infra/operacion/auditoria-anclas.py listar
+python3 infra/operacion/auditoria-anclas.py anclar       # fijar y publicar la de hoy ya
+python3 infra/operacion/auditoria-anclas.py verificar    # lo publicado en GitHub contra la cadena actual
+```
+
+`verificar` termina con código 2 si alguna ancla no coincide, lo que indica una posible
+reescritura de la historia.

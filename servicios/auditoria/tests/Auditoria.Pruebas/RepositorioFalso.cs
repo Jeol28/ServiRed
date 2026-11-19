@@ -11,6 +11,11 @@ public sealed class RepositorioFalso : IRepositorioAuditoria, IMetricasAlertas
     public readonly ConcurrentDictionary<Guid, RegistroAuditoria> Registros = new();
     public readonly ConcurrentQueue<Alerta> Metricas = new();
 
+    public List<AnclaPublica> Anclas = [];
+
+    public Task<IReadOnlyList<AnclaPublica>> AnclasAsync(IdCorrelacion correlacion, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<AnclaPublica>>(Anclas);
+
     public Task<bool> RegistrarAsync(RegistroAuditoria r, IdCorrelacion correlacion, CancellationToken ct) =>
         Task.FromResult(Registros.TryAdd(r.IdEvento, r));
 
