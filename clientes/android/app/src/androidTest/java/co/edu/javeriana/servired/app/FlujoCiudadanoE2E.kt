@@ -74,7 +74,9 @@ class FlujoCiudadanoE2E {
         exito(ana.sesion.registrar(ana.correo, "una clave larga de prueba", "Ana"))
         assertTrue(ana.sesion.estado.value is EstadoSesion.Autenticada)
 
-        val aqui = Ubicacion(4.6287, -74.0648)
+        // Un punto distinto en cada corrida (dentro de Bogotá): «cercanos» ordena por distancia y
+        // tiene un tope, y las corridas anteriores dejan muchos reportes en un punto fijo.
+        val aqui = Ubicacion(4.6287 + kotlin.random.Random.nextDouble(-0.008, 0.008), -74.0648 + kotlin.random.Random.nextDouble(-0.008, 0.008))
         val nuevo = NuevoReporte(TipoServicio.ENERGIA, aqui, Instant.now().minus(Duration.ofHours(2)), Magnitud.CUADRA, "Sin luz (prueba Android)")
         assertEquals(true, exito(ana.reportes.crear(nuevo, emptyList())))
         exito(ana.reportes.actualizar())
@@ -85,10 +87,11 @@ class FlujoCiudadanoE2E {
         // Otro ciudadano cercano lo ve y confirma el corte.
         val beto = Ciudadano()
         exito(beto.sesion.registrar(beto.correo, "otra clave larga de prueba", null))
-        val cerca = Ubicacion(4.6290, -74.0650)
+        val cerca = Ubicacion(aqui.latitud + 0.0003, aqui.longitud - 0.0002) // ~40 m
         assertTrue(exito(beto.reportes.cercanos(cerca)).any { it.id == reporte.id })
         val voto = exito(beto.reportes.validar(reporte.id, ObjetoValidacion.CORTE, Sentido.CONFIRMA, cerca))
-        assertTrue(voto.nueva && voto.conteo.confirmaciones >= 1)
+        // Beto es una cuenta recién creada: su voto queda registrado, pero no suma al umbral (ADR-22).
+        assertTrue(voto.nueva && voto.conteo.confirmaciones == 0)
         val repetido = exito(beto.reportes.validar(reporte.id, ObjetoValidacion.CORTE, Sentido.CONFIRMA, cerca))
         assertTrue("repetir el voto no lo cuenta dos veces", !repetido.nueva)
         val propio = ana.reportes.validar(reporte.id, ObjetoValidacion.CORTE, Sentido.CONFIRMA, aqui)
