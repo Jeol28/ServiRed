@@ -125,3 +125,19 @@ tests:
           - exp_labels: { severity: alta, servicio: persistencia, job: persistencia, instance: p1 }
             exp_annotations:
               summary: "La limpieza del almacén encontró demasiadas fotos sin referencia y no borró nada: revisar que la base y el bucket sean del mismo entorno"
+
+  # Lista de revocación (ADR-26): Identidad deja de responder y la lista envejece.
+  - interval: 15s
+    input_series:
+      - series: 'servired_revocacion_antiguedad_segundos{job="gateway", instance="g1"}'
+        values: '3 3 3 3 30+15x10'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: ListaDeRevocacionDesactualizada
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: ListaDeRevocacionDesactualizada
+        exp_alerts:
+          - exp_labels: { severity: alta, servicio: gateway, instance: g1 }
+            exp_annotations:
+              summary: "El gateway g1 no actualiza su lista de revocación hace 2m 30s: un token de una cuenta desactivada o de una sesión cerrada podría seguir sirviendo hasta que expire"

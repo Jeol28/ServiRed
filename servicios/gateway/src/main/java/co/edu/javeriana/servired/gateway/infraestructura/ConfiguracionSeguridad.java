@@ -1,17 +1,25 @@
 package co.edu.javeriana.servired.gateway.infraestructura;
 
+import co.edu.javeriana.servired.gateway.dominio.ListaRevocacion;
 import co.edu.javeriana.servired.gateway.dominio.ReglasAcceso;
 import co.edu.javeriana.servired.gateway.dominio.ReglasAcceso.Regla;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
@@ -31,6 +39,7 @@ import reactor.core.publisher.Mono;
  * por rol según {@link ReglasAcceso}. Sin estado: no hay sesión ni CSRF.
  */
 @Configuration
+@EnableScheduling
 public class ConfiguracionSeguridad {
 
     @Bean
@@ -65,14 +74,38 @@ public class ConfiguracionSeguridad {
     }
 
     @Bean
+    ListaRevocacion listaRevocacion() {
+        return new ListaRevocacion();
+    }
+
+    @Bean
     ReactiveJwtDecoder decodificador(@Value("${servired.jwt.jwks-url}") String jwksUrl,
                                      @Value("${servired.jwt.emisor}") String emisor,
-                                     @Value("${servired.jwt.audiencia}") String audiencia) {
+                                     @Value("${servired.jwt.audiencia}") String audiencia,
+                                     ListaRevocacion revocados, MeterRegistry metricas) {
         NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwksUrl).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(emisor),
-                new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(audiencia))));
+                new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(audiencia)),
+                noRevocado(revocados, Counter.builder("servired.revocacion.rechazados")
+                        .description("Solicitudes rechazadas por traer un token de acceso revocado").register(metricas))));
         return decoder;
+    }
+
+    /**
+     * Rechaza los tokens revocados antes de expirar (cuenta desactivada o suprimida, clave
+     * cambiada, sesión cerrada o refresco reutilizado; ADR-26). Responde 401 como cualquier
+     * token inválido: la app intenta renovar y, como la sesión también está revocada, vuelve al
+     * ingreso.
+     */
+    static OAuth2TokenValidator<Jwt> noRevocado(ListaRevocacion revocados, Counter rechazados) {
+        return jwt -> {
+            if (revocados.revocado(jwt.getId(), Instant.now())) {
+                rechazados.increment();
+                return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "El token fue revocado", null));
+            }
+            return OAuth2TokenValidatorResult.success();
+        };
     }
 
     static Converter<Jwt, Mono<AbstractAuthenticationToken>> convertidorRoles() {

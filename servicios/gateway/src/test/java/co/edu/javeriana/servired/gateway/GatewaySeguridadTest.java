@@ -46,6 +46,8 @@ class GatewaySeguridadTest {
     static final RSAKey OTRA_CLAVE = generar();
     static final Map<String, String> AUTORIZACION_RECIBIDA = new ConcurrentHashMap<>();
     static final Map<String, String> REENVIADO_RECIBIDO = new ConcurrentHashMap<>();
+    /** jti que Identidad informa como revocado (ADR-26). */
+    static final String JTI_REVOCADO = UUID.randomUUID().toString();
     static final HttpServer DESTINO = iniciarDestino();
 
     @Autowired
@@ -71,6 +73,10 @@ class GatewaySeguridadTest {
                 byte[] cuerpo;
                 if (ruta.equals("/.well-known/jwks.json")) {
                     cuerpo = new JWKSet(CLAVE.toPublicJWK()).toString().getBytes(StandardCharsets.UTF_8);
+                } else if (ruta.equals("/interno/v1/tokens-revocados")) {
+                    cuerpo = ("{\"generadaEn\":\"" + Instant.now() + "\",\"revocados\":[{\"jti\":\"" + JTI_REVOCADO
+                            + "\",\"expiraEn\":\"" + Instant.now().plusSeconds(900) + "\"}]}")
+                            .getBytes(StandardCharsets.UTF_8);
                 } else {
                     String auth = x.getRequestHeaders().getFirst("Authorization");
                     AUTORIZACION_RECIBIDA.put(ruta, auth == null ? "<ninguna>" : auth);
@@ -100,14 +106,19 @@ class GatewaySeguridadTest {
     static void propiedades(DynamicPropertyRegistry r) {
         String base = "http://localhost:" + DESTINO.getAddress().getPort();
         r.add("servired.jwt.jwks-url", () -> base + "/.well-known/jwks.json");
+        r.add("servired.jwt.revocacion.url", () -> base + "/interno/v1/tokens-revocados");
         for (String s : new String[]{"IDENTIDAD", "REPORTES", "ATENCION", "INDICADORES", "AUDITORIA"}) {
             r.add("SERVICIO_" + s + "_URL", () -> base);
         }
     }
 
     static String token(String rol, RSAKey clave, String emisor, String audiencia, Instant expira) {
+        return token(rol, clave, emisor, audiencia, expira, UUID.randomUUID().toString());
+    }
+
+    static String token(String rol, RSAKey clave, String emisor, String audiencia, Instant expira, String jti) {
         try {
-            var claims = new JWTClaimsSet.Builder().issuer(emisor).audience(audiencia)
+            var claims = new JWTClaimsSet.Builder().issuer(emisor).audience(audiencia).jwtID(jti)
                     .subject(UUID.randomUUID().toString()).claim("rol", rol)
                     .issueTime(new Date()).expirationTime(Date.from(expira)).build();
             var jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(clave.getKeyID()).build(), claims);
@@ -128,6 +139,21 @@ class GatewaySeguridadTest {
             p = p.header("Authorization", autorizacion);
         }
         return p.exchange();
+    }
+
+    @Test
+    void unTokenRevocadoAntesDeExpirarRecibe401() throws InterruptedException {
+        String revocado = token("CIUDADANO", CLAVE, "servired-identidad", "servired-api", Instant.now().plusSeconds(600),
+                JTI_REVOCADO);
+        // La primera sincronización corre al arrancar, en segundo plano.
+        int estado = 0;
+        for (int i = 0; i < 50 && estado != 401; i++) {
+            estado = get("/api/v1/reportes/mios", revocado).returnResult(String.class).getStatus().value();
+            Thread.sleep(100);
+        }
+        get("/api/v1/reportes/mios", revocado).expectStatus().isUnauthorized()
+                .expectHeader().contentType(MediaType.APPLICATION_PROBLEM_JSON);
+        get("/api/v1/reportes/mios", token("CIUDADANO")).expectStatus().isOk();
     }
 
     @Test

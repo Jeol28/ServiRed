@@ -80,6 +80,11 @@ servired:
     jwks-url: ${IDENTIDAD_JWKS_URL:http://identidad:8080/.well-known/jwks.json}
     emisor: servired-identidad
     audiencia: servired-api
+    # Lista de revocación por jti (ADR-26): carga completa al arrancar y luego incremental.
+    revocacion:
+      url: ${IDENTIDAD_REVOCADOS_URL:http://identidad:8080/interno/v1/tokens-revocados}
+      intervalo: PT5S
+      solapamiento: PT30S
   limites:
     autenticacion-por-minuto: 20
     denuncias-por-minuto: 5
