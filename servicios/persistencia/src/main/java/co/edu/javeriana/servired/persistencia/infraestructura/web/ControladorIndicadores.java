@@ -48,7 +48,10 @@ public class ControladorIndicadores {
     @PostMapping("/agregados")
     public List<Agregado> agregados(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
                                     @Valid @RequestBody SolicitudAgregados a) {
-        return indicadores.agregados(s, a.filtro().aDominio(), a.agrupacion(), a.celdaGrados() == null ? 0.01 : a.celdaGrados());
+        double celda = a.celdaGrados() == null ? 0.01 : a.celdaGrados();
+        // Sin celda rural explícita, la más protectora entre la pedida y 0,05° (ADR-28).
+        double celdaRural = a.celdaRuralGrados() == null ? Math.max(celda, 0.05) : a.celdaRuralGrados();
+        return indicadores.agregados(s, a.filtro().aDominio(), a.agrupacion(), celda, celdaRural);
     }
 
     @PostMapping("/hechos")
@@ -94,7 +97,8 @@ public class ControladorIndicadores {
         }
     }
 
-    public record SolicitudAgregados(@NotNull @Valid FiltroDto filtro, @NotNull Agrupacion agrupacion, Double celdaGrados) {
+    public record SolicitudAgregados(@NotNull @Valid FiltroDto filtro, @NotNull Agrupacion agrupacion, Double celdaGrados,
+                                     Double celdaRuralGrados) {
     }
 
     public record SolicitudHechos(@NotNull @Valid FiltroDto filtro, int desde, int limite) {

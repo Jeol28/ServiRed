@@ -47,7 +47,10 @@ public class V13__limites_municipales extends BaseJavaMigration {
             s.execute("COMMENT ON TABLE catalogo.limites_municipios IS "
                     + "'Polígonos municipales oficiales para ubicar reportes (ADR-27)'");
         }
-        int cargados = cargar(c, g);
+        int cargados = cargar(c, DATOS, """
+                INSERT INTO catalogo.limites_municipios (codigo, geom, fuente)
+                VALUES (?, %1$s.ST_Multi(%1$s.ST_CollectionExtract(%1$s.ST_MakeValid(
+                            %1$s.ST_SetSRID(%1$s.ST_GeomFromTWKB(?), 4326)), 3)), ?)""".formatted(g), FUENTE);
         if (cargados < 1100) {
             throw new IllegalStateException("Se esperaban ~1.121 polígonos municipales y se cargaron " + cargados);
         }
@@ -92,15 +95,15 @@ public class V13__limites_municipales extends BaseJavaMigration {
         return destino;
     }
 
-    private static int cargar(Connection c, String g) throws SQLException, IOException {
-        String sql = """
-                INSERT INTO catalogo.limites_municipios (codigo, geom, fuente)
-                VALUES (?, %1$s.ST_Multi(%1$s.ST_CollectionExtract(%1$s.ST_MakeValid(
-                            %1$s.ST_SetSRID(%1$s.ST_GeomFromTWKB(?), 4326)), 3)), ?)""".formatted(g);
+    /**
+     * Carga un archivo de geometrías (por registro: código DIVIPOLA de 5 bytes ASCII, longitud
+     * de 4 bytes big endian y TWKB) con un INSERT de tres parámetros: código, TWKB y fuente.
+     */
+    static int cargar(Connection c, String datos, String sql, String fuente) throws SQLException, IOException {
         int n = 0;
-        try (InputStream recurso = V13__limites_municipales.class.getClassLoader().getResourceAsStream(DATOS)) {
+        try (InputStream recurso = V13__limites_municipales.class.getClassLoader().getResourceAsStream(datos)) {
             if (recurso == null) {
-                throw new IllegalStateException("Falta el recurso " + DATOS);
+                throw new IllegalStateException("Falta el recurso " + datos);
             }
             try (var entrada = new DataInputStream(new GZIPInputStream(recurso, 1 << 16));
                  PreparedStatement p = c.prepareStatement(sql)) {
@@ -115,7 +118,7 @@ public class V13__limites_municipales extends BaseJavaMigration {
                     entrada.readFully(twkb);
                     p.setString(1, new String(codigo, StandardCharsets.US_ASCII));
                     p.setBytes(2, twkb);
-                    p.setString(3, FUENTE);
+                    p.setString(3, fuente);
                     p.addBatch();
                     if (++n % 100 == 0) {
                         p.executeBatch();
@@ -133,7 +136,7 @@ public class V13__limites_municipales extends BaseJavaMigration {
         }
     }
 
-    private static String comillas(String identificador) {
+    static String comillas(String identificador) {
         return "\"" + identificador.replace("\"", "\"\"") + "\"";
     }
 }

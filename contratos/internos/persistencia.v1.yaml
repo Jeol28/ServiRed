@@ -762,9 +762,20 @@ paths:
               properties:
                 filtro: { $ref: "#/components/schemas/FiltroVista" }
                 agrupacion: { type: string, enum: [NINGUNA, SERVICIO, DEPARTAMENTO, MUNICIPIO, MUNICIPIO_SERVICIO_MES, CELDA] }
-                celdaGrados: { type: number, minimum: 0.001, maximum: 1 }
+                celdaGrados: { type: number, minimum: 0.001, maximum: 1, description: "En CELDA: lado en las cabeceras municipales (por defecto 0,01°)" }
+                celdaRuralGrados:
+                  type: number
+                  minimum: 0.001
+                  maximum: 1
+                  description: |
+                    En CELDA: lado fuera de las cabeceras municipales (ADR-28); no puede ser menor que
+                    celdaGrados. Por defecto, el mayor entre celdaGrados y 0,05°. Un reporte sin
+                    clasificar se trata como rural.
       responses:
-        "200": { description: Lista de agregados }
+        "200":
+          description: |
+            Lista de agregados. En CELDA, cada uno trae enCabecera (true en una cabecera
+            municipal, false fuera); en las demás agrupaciones es null.
         "409": { description: Periodo o celda inválidos }
 
   /interno/v1/indicadores/hechos:

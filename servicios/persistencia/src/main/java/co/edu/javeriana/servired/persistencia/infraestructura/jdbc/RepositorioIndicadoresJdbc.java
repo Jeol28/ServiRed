@@ -39,15 +39,19 @@ public class RepositorioIndicadoresJdbc implements RepositorioIndicadores {
                         INSERT INTO indicadores.vista_reportes AS v
                             (id_reporte, tipo_servicio, codigo_municipio, latitud, longitud, magnitud, inicio_estimado,
                              fecha_registro, fecha_restablecimiento, duracion_minutos, validado, confirmaciones_netas,
-                             validacion_en, estado_caso, prioridad, id_empresa, caso_en, resuelto_en, cerrado_en)
+                             validacion_en, estado_caso, prioridad, id_empresa, caso_en, resuelto_en, cerrado_en,
+                             en_cabecera)
                         VALUES (:id, :servicio, :municipio, :lat, :lon, :magnitud, :inicio, :registro, :restablecido,
                                 :duracion, COALESCE(:validado, false), COALESCE(:netas, 0), :validacionEn,
-                                :estadoCaso, :prioridad, :empresa, :casoEn, :resuelto, :cerrado)
+                                :estadoCaso, :prioridad, :empresa, :casoEn, :resuelto, :cerrado,
+                                CASE WHEN CAST(:lat AS float8) IS NOT NULL AND CAST(:lon AS float8) IS NOT NULL
+                                     THEN catalogo.en_cabecera(:lat, :lon) END)
                         ON CONFLICT (id_reporte) DO UPDATE SET
                             tipo_servicio = COALESCE(v.tipo_servicio, EXCLUDED.tipo_servicio),
                             codigo_municipio = COALESCE(v.codigo_municipio, EXCLUDED.codigo_municipio),
                             latitud = COALESCE(v.latitud, EXCLUDED.latitud),
                             longitud = COALESCE(v.longitud, EXCLUDED.longitud),
+                            en_cabecera = COALESCE(v.en_cabecera, EXCLUDED.en_cabecera),
                             magnitud = COALESCE(v.magnitud, EXCLUDED.magnitud),
                             inicio_estimado = COALESCE(v.inicio_estimado, EXCLUDED.inicio_estimado),
                             fecha_registro = COALESCE(v.fecha_registro, EXCLUDED.fecha_registro),
@@ -90,7 +94,7 @@ public class RepositorioIndicadoresJdbc implements RepositorioIndicadores {
     private static final java.util.List<String> COMPARABLES = java.util.List.of(
             "tipo_servicio", "codigo_municipio", "latitud", "longitud", "magnitud", "inicio_estimado",
             "fecha_registro", "fecha_restablecimiento", "duracion_minutos", "validado", "confirmaciones_netas",
-            "estado_caso", "prioridad", "id_empresa", "resuelto_en", "cerrado_en");
+            "estado_caso", "prioridad", "id_empresa", "resuelto_en", "cerrado_en", "en_cabecera");
     private static final java.util.Set<String> FECHAS = java.util.Set.of(
             "inicio_estimado", "fecha_registro", "fecha_restablecimiento", "resuelto_en", "cerrado_en");
 
@@ -113,7 +117,7 @@ public class RepositorioIndicadoresJdbc implements RepositorioIndicadores {
                        r.inicio_estimado, r.fecha_registro, r.fecha_restablecimiento, r.duracion_minutos,
                        COALESCE(v.netas, 0) >= :umbral AS validado, COALESCE(v.netas, 0)::int AS confirmaciones_netas,
                        v.ultima AS validacion_en, c.estado AS estado_caso, c.prioridad, c.id_empresa, c.caso_en,
-                       c.resuelto_en, c.cerrado_en
+                       c.resuelto_en, c.cerrado_en, catalogo.en_cabecera(r.latitud, r.longitud) AS en_cabecera
                 FROM reportes.reportes r
                 LEFT JOIN votos v ON v.id_reporte = r.id
                 LEFT JOIN casos c ON c.id_reporte = r.id)
@@ -195,26 +199,30 @@ public class RepositorioIndicadoresJdbc implements RepositorioIndicadores {
             """;
 
     @Override
-    public List<Agregado> agregar(Filtro f, Agrupacion agrupacion, double celda) {
+    public List<Agregado> agregar(Filtro f, Agrupacion agrupacion, double celda, double celdaRural) {
+        // Celdas (ADR-28): en una cabecera municipal miden :celda; fuera, :celdaRural. Sin
+        // clasificación (null) se trata como rural, que es lo más protector.
+        String lado = "(CASE WHEN v.en_cabecera THEN CAST(:celda AS float8) ELSE CAST(:celdaRural AS float8) END)";
         String claves = switch (agrupacion) {
             case NINGUNA -> "NULL::text AS codigo, NULL::text AS nombre, NULL::text AS departamento, NULL::text AS servicio, "
-                    + "NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon";
+                    + "NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon, NULL::boolean AS cabecera";
             case SERVICIO -> "v.tipo_servicio AS codigo, v.tipo_servicio AS nombre, NULL::text AS departamento, "
-                    + "v.tipo_servicio AS servicio, NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon";
+                    + "v.tipo_servicio AS servicio, NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon, NULL::boolean AS cabecera";
             case DEPARTAMENTO -> "d.codigo::text AS codigo, d.nombre AS nombre, d.nombre AS departamento, NULL::text AS servicio, "
-                    + "NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon";
+                    + "NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon, NULL::boolean AS cabecera";
             case MUNICIPIO -> "m.codigo::text AS codigo, m.nombre AS nombre, d.nombre AS departamento, NULL::text AS servicio, "
-                    + "NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon";
+                    + "NULL::timestamptz AS mes, NULL::float8 AS clat, NULL::float8 AS clon, NULL::boolean AS cabecera";
             case MUNICIPIO_SERVICIO_MES -> "m.codigo::text AS codigo, m.nombre AS nombre, d.nombre AS departamento, "
                     + "v.tipo_servicio AS servicio, date_trunc('month', v.fecha_registro, 'UTC') AS mes, "
-                    + "NULL::float8 AS clat, NULL::float8 AS clon";
+                    + "NULL::float8 AS clat, NULL::float8 AS clon, NULL::boolean AS cabecera";
             case CELDA -> "NULL::text AS codigo, NULL::text AS nombre, NULL::text AS departamento, NULL::text AS servicio, "
-                    + "NULL::timestamptz AS mes, (floor(v.latitud / :celda) + 0.5) * :celda AS clat, "
-                    + "(floor(v.longitud / :celda) + 0.5) * :celda AS clon";
+                    + "NULL::timestamptz AS mes, (floor(v.latitud / " + lado + ") + 0.5) * " + lado + " AS clat, "
+                    + "(floor(v.longitud / " + lado + ") + 0.5) * " + lado + " AS clon, "
+                    + "COALESCE(v.en_cabecera, false) AS cabecera";
         };
         String agrupar = switch (agrupacion) {
             case NINGUNA -> "";
-            case CELDA -> " GROUP BY 6, 7";
+            case CELDA -> " GROUP BY 6, 7, 8";
             default -> " GROUP BY 1, 2, 3, 4, 5";
         };
         return parametros(jdbc.sql("SELECT " + claves + """
@@ -234,9 +242,11 @@ public class RepositorioIndicadoresJdbc implements RepositorioIndicadores {
                               FILTER (WHERE v.resuelto_en IS NOT NULL) AS tiempo_resolucion
                         """ + DESDE + agrupar + " ORDER BY reportes DESC"), f)
                 .param("celda", celda)
+                .param("celdaRural", celdaRural)
                 .query((rs, n) -> new Agregado(rs.getString("codigo"), rs.getString("nombre"),
                         rs.getString("departamento"), rs.getString("servicio"), instante(rs, "mes"),
-                        decimal(rs, "clat"), decimal(rs, "clon"), rs.getLong("reportes"), rs.getLong("con_duracion"),
+                        decimal(rs, "clat"), decimal(rs, "clon"), (Boolean) rs.getObject("cabecera"),
+                        rs.getLong("reportes"), rs.getLong("con_duracion"),
                         decimal(rs, "duracion_promedio"), decimal(rs, "duracion_mediana"), decimal(rs, "duracion_p90"),
                         rs.getLong("vivienda"), rs.getLong("cuadra"), rs.getLong("barrio"), rs.getLong("sector"),
                         rs.getLong("validados"), rs.getLong("resueltos"), decimal(rs, "tiempo_resolucion")))

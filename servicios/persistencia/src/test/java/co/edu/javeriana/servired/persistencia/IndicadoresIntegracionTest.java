@@ -1,5 +1,6 @@
 package co.edu.javeriana.servired.persistencia;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -127,6 +128,49 @@ class IndicadoresIntegracionTest {
                 {"filtro":%s,"agrupacion":"MUNICIPIO_SERVICIO_MES"}""".formatted(FILTRO.formatted(",\"codigoMunicipio\":\"73001\"")))
                 .andExpect(jsonPath("$[0].mes").value("2026-11-01T00:00:00Z"))
                 .andExpect(jsonPath("$[0].tipoServicio").value("ACUEDUCTO"));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /** ADR-28: celdas de 0,01° en las cabeceras municipales y de 0,05° fuera de ellas. */
+    @Test
+    void fueraDeLasCabecerasLasCeldasSonMasGrandes() throws Exception {
+        UUID urbano = UUID.randomUUID();
+        UUID rural = UUID.randomUUID();
+        UUID centroPoblado = UUID.randomUUID();
+        crear(urbano, "11001", "GAS", "CUADRA", 4.6287, -74.0648);             // Chapinero, cabecera de Bogotá
+        crear(rural, "11001", "GAS", "CUADRA", 4.01677, -74.17358);            // Sumapaz, rural de Bogotá
+        crear(centroPoblado, "25754", "GAS", "CUADRA", 4.54315, -74.27566);    // Charquito: centro poblado de Soacha
+
+        assertThat(jdbc.queryForObject("SELECT en_cabecera FROM indicadores.vista_reportes WHERE id_reporte = ?",
+                Boolean.class, urbano)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT en_cabecera FROM indicadores.vista_reportes WHERE id_reporte = ?",
+                Boolean.class, rural)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT en_cabecera FROM indicadores.vista_reportes WHERE id_reporte = ?",
+                Boolean.class, centroPoblado)).as("un centro poblado no es cabecera").isFalse();
+
+        String filtroGas = FILTRO.formatted(",\"tipoServicio\":\"GAS\"");
+        enviar(CLAVE, "/interno/v1/indicadores/agregados", """
+                {"filtro":%s,"agrupacion":"CELDA","celdaGrados":0.01,"celdaRuralGrados":0.05}""".formatted(filtroGas))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[?(@.enCabecera == true)].celdaLatitud").value(org.hamcrest.Matchers.contains(
+                        org.hamcrest.Matchers.closeTo(4.625, 1e-9))))
+                .andExpect(jsonPath("$[?(@.enCabecera == false)].celdaLatitud").value(
+                        org.hamcrest.Matchers.containsInAnyOrder(org.hamcrest.Matchers.closeTo(4.025, 1e-9),
+                                org.hamcrest.Matchers.closeTo(4.525, 1e-9))))
+                .andExpect(jsonPath("$[?(@.enCabecera == false)].celdaLongitud").value(
+                        org.hamcrest.Matchers.containsInAnyOrder(org.hamcrest.Matchers.closeTo(-74.175, 1e-9),
+                                org.hamcrest.Matchers.closeTo(-74.275, 1e-9))));
+        // Sin celda rural explícita se usa la más protectora (0,05°).
+        enviar(CLAVE, "/interno/v1/indicadores/agregados", """
+                {"filtro":%s,"agrupacion":"CELDA","celdaGrados":0.01}""".formatted(filtroGas))
+                .andExpect(jsonPath("$[?(@.enCabecera == false)].celdaLatitud").value(
+                        org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.closeTo(4.025, 1e-9))));
+        enviar(CLAVE, "/interno/v1/indicadores/agregados", """
+                {"filtro":%s,"agrupacion":"CELDA","celdaGrados":0.05,"celdaRuralGrados":0.01}""".formatted(filtroGas))
+                .andExpect(status().is4xxClientError());
     }
 
     @Test

@@ -28,8 +28,9 @@ public final class Indicadores {
                          String codigoMunicipio, UUID idEmpresa, String situacion) {
     }
 
+    /** @param enCabecera solo en celdas: si es una celda de cabecera municipal (true) o rural (false), ADR-28 */
     public record Agregado(String codigo, String nombre, String departamento, String tipoServicio, Instant mes,
-                           Double celdaLatitud, Double celdaLongitud, long reportes, long conDuracion,
+                           Double celdaLatitud, Double celdaLongitud, Boolean enCabecera, long reportes, long conDuracion,
                            Double duracionPromedio, Double duracionMediana, Double duracionP90, long vivienda,
                            long cuadra, long barrio, long sector, long validados, long resueltos,
                            Double tiempoResolucionPromedio) {

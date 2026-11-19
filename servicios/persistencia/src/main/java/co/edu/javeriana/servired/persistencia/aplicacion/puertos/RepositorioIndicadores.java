@@ -13,7 +13,8 @@ public interface RepositorioIndicadores {
 
     void actualizar(ActualizacionVista a);
 
-    List<Agregado> agregar(Filtro filtro, Agrupacion agrupacion, double celdaGrados);
+    /** En CELDA, celdaGrados es el lado en cabeceras municipales y celdaRuralGrados fuera de ellas (ADR-28). */
+    List<Agregado> agregar(Filtro filtro, Agrupacion agrupacion, double celdaGrados, double celdaRuralGrados);
 
     PaginaHechos hechos(Filtro filtro, int desde, int limite);
 

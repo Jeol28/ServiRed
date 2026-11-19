@@ -39,13 +39,15 @@ public class OperacionesIndicadores {
         });
     }
 
-    public List<Agregado> agregados(ServicioCliente s, Filtro filtro, Agrupacion agrupacion, double celdaGrados) {
+    public List<Agregado> agregados(ServicioCliente s, Filtro filtro, Agrupacion agrupacion, double celdaGrados,
+                                    double celdaRuralGrados) {
         OperacionNegocio.CALCULAR_AGREGADOS.autorizar(s);
         validarPeriodo(filtro);
-        if (agrupacion == Agrupacion.CELDA && (celdaGrados < 0.001 || celdaGrados > 1)) {
-            throw new SolicitudRechazada("Tamaño de celda fuera de rango");
+        if (agrupacion == Agrupacion.CELDA && (celdaGrados < 0.001 || celdaGrados > 1
+                || celdaRuralGrados < celdaGrados || celdaRuralGrados > 1)) {
+            throw new SolicitudRechazada("Tamaño de celda fuera de rango (la rural no puede ser menor que la urbana)");
         }
-        return repositorio.agregar(filtro, agrupacion, celdaGrados);
+        return repositorio.agregar(filtro, agrupacion, celdaGrados, celdaRuralGrados);
     }
 
     public PaginaHechos hechos(ServicioCliente s, Filtro filtro, int desde, int limite) {
