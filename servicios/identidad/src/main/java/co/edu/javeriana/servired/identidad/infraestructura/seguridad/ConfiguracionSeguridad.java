@@ -32,6 +32,8 @@ public class ConfiguracionSeguridad {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/**", "/.well-known/jwks.json", "/error").permitAll()
+                        // Interna (ADR-26): el gateway no la enruta y el puerto no se publica.
+                        .requestMatchers(HttpMethod.GET, "/interno/v1/tokens-revocados").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/registro", "/api/v1/auth/login",
                                 "/api/v1/auth/refrescar", "/api/v1/auth/cerrar-sesion").permitAll()
                         .requestMatchers("/api/v1/cuentas/yo").authenticated()

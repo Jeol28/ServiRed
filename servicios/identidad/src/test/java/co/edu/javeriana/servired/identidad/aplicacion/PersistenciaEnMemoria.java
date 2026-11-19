@@ -1,5 +1,6 @@
 package co.edu.javeriana.servired.identidad.aplicacion;
 
+import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones.AccesoRevocado;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioCuentas;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones.ResultadoRotacion;
@@ -108,13 +109,28 @@ public class PersistenciaEnMemoria implements RepositorioCuentas, RepositorioSes
         return cuentas.remove(idCuenta) != null;
     }
 
+    public final Map<UUID, Instant> accesosRevocados = new ConcurrentHashMap<>();
+
     @Override
-    public void abrir(UUID idSesion, UUID idCuenta, String hash, Instant expiraEn, IdCorrelacion correlacion) {
+    public java.util.List<AccesoRevocado> accesosRevocados(Instant desde, IdCorrelacion correlacion) {
+        return accesosRevocados.entrySet().stream().map(e -> new AccesoRevocado(e.getKey(), e.getValue(), e.getValue()))
+                .toList();
+    }
+
+    public final java.util.List<co.edu.javeriana.servired.identidad.aplicacion.puertos.EmisorTokens.Plan> accesosAbiertos =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    @Override
+    public void abrir(UUID idSesion, UUID idCuenta, String hash, Instant expiraEn,
+                      co.edu.javeriana.servired.identidad.aplicacion.puertos.EmisorTokens.Plan acceso,
+                      IdCorrelacion correlacion) {
+        accesosAbiertos.add(acceso);
         sesiones.put(hash, new Sesion(idCuenta, expiraEn, false));
     }
 
     @Override
     public synchronized ResultadoRotacion rotar(String hashActual, UUID idNueva, String hashNuevo, Instant expiraEn,
+                                                co.edu.javeriana.servired.identidad.aplicacion.puertos.EmisorTokens.Plan acceso,
                                                 IdCorrelacion correlacion) {
         var s = sesiones.get(hashActual);
         if (s == null) {
@@ -130,6 +146,7 @@ public class PersistenciaEnMemoria implements RepositorioCuentas, RepositorioSes
         }
         sesiones.put(hashActual, new Sesion(s.idCuenta(), s.expira(), true));
         sesiones.put(hashNuevo, new Sesion(s.idCuenta(), expiraEn, false));
+        accesosAbiertos.add(acceso);
         return ResultadoRotacion.valida(cuenta.get());
     }
 

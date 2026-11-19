@@ -105,6 +105,18 @@ class IdentidadApiTest {
     }
 
     @Test
+    void laListaDeRevocacionSeEntregaSinTokenComoElJwks() throws Exception {
+        java.util.UUID jti = java.util.UUID.randomUUID();
+        persistencia.accesosRevocados.put(jti, java.time.Instant.now().plusSeconds(600));
+
+        mvc.perform(get("/interno/v1/tokens-revocados"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.generadaEn").exists())
+                .andExpect(jsonPath("$.revocados[?(@.jti == '" + jti + "')]").exists());
+        mvc.perform(get("/interno/v1/tokens-revocados?desde=2026-11-18T12:00:00Z")).andExpect(status().isOk());
+    }
+
+    @Test
     void sinTokenOConTokenFalsoResponde401ProblemJson() throws Exception {
         mvc.perform(get("/api/v1/cuentas/yo"))
                 .andExpect(status().isUnauthorized())

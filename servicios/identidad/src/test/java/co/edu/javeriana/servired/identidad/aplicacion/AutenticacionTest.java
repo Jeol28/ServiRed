@@ -32,8 +32,21 @@ class AutenticacionTest {
     };
 
     private final AtomicInteger emitidos = new AtomicInteger();
-    private final EmisorTokens emisor = (id, rol, empresa, creada) ->
-            new EmisorTokens.TokenAcceso("token-" + emitidos.incrementAndGet() + "-" + rol, Instant.now().plusSeconds(900));
+    /** El token lleva su jti a la vista, para comprobar que es el que se guardó con la sesión. */
+    private final EmisorTokens emisor = new EmisorTokens() {
+        public TokenAcceso emitir(UUID id, Rol rol, UUID empresa, Instant creada) {
+            return emitir(planear(), id, rol, empresa, creada);
+        }
+
+        public Plan planear() {
+            Instant ahora = Instant.now();
+            return new Plan(UUID.randomUUID(), ahora, ahora.plusSeconds(900));
+        }
+
+        public TokenAcceso emitir(Plan plan, UUID id, Rol rol, UUID empresa, Instant creada) {
+            return new TokenAcceso("token-" + emitidos.incrementAndGet() + "-jti:" + plan.jti() + "-" + rol, plan.expiraEn());
+        }
+    };
     private final PersistenciaEnMemoria persistencia = new PersistenciaEnMemoria();
     private final Autenticacion auth = new Autenticacion(persistencia, persistencia, CIFRADOR, emisor,
             Clock.systemUTC(), Duration.ofDays(14), persistencia);
@@ -97,6 +110,18 @@ class AutenticacionTest {
 
         assertThatThrownBy(() -> auth.renovar(inicial.tokenRefresco(), correlacion)).isInstanceOf(SesionInvalida.class);
         assertThatThrownBy(() -> auth.renovar(renovada.tokenRefresco(), correlacion)).isInstanceOf(SesionInvalida.class);
+    }
+
+    @Test
+    void cadaSesionGuardaElJtiDelTokenDeAccesoQueSeEmiteConElla() {
+        registrar();
+        var inicial = auth.iniciarSesion("ana@ejemplo.co", "clave-segura-1", correlacion);
+        var renovada = auth.renovar(inicial.tokenRefresco(), correlacion);
+
+        assertThat(persistencia.accesosAbiertos).hasSize(2);
+        assertThat(inicial.acceso().valor()).contains("jti:" + persistencia.accesosAbiertos.get(0).jti());
+        assertThat(renovada.acceso().valor()).contains("jti:" + persistencia.accesosAbiertos.get(1).jti());
+        assertThat(renovada.acceso().expiraEn()).isEqualTo(persistencia.accesosAbiertos.get(1).expiraEn());
     }
 
     @Test

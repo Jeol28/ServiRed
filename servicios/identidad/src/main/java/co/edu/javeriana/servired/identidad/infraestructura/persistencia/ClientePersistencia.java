@@ -1,5 +1,7 @@
 package co.edu.javeriana.servired.identidad.infraestructura.persistencia;
 
+import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioSesiones.AccesoRevocado;
+import co.edu.javeriana.servired.identidad.aplicacion.puertos.EmisorTokens.Plan;
 import co.edu.javeriana.servired.identidad.aplicacion.AccionAuditada;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RegistroAcciones;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.RepositorioCuentas;
@@ -215,23 +217,25 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
 
     // ----------------------------------------------------------------- sesiones
     @Override
-    public void abrir(UUID idSesion, UUID idCuenta, String hashRefresco, Instant expiraEn, IdCorrelacion correlacion) {
+    public void abrir(UUID idSesion, UUID idCuenta, String hashRefresco, Instant expiraEn, Plan acceso,
+                      IdCorrelacion correlacion) {
         conReintentos("abrirSesion", () -> http.post().uri("/interno/v1/sesiones/abrir")
                 .header(IdCorrelacion.CABECERA, correlacion.valor())
                 .body(Map.of("idSesion", idSesion, "idCuenta", idCuenta, "hashRefresco", hashRefresco,
-                        "expiraEn", expiraEn))
+                        "expiraEn", expiraEn, "jtiAcceso", acceso.jti(), "accesoExpiraEn", acceso.expiraEn()))
                 .retrieve().toBodilessEntity());
     }
 
     /** Sin reintentos: repetir una rotación ya aplicada se interpretaría como reutilización del token. */
     @Override
     public ResultadoRotacion rotar(String hashActual, UUID idSesionNueva, String hashNuevo, Instant expiraEn,
-                                   IdCorrelacion correlacion) {
+                                   Plan acceso, IdCorrelacion correlacion) {
         try {
             var r = circuito.executeSupplier(() -> http.post().uri("/interno/v1/sesiones/rotar")
                     .header(IdCorrelacion.CABECERA, correlacion.valor())
                     .body(Map.of("hashRefrescoActual", hashActual, "idSesionNueva", idSesionNueva,
-                            "hashRefrescoNuevo", hashNuevo, "expiraEn", expiraEn))
+                            "hashRefrescoNuevo", hashNuevo, "expiraEn", expiraEn, "jtiAcceso", acceso.jti(),
+                            "accesoExpiraEn", acceso.expiraEn()))
                     .retrieve().body(RotacionDto.class));
             return ResultadoRotacion.valida(r.cuenta().aDominio());
         } catch (HttpClientErrorException.Conflict e) {
@@ -251,6 +255,24 @@ public class ClientePersistencia implements RepositorioCuentas, RepositorioSesio
                 .header(IdCorrelacion.CABECERA, correlacion.valor())
                 .body(Map.of("hashRefresco", hashRefresco))
                 .retrieve().toBodilessEntity());
+    }
+
+    @Override
+    public List<AccesoRevocado> accesosRevocados(Instant desde, IdCorrelacion correlacion) {
+        try {
+            return circuito.executeSupplier(() -> List.of(http.get()
+                    .uri(u -> {
+                        u.path("/interno/v1/sesiones/accesos-revocados");
+                        if (desde != null) {
+                            u.queryParam("desde", desde.toString());
+                        }
+                        return u.build();
+                    })
+                    .header(IdCorrelacion.CABECERA, correlacion.valor())
+                    .retrieve().body(AccesoRevocado[].class)));
+        } catch (ResourceAccessException | HttpServerErrorException | CallNotPermittedException e) {
+            throw new PersistenciaNoDisponible("Persistencia no disponible para listarAccesosRevocados", e);
+        }
     }
 
     // ---------------------------------------------------------------- auxiliares

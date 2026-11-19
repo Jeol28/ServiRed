@@ -1,5 +1,6 @@
 package co.edu.javeriana.servired.identidad.aplicacion;
 
+import java.time.Instant;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.CifradorClaves;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.EmisorTokens;
 import co.edu.javeriana.servired.identidad.aplicacion.puertos.EmisorTokens.TokenAcceso;
@@ -82,10 +83,11 @@ public class Autenticacion {
             throw new CredencialesInvalidas();
         }
         var refresco = TokensRefresco.generar();
+        var acceso = emisor.planear();
         sesiones.abrir(UUID.randomUUID(), cred.idCuenta(), refresco.hash(),
-                reloj.instant().plus(duracionRefresco), correlacion);
+                reloj.instant().plus(duracionRefresco), acceso, correlacion);
         auditar(AccionAuditada.acceso("INICIO_SESION", true, cred.idCuenta(), cred.rol(), Map.of()), correlacion);
-        return new Sesion(emisor.emitir(cred.idCuenta(), cred.rol(), cred.idEmpresa(), cred.creadaEn()), refresco.valor(),
+        return new Sesion(emisor.emitir(acceso, cred.idCuenta(), cred.rol(), cred.idEmpresa(), cred.creadaEn()), refresco.valor(),
                 cred.idCuenta(), cred.rol(), cred.nombre(), cred.idEmpresa());
     }
 
@@ -94,14 +96,15 @@ public class Autenticacion {
             throw new SesionInvalida();
         }
         var nuevo = TokensRefresco.generar();
+        var acceso = emisor.planear();
         var rotacion = sesiones.rotar(TokensRefresco.hash(tokenRefresco), UUID.randomUUID(), nuevo.hash(),
-                reloj.instant().plus(duracionRefresco), correlacion);
+                reloj.instant().plus(duracionRefresco), acceso, correlacion);
         if (rotacion.reutilizado()) {
             auditar(AccionAuditada.seguridad("REFRESCO_REUTILIZADO",
                     Map.of("consecuencia", "sesiones de la cuenta revocadas")), correlacion);
         }
         Cuenta cuenta = rotacion.cuenta().orElseThrow(SesionInvalida::new);
-        return new Sesion(emisor.emitir(cuenta.idCuenta(), cuenta.rol(), cuenta.idEmpresa(), cuenta.creadaEn()), nuevo.valor(),
+        return new Sesion(emisor.emitir(acceso, cuenta.idCuenta(), cuenta.rol(), cuenta.idEmpresa(), cuenta.creadaEn()), nuevo.valor(),
                 cuenta.idCuenta(), cuenta.rol(), cuenta.nombre(), cuenta.idEmpresa());
     }
 
@@ -121,6 +124,11 @@ public class Autenticacion {
         if (tokenRefresco != null && !tokenRefresco.isBlank() && tokenRefresco.length() <= 100) {
             sesiones.cerrar(TokensRefresco.hash(tokenRefresco), correlacion);
         }
+    }
+
+    /** Lista de revocación para el gateway (ADR-26). */
+    public List<RepositorioSesiones.AccesoRevocado> accesosRevocados(Instant desde, IdCorrelacion correlacion) {
+        return sesiones.accesosRevocados(desde, correlacion);
     }
 
     public record Sesion(TokenAcceso acceso, String tokenRefresco, UUID idCuenta, Rol rol, String nombre,

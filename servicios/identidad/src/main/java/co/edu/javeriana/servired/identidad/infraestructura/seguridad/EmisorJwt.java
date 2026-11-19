@@ -38,8 +38,19 @@ public class EmisorJwt implements EmisorTokens {
 
     @Override
     public TokenAcceso emitir(UUID idCuenta, Rol rol, UUID idEmpresa, Instant cuentaCreadaEn) {
+        return emitir(planear(), idCuenta, rol, idEmpresa, cuentaCreadaEn);
+    }
+
+    @Override
+    public Plan planear() {
         Instant ahora = reloj.instant();
-        Instant expira = ahora.plus(propiedades.duracionAcceso());
+        return new Plan(UUID.randomUUID(), ahora, ahora.plus(propiedades.duracionAcceso()));
+    }
+
+    @Override
+    public TokenAcceso emitir(Plan plan, UUID idCuenta, Rol rol, UUID idEmpresa, Instant cuentaCreadaEn) {
+        Instant ahora = plan.emitidoEn();
+        Instant expira = plan.expiraEn();
         var claims = new JWTClaimsSet.Builder()
                 .issuer(propiedades.emisor())
                 .audience(propiedades.audiencia())
@@ -48,7 +59,7 @@ public class EmisorJwt implements EmisorTokens {
                 .issueTime(Date.from(ahora))
                 .notBeforeTime(Date.from(ahora))
                 .expirationTime(Date.from(expira))
-                .jwtID(UUID.randomUUID().toString());
+                .jwtID(plan.jti().toString());
         if (idEmpresa != null) {
             claims.claim(CLAIM_EMPRESA, idEmpresa.toString());
         }

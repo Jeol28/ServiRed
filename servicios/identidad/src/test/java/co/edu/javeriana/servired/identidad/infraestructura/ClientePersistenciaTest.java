@@ -1,5 +1,6 @@
 package co.edu.javeriana.servired.identidad.infraestructura;
 
+import co.edu.javeriana.servired.identidad.aplicacion.puertos.EmisorTokens;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
@@ -75,9 +76,32 @@ class ClientePersistenciaTest {
                 .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_PROBLEM_JSON)
                         .body("{\"motivo\":\"REUTILIZADA\"}"));
 
-        var r = cliente.rotar("a".repeat(64), UUID.randomUUID(), "b".repeat(64), Instant.now(), correlacion);
+        var r = cliente.rotar("a".repeat(64), UUID.randomUUID(), "b".repeat(64), Instant.now(), new EmisorTokens.Plan(UUID.randomUUID(), Instant.now(), Instant.now().plusSeconds(900)), correlacion);
         assertThat(r.cuenta()).isEmpty();
         assertThat(r.reutilizado()).isTrue();
+        servidor.verify();
+    }
+
+    @Test
+    void laRotacionEnviaElJtiDelAccesoYLaListaDeRevocadosLlegaCompleta() {
+        var plan = new EmisorTokens.Plan(UUID.randomUUID(), Instant.now(), Instant.now().plusSeconds(900));
+        servidor.expect(once(), requestTo(URL + "/interno/v1/sesiones/rotar"))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath("$.jtiAcceso")
+                        .value(plan.jti().toString()))
+                .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                        .body("{\"motivo\":\"EXPIRADA\"}"));
+        servidor.expect(once(), requestTo(URL + "/interno/v1/sesiones/accesos-revocados?desde=2026-11-18T12:00:00Z"))
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess(
+                        "[{\"jti\":\"0b1d8f4e-6f3a-4c55-9d2e-1f0a7c9e2b11\",\"expiraEn\":\"2026-11-18T12:15:00Z\","
+                                + "\"revocadoEn\":\"2026-11-18T12:01:00Z\"}]", MediaType.APPLICATION_JSON));
+
+        cliente.rotar("a".repeat(64), UUID.randomUUID(), "b".repeat(64), Instant.now(), plan, correlacion);
+        var revocados = cliente.accesosRevocados(Instant.parse("2026-11-18T12:00:00Z"), correlacion);
+
+        assertThat(revocados).singleElement().satisfies(r -> {
+            assertThat(r.jti()).isEqualTo(UUID.fromString("0b1d8f4e-6f3a-4c55-9d2e-1f0a7c9e2b11"));
+            assertThat(r.expiraEn()).isEqualTo(Instant.parse("2026-11-18T12:15:00Z"));
+        });
         servidor.verify();
     }
 
@@ -105,7 +129,7 @@ class ClientePersistenciaTest {
 
         // Abierto: el inicio de sesión y la rotación fallan sin llamar a Persistencia (503).
         assertThatThrownBy(() -> conCircuito.rotar("a".repeat(64), UUID.randomUUID(), "b".repeat(64),
-                Instant.now(), correlacion)).isInstanceOf(PersistenciaNoDisponible.class);
+                Instant.now(), new EmisorTokens.Plan(UUID.randomUUID(), Instant.now(), Instant.now().plusSeconds(900)), correlacion)).isInstanceOf(PersistenciaNoDisponible.class);
         srv.verify();
     }
 
