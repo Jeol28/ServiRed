@@ -29,7 +29,7 @@ TTL_REINTENTO_MS = 10_000
 POLITICA_DLQ = "dlq-sin-limite-de-entregas"
 
 # Sonda de antigüedad (ADR-21): Persistencia la publica cada 2 s y debe llegar a TODAS
-# las colas consumidoras (auditoria.eventos ya la recibe con "#").
+# las colas consumidoras.
 SONDA = "sonda.v1"
 
 # Cola de cada consumidor -> patrones de routing key (<agregado>.<evento>.v<N>)
@@ -43,7 +43,6 @@ COLAS = {
     ],
     "reportes.eventos-casos": ["caso.actualizado.v1", "caso.cerrado.v1", SONDA],
     "indicadores.eventos": ["reporte.#", "restablecimiento.#", "validacion.#", "caso.#", SONDA],
-    "auditoria.eventos": ["#"],
 }
 
 

@@ -98,7 +98,7 @@ persistencia se conecta a Supabase, así que no se cambia código.
   (`compose.supabase.yaml`). Para volver a lo local:
   `cp .env.antes-supabase .env && servired.sh arrancar`.
 - **Las tablas de SERVI-RED viven en esquemas propios** (`identidad`, `reportes`,
-  `auditoria`…). La API REST pública de Supabase solo expone `public`, así que no quedan
+  `atencion`…). La API REST pública de Supabase solo expone `public`, así que no quedan
   accesibles por ella. Si no la va a usar, puede desactivarla en *Project Settings > Data API*.
 - **El proyecto gratuito se pausa** tras unos 7 días sin uso. Los datos se conservan;
   reactívelo desde el panel antes de volver a probar.
@@ -132,8 +132,7 @@ Las pruebas e2e se pueden correr en el propio servidor (el gateway escucha en
 - `.env` tiene secretos nuevos y solo lo lee su usuario (`umask 077`). Cambie la clave del
   administrador desde el portal si la compartió.
 - El portal de operación está en internet, protegido por el inicio de sesión. El gateway
-  limita `/auth` a 20 intentos por minuto por cliente, Auditoría alerta ante fuerza bruta
-  (ADR-16) y el portal rechaza las cuentas de ciudadano. Cambie la clave del administrador
+  limita `/auth` a 20 intentos por minuto por cliente y el portal rechaza las cuentas de ciudadano. Cambie la clave del administrador
   generada si la compartió.
 - La consola de RabbitMQ y Grafana no están en internet.
 - nginx toma la IP real del cliente solo cuando la conexión viene del proxy local

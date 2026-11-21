@@ -10,7 +10,7 @@ sí. Comprueba:
   1. Recién abierto, sin ningún cambio, el caso ya está en la vista con estado RECIBIDO, su
      prioridad y su empresa.
   2. El ciudadano sigue viendo su reporte en RECIBIDO (Reportes ignora esa apertura).
-  3. Hay exactamente un caso.actualizado de apertura en el outbox, y Auditoría lo registra.
+  3. Hay exactamente un caso.actualizado de apertura en el outbox.
   4. Una redelivery del reporte.creado no publica una segunda apertura.
   5. Tras reconstruir una vez los datos viejos, los reportes nuevos dejan la vista alineada con
      el origen (reconstruir-indicadores.py en modo verificar devuelve 0).
@@ -70,10 +70,8 @@ print("2. El ciudadano no ve cambios por la apertura")
 estado, _, propio = http("GET", f"/api/v1/reportes/{id_reporte}", token=autor)
 comprobar(estado == 200 and propio["estado"] == "RECIBIDO", f"su reporte sigue en RECIBIDO ({propio.get('estado')})")
 
-print("3. Una sola apertura en el outbox, y Auditoría la registra")
+print("3. Una sola apertura en el outbox")
 comprobar(aperturas(id_reporte) == "1", f"un caso.actualizado de apertura ({aperturas(id_reporte)})")
-comprobar(esperar(lambda: sql("SELECT count(*) FROM auditoria.registros WHERE accion = 'CASO_ACTUALIZADO' "
-                              f"AND recurso_id = '{caso['idCaso']}'") == "1", 20), "Auditoría registró la apertura")
 
 print("4. Una redelivery del reporte.creado no publica otra apertura")
 sobre = json.loads(sql("SELECT sobre FROM infraestructura.outbox WHERE tipo = 'reporte.creado' "

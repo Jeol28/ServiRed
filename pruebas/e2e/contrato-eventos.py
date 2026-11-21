@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 Contrato de eventos de punta a punta: cada mensaje que circula por RabbitMQ cumple el
-AsyncAPI y su JSON Schema, sea de un productor Java (Reportes, Identidad) o .NET
-(Atención, Indicadores).
+AsyncAPI y su JSON Schema, sea de un productor Java (Reportes) o .NET
+(Atención).
 
   1. Una cola temporal se enlaza a «#» en servired.eventos y escucha todo el tráfico.
-  2. Se recorren flujos que producen los 7 tipos de evento desde sus servicios reales:
+  2. Se recorren flujos que producen los 6 tipos de evento desde sus servicios reales:
      reporte, validación, restablecimiento, denuncia (con y sin foto), atención y cierre
-     del caso, moderación, exportación y accesos.
+     del caso.
   3. Cada mensaje capturado se valida contra el contrato (sobre + datos, formatos uuid y
      date-time, routing key) y sus propiedades AMQP (persistente, JSON, messageId).
   4. Se comprueba que aparecieron todos los tipos y todos los productores esperados.
@@ -45,7 +45,6 @@ ESPERADOS = {
     "denuncia.recibida": {"reportes"},
     "caso.actualizado": {"atencion"},
     "caso.cerrado": {"atencion"},
-    "accion.auditada": {"identidad", "atencion", "indicadores"},
 }
 
 
@@ -93,11 +92,9 @@ rabbit("POST", f"/bindings/%2F/e/servired.eventos/q/{COLA}", {"routing_key": "#"
 comprobar(True, f"{COLA} escucha todo servired.eventos")
 
 try:
-    print("2. Flujos que producen los 7 tipos de evento")
-    admin = entrar_como_admin()["tokenAcceso"]                                   # accion.auditada (identidad)
+    print("2. Flujos que producen los 6 tipos de evento")
+    admin = entrar_como_admin()["tokenAcceso"]
     operador = personal(admin, "OPERADOR", ENERGIA_ANDINA)
-    regulador = personal(admin, "REGULADOR")
-    http("POST", "/api/v1/auth/login", {"correo": correo_nuevo(), "clave": "una clave que no es"})  # acceso fallido
     autor = registrar_y_entrar()[0]["tokenAcceso"]
     vecino = registrar_y_entrar()[0]["tokenAcceso"]
 
@@ -151,12 +148,9 @@ try:
     def moderable():
         return http("GET", f"/api/v1/moderacion/denuncias/{id_denuncia}", token=operador)[0] == 200
     comprobar(esperar(moderable, 30), "la denuncia llegó a moderación")
-    estado, _, _ = http("POST", f"/api/v1/moderacion/denuncias/{id_denuncia}/decision",  # accion.auditada (atencion)
+    estado, _, _ = http("POST", f"/api/v1/moderacion/denuncias/{id_denuncia}/decision",
                         {"decision": "VALIDADA", "nota": "Verificada (contrato de eventos)"}, token=operador)
     comprobar(estado == 200, f"denuncia moderada ({estado})")
-    estado, _, _ = http_crudo("GET", "/api/v1/indicadores/exportaciones/reportes?formato=csv",  # accion.auditada (indicadores)
-                              None, None, regulador)
-    comprobar(estado == 200, f"exportación regulatoria ({estado})")
 
     print("3. Mensajes capturados")
     capturados = []

@@ -124,38 +124,6 @@
       "arguments": {
         "x-queue-type": "quorum"
       }
-    },
-    {
-      "name": "auditoria.eventos",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-queue-type": "quorum",
-        "x-dead-letter-exchange": "servired.dlx",
-        "x-dead-letter-routing-key": "auditoria.eventos"
-      }
-    },
-    {
-      "name": "auditoria.eventos.reintento",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-queue-type": "quorum",
-        "x-message-ttl": 10000,
-        "x-dead-letter-exchange": "servired.reintentos",
-        "x-dead-letter-routing-key": "auditoria.eventos"
-      }
-    },
-    {
-      "name": "auditoria.eventos.dlq",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-queue-type": "quorum"
-      }
     }
   ],
   "bindings": [
@@ -309,30 +277,6 @@
       "destination": "indicadores.eventos",
       "destination_type": "queue",
       "routing_key": "indicadores.eventos",
-      "arguments": {}
-    },
-    {
-      "source": "servired.eventos",
-      "vhost": "/",
-      "destination": "auditoria.eventos",
-      "destination_type": "queue",
-      "routing_key": "#",
-      "arguments": {}
-    },
-    {
-      "source": "servired.dlx",
-      "vhost": "/",
-      "destination": "auditoria.eventos.dlq",
-      "destination_type": "queue",
-      "routing_key": "auditoria.eventos",
-      "arguments": {}
-    },
-    {
-      "source": "servired.reintentos",
-      "vhost": "/",
-      "destination": "auditoria.eventos",
-      "destination_type": "queue",
-      "routing_key": "auditoria.eventos",
       "arguments": {}
     }
   ],
