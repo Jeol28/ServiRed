@@ -7,7 +7,7 @@
   de la creación; el cambio de estado se consulta en la app. Las notificaciones
   push quedan como trabajo futuro (no hay servicio de notificaciones en el MVP).
 - **Observabilidad:** el contenedor "Observabilidad" del SAD se divide en
-  - el servicio `auditoria` (RF-12 y alertas de seguridad de RF-13), y
+  - el servicio `auditoria` (RF-12 y alertas de seguridad de RF-13), retirado en [ADR-33](ADR-33-se-retira-la-auditoria.md), y
   - un stack Prometheus + Grafana + Alertmanager + Jaeger en un perfil opcional
     del compose (alertas operativas de RF-13, RNF-OBS3, RNF-OBS4).
 - **JWT:** el gateway valida el token y aplica RBAC por ruta; cada servicio vuelve

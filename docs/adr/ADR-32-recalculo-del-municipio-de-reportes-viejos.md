@@ -36,6 +36,8 @@ Para cada reporte cuyo polígono da un municipio distinto del guardado:
      enrutados a mano.
 5. **Cadena de auditoría:** un resumen como `accion.auditada` (`MUNICIPIOS_RECALCULADOS`, con
    origen `reportes`), con los conteos y el nombre de la tabla de registro. Entra por el outbox.
+   **Retirado en [ADR-33](ADR-33-se-retira-la-auditoria.md):** V18 recrea la función sin este paso y pasa los disparadores de solo
+   inserción a `reportes.prohibir_cambios()`.
 
 Las **denuncias anónimas no se recalculan**: pasan por moderación y no se publican por
 municipio.
@@ -59,7 +61,7 @@ municipio.
   - 12 de 2755 reportes cambiaron (La Calera → Bogotá) y sus 12 casos intactos se
     reenrutaron;
   - la migración tardó 0,5 s;
-  - la vista quedó alineada (R14) y la cadena de auditoría íntegra.
+  - la vista quedó alineada (R14) y la cadena de auditoría íntegra (retirada luego, ADR-33).
 - **Pruebas:** `RecalculoMunicipioIntegracionTest`:
   - un caso intacto se reenruta; uno en atención y uno enrutado a mano conservan su empresa;
   - un reporte bien ubicado no cambia; un reporte sin caso también se corrige;

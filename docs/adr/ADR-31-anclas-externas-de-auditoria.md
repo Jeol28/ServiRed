@@ -1,7 +1,7 @@
 # ADR-31: Anclas externas de la cadena de auditoría
 
 ## Estado
-Aceptada. Complementa ADR-29.
+Reemplazada por [ADR-33](ADR-33-se-retira-la-auditoria.md): la auditoría se retiró. Complementaba ADR-29.
 
 ## Contexto
 ADR-29 archiva el registro de auditoría en segmentos del almacén de objetos. Ni Supabase

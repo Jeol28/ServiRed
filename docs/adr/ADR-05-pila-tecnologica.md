@@ -11,7 +11,7 @@ El SAD (restricciones) pide no acoplar la arquitectura a ellos.
 |---|---|---|
 | gateway | Java 21 · Spring Cloud Gateway 2025.0 (WebFlux) | Gateway reactivo maduro con filtros, rate limiting y JWT |
 | identidad, reportes, persistencia | Java 21 · Spring Boot 3.5 | Núcleo transaccional; Flyway y JDBC para Supabase/PostgreSQL |
-| atencion, indicadores, auditoria | .NET 10 (LTS) · ASP.NET Core | Servicios con consumidores de eventos y APIs de lectura |
+| atencion, indicadores | .NET 10 (LTS) · ASP.NET Core | Servicios con consumidores de eventos y APIs de lectura |
 | Mensajería | RabbitMQ 4.1 (exchange topic, colas quorum) | ADR-04 |
 | Datos | Supabase (PostgreSQL 17 + Storage); PostgreSQL local en desarrollo | ADR-02 |
 

@@ -1,6 +1,6 @@
 # ADR-16 · Auditoría a prueba de manipulación y alertas
 
-**Estado:** aceptada · **Fecha:** 2026-11-17 · **Requisitos:** RF-12, RF-13, RNF-SEG4, RNF-OBS
+**Estado:** reemplazada por [ADR-33](ADR-33-se-retira-la-auditoria.md) (la auditoría se retiró) · **Fecha:** 2026-11-17 · **Requisitos:** RF-12, RF-13, RNF-SEG4, RNF-OBS
 
 ## Contexto
 RF-12 pide registrar accesos, cambios de estado, validaciones, exportaciones y

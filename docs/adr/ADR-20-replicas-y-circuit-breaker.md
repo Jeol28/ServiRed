@@ -14,8 +14,8 @@ y reintentos, pero dos problemas quedaban abiertos:
 - **Punto único de falla:** con una sola instancia, cualquier caída de Persistencia o de
   Reportes tumbaba la funcionalidad completa.
 
-El relay del outbox ya admite varias réplicas (`FOR UPDATE SKIP LOCKED`) y la cadena de
-auditoría se serializa con un bloqueo consultivo de PostgreSQL. Persistencia no guarda
+El relay del outbox ya admite varias réplicas (`FOR UPDATE SKIP LOCKED`) (la cadena de
+auditoría, que se serializaba con un bloqueo consultivo, se retiró en ADR-33). Persistencia no guarda
 estado en memoria.
 
 ## Decisión
@@ -26,7 +26,7 @@ Cada servicio que llama a Persistencia tiene **un circuito** hacia ella:
 | Servicio | Librería | Ventana |
 |---|---|---|
 | Identidad, Reportes (Java) | Resilience4j 2.2.0 | ≥ 50 % de fallas en las últimas 20 llamadas (mínimo 10) |
-| Atención, Indicadores, Auditoría (.NET) | Microsoft.Extensions.Http.Resilience 10.0.0 (Polly) | ≥ 50 % de fallas en 30 s (mínimo 10) |
+| Atención, Indicadores (.NET) | Microsoft.Extensions.Http.Resilience 10.0.0 (Polly) | ≥ 50 % de fallas en 30 s (mínimo 10) |
 
 - **Qué cuenta como falla:** red caída, timeout y 5xx. Un 4xx es un error de la
   petición, no de Persistencia, y no cuenta.

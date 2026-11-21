@@ -1,7 +1,7 @@
 # ADR-29: Archivado del registro de auditoría conservando la cadena de huellas
 
 ## Estado
-Aceptada. Resuelve la mejora pendiente de ADR-16 («el registro crece sin límite»).
+Reemplazada por [ADR-33](ADR-33-se-retira-la-auditoria.md): la auditoría se retiró. Resolvía la mejora pendiente de ADR-16 («el registro crece sin límite»).
 
 ## Contexto
 `auditoria.registros` es de solo inserción y está encadenado: cada fila guarda el SHA-256 de
