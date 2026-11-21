@@ -80,6 +80,8 @@ urbanos cerca del centroide, pero el error existe. Afecta:
   no los recalcula. Hacerlo cambiaría reportes, casos (incluida la empresa asignada), la
   vista de Indicadores y lo ya exportado, así que se decide aparte. En la base local
   cambiarían 12 de 2755.
+  **Hecho en [ADR-32](ADR-32-recalculo-del-municipio-de-reportes-viejos.md):** la migración V17 los
+  recalcula, deja registro de cada cambio y solo reenruta los casos intactos.
 - **Límites que cambian:** al publicar el DANE un MGN nuevo, se regenera el archivo con la
   herramienta y una migración nueva reemplaza los polígonos.
 - **Municipio sin polígono:** Nuevo Belén de Bajirá (27493) está en el catálogo pero no en

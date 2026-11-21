@@ -33,3 +33,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-29](ADR-29-archivado-de-auditoria.md) | Archivado del registro de auditoría conservando la cadena de huellas | Aceptada |
 | [ADR-30](ADR-30-refresco-en-cookie-httponly.md) | Token de refresco de los portales en una cookie HttpOnly | Aceptada |
 | [ADR-31](ADR-31-anclas-externas-de-auditoria.md) | Anclas externas de la cadena de auditoría | Aceptada |
+| [ADR-32](ADR-32-recalculo-del-municipio-de-reportes-viejos.md) | Recálculo del municipio de los reportes ubicados por centroide | Aceptada |
