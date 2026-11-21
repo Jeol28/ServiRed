@@ -7,7 +7,7 @@ con el **gateway** a través de `/api/` en su mismo origen (ver
 | Proyecto | Para quién | Pantallas |
 |---|---|---|
 | `portal-publico` | Ciudadanía (sin cuenta) | Mapa de zonas con reportes (celdas de ~1 km, k ≥ 3), indicadores por servicio y territorio y datos abiertos (CSV/JSON). Reportes y denuncias se hacen solo desde las apps móviles |
-| `portal-operador` | Operador, regulador, administrador | Ingreso, bandeja de casos con filtros, detalle (atender, asignar, prioridad, resolver, cerrar, enrutar), mapa operativo, moderación de denuncias, exportación regulatoria, auditoría y alertas (verificación de integridad), cuentas |
+| `portal-operador` | Operador, regulador, administrador | Ingreso, bandeja de casos con filtros, detalle (atender, asignar, prioridad, resolver, cerrar, enrutar), mapa operativo, moderación de denuncias, exportación regulatoria, cuentas |
 | `compartido` | Ambos | Modelos del contrato, sesión y guardias, interceptores (JWT, `X-Correlation-Id`), servicios de API, mapa Leaflet con íconos por servicio, menú lateral, estilos |
 
 Los dos portales usan el estilo de las apps móviles:
@@ -23,7 +23,7 @@ Menú por rol en el portal de operación:
 |---|:-:|:-:|:-:|
 | Casos y denuncias | gestiona (su empresa) | consulta | gestiona y enruta |
 | Mapa operativo | ✔ (su empresa) | ✔ | ✔ |
-| Exportación, auditoría | | ✔ | ✔ (+ integridad) |
+| Exportación | | ✔ | ✔ |
 | Cuentas | | | ✔ |
 
 ## Ejecutar

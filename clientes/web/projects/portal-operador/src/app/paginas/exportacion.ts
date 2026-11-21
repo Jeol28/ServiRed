@@ -6,7 +6,7 @@ import {
 
 /**
  * Exportación regulatoria (RF-10): reportes con detalle operativo para el
- * regulador. Sin datos del ciudadano; cada exportación queda en la auditoría.
+ * regulador. Sin datos del ciudadano.
  */
 @Component({
   selector: 'app-exportacion',
@@ -14,7 +14,7 @@ import {
   template: `
     <h1>Exportación regulatoria</h1>
     <form class="sr-tarjeta" (ngSubmit)="exportar()">
-      <p class="sr-suave">Periodo máximo de 366 días. La exportación queda registrada en la auditoría con su cuenta.</p>
+      <p class="sr-suave">Periodo máximo de 366 días.</p>
       <div class="sr-filtros">
         <label>Desde <input type="date" name="desde" [(ngModel)]="f.desde" required /></label>
         <label>Hasta <input type="date" name="hasta" [(ngModel)]="f.hasta" required /></label>
