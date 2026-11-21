@@ -39,11 +39,6 @@ public class ManejadorErrores {
         return problema(HttpStatus.NOT_FOUND, "No encontrado", e.getMessage());
     }
 
-    @ExceptionHandler(co.edu.javeriana.servired.persistencia.aplicacion.AnclasAuditoria.CadenaRota.class)
-    ProblemDetail cadenaRota(co.edu.javeriana.servired.persistencia.aplicacion.AnclasAuditoria.CadenaRota e) {
-        return problema(HttpStatus.CONFLICT, "Cadena de auditoría rota", e.getMessage());
-    }
-
     @ExceptionHandler(SolicitudRechazada.class)
     ProblemDetail rechazada(SolicitudRechazada e) {
         return problema(HttpStatus.CONFLICT, "Solicitud rechazada", e.getMessage());

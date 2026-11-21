@@ -91,16 +91,4 @@ public static class EventosCaso
         return datos;
     }
 
-    /** accion.auditada v1 de una decisión de moderación (RF-12). */
-    public static SobreEventoSaliente DenunciaModerada(Actor actor, Guid idDenuncia, EstadoModeracion decision,
-        IdCorrelacion correlacion, DateTimeOffset fecha) =>
-        SobreEventoSaliente.Nuevo("accion.auditada", correlacion, fecha, new Dictionary<string, object?>
-        {
-            ["categoria"] = "MODERACION",
-            ["accion"] = "DENUNCIA_MODERADA",
-            ["resultado"] = "EXITO",
-            ["actor"] = new Dictionary<string, object?> { ["idCuenta"] = actor.IdCuenta.ToString(), ["rol"] = actor.Rol.ToString() },
-            ["recurso"] = new Dictionary<string, object?> { ["tipo"] = "DENUNCIA", ["id"] = idDenuncia.ToString() },
-            ["detalle"] = new Dictionary<string, object?> { ["decision"] = decision.ToString() },
-        });
 }

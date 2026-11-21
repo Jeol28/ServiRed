@@ -120,14 +120,7 @@ public class OperacionesAtencion {
     }
 
     public Moderacion decidir(ServicioCliente s, UUID idDenuncia, Decision d) {
-        return decidir(s, IdCorrelacion.nuevo(), idDenuncia, d, List.of());
-    }
-
-    /** Con accion.auditada (RF-12) en la misma transacción de la decisión. */
-    public Moderacion decidir(ServicioCliente s, IdCorrelacion correlacion, UUID idDenuncia, Decision d,
-                              List<EventoSaliente> eventos) {
         OperacionNegocio.DECIDIR_MODERACION.autorizar(s);
-        eventos.forEach(e -> e.validarPara(s, correlacion, Set.of("accion.auditada")));
         return transaccion.ejecutar(() -> {
             if (!repositorio.decidir(idDenuncia, d)) {
                 if (repositorio.moderacion(idDenuncia).isEmpty()) {
@@ -135,7 +128,6 @@ public class OperacionesAtencion {
                 }
                 throw new Conflicto("VERSION", "La moderación cambió; vuelva a consultarla");
             }
-            eventos.forEach(outbox::agregar);
             return repositorio.moderacion(idDenuncia).orElseThrow();
         });
     }

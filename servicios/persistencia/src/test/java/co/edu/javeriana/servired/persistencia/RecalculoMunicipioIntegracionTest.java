@@ -135,13 +135,6 @@ class RecalculoMunicipioIntegracionTest {
         assertThatThrownBy(() -> jdbc.update("UPDATE reportes.recalculo_municipio SET municipio_nuevo = '05001'"))
                 .hasMessageContaining("solo inserción");
 
-        // Y un resumen en la cadena de auditoría, por el outbox.
-        String detalle = jdbc.queryForObject("""
-                SELECT sobre->'datos'->'detalle' FROM infraestructura.outbox
-                WHERE tipo = 'accion.auditada' AND sobre->'datos'->>'accion' = 'MUNICIPIOS_RECALCULADOS'
-                  AND sobre->'datos'->'detalle'->>'migracion' = 'PRUEBA'""", String.class);
-        assertThat(detalle).contains("\"reportes\": 4").contains("\"casosReenrutados\": 1");
-
         // Volver a correrla no cambia nada más.
         assertThat(jdbc.queryForMap("SELECT * FROM reportes.recalcular_municipios('PRUEBA-2')"))
                 .containsEntry("reportes_cambiados", 0L);

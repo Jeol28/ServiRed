@@ -11,7 +11,7 @@ namespace ServiRed.Indicadores.Infraestructura.Persistencia;
 /// Adaptador hacia la vista de lectura en Persistencia (contratos/internos/persistencia.v1.yaml).
 /// 5xx o error de red: transitorio (HttpRequestException). 4xx: falla permanente.
 /// </summary>
-public sealed class ClienteVistaLectura(HttpClient http) : IVistaLectura, IRegistroAcciones
+public sealed class ClienteVistaLectura(HttpClient http) : IVistaLectura
 {
     public const string CabeceraClave = "X-Clave-Servicio";
 
@@ -43,30 +43,6 @@ public sealed class ClienteVistaLectura(HttpClient http) : IVistaLectura, IRegis
     public async Task<EstadoVista> EstadoAsync(IdCorrelacion correlacion, CancellationToken ct) =>
         (await EnviarAsync<EstadoVista>(HttpMethod.Get, "/interno/v1/indicadores/estado", null, correlacion, ct))!;
 
-    public Task PublicarAsync(AccionAuditada a, IdCorrelacion correlacion, CancellationToken ct) =>
-        EnviarAsync<object>(HttpMethod.Post, "/interno/v1/acciones-auditadas", SobreAccionAuditada(a, correlacion),
-            correlacion, ct, sinCuerpo: true);
-
-    /// <summary>Sobre del evento accion.auditada v1 (contratos/eventos/esquemas/accion.auditada.v1.json).</summary>
-    internal static Dictionary<string, object?> SobreAccionAuditada(AccionAuditada a, IdCorrelacion correlacion) =>
-        new()
-        {
-            ["idEvento"] = Guid.NewGuid(),
-            ["tipo"] = "accion.auditada",
-            ["version"] = 1,
-            ["fechaOcurrencia"] = DateTimeOffset.UtcNow,
-            ["correlationId"] = Guid.Parse(correlacion.Valor),
-            ["origen"] = "indicadores",
-            ["datos"] = new Dictionary<string, object?>
-            {
-                ["categoria"] = a.Categoria,
-                ["accion"] = a.Accion,
-                ["resultado"] = "EXITO",
-                ["actor"] = new Dictionary<string, object?> { ["idCuenta"] = a.Actor.IdCuenta, ["rol"] = a.Actor.Rol.ToString() },
-                ["recurso"] = new Dictionary<string, object?> { ["tipo"] = a.RecursoTipo },
-                ["detalle"] = a.Detalle,
-            },
-        };
 
     private static object Filtro(FiltroVista f) => new
     {

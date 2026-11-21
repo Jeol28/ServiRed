@@ -11,7 +11,7 @@
 #  - Las operaciones que generan un evento reciben el evento ya construido por
 #    el servicio dueño; Persistencia lo guarda en el outbox en la MISMA
 #    transacción y lo publica después (decisión B).
-# Estado: fase 7 (todos los dominios, incluida la auditoría).
+# Estado: fase 7 (todos los dominios).
 openapi: 3.1.0
 info:
   title: SERVI-RED · Persistencia (API interna)
@@ -838,134 +838,6 @@ paths:
       parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
       responses:
         "200": { description: "{reportes, municipios, primerReporte, ultimoReporte, actualizadoEn}" }
-
-  # ------------------------------------------------- auditoría (`auditoria`)
-  /interno/v1/auditoria/registros:
-    post:
-      operationId: registrarAuditoria
-      description: |
-        Solo `auditoria`. Inserta el registro encadenado (huella SHA-256 con el anterior)
-        bajo bloqueo; idempotente por idEvento (200 con nuevo=false si ya existía).
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [idEvento, tipo, version, origen, categoria, accion, ocurridoEn]
-              properties:
-                idEvento: { type: string, format: uuid }
-                tipo: { type: string }
-                version: { type: integer }
-                origen: { type: string }
-                correlationId: { type: string, format: uuid }
-                categoria: { type: string }
-                accion: { type: string }
-                resultado: { type: string, enum: [EXITO, FALLO] }
-                actorId: { type: string, format: uuid }
-                actorRol: { type: string }
-                recursoTipo: { type: string }
-                recursoId: { type: string }
-                detalle: { type: object }
-                ocurridoEn: { type: string, format: date-time }
-      responses:
-        "201": { description: Registrado }
-        "200": { description: Ya existía }
-    get:
-      operationId: consultarAuditoria
-      description: Solo `auditoria`. Filtros categoria, tipo, accion, actorId, recursoId, desde, hasta, pagina, tamano.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      responses:
-        "200": { description: Página de registros }
-
-  /interno/v1/auditoria/integridad:
-    get:
-      operationId: verificarIntegridadAuditoria
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      responses:
-        "200": { description: "{registros, integra, primeraRota, ultimoHash}" }
-
-  /interno/v1/auditoria/segmentos:
-    get:
-      operationId: listarSegmentosAuditoria
-      description: Segmentos archivados del registro de auditoría (ADR-29). Solo `auditoria`.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      responses:
-        "200": { description: "Lista: secuenciaDesde, secuenciaHasta, registros, hashAnteriorInicial, hashFinal, claveObjeto, sha256Archivo, bytes, archivadoEn" }
-
-  /interno/v1/auditoria/archivo:
-    post:
-      operationId: archivarAuditoria
-      description: |
-        Archiva ahora (ADR-29): sin cuerpo, los meses más viejos que la ventana en la base
-        (servired.auditoria.archivo.meses-en-base); con `hasta`, todo lo registrado antes. Cada
-        segmento se sube al almacén (auditoria/segmentos/), se comprueba y solo entonces se
-        borran de la base los registros que cubre. No archiva un tramo cuya cadena esté rota
-        (`detenidoPor`). Solo `auditoria`.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema: { type: object, properties: { hasta: { type: string, format: date-time } } }
-      responses:
-        "200": { description: "{segmentosNuevos, registrosArchivados, limite, detenidoPor}" }
-
-  /interno/v1/auditoria/archivo/verificacion:
-    post:
-      operationId: verificarArchivoAuditoria
-      description: Descarga cada segmento, compara su SHA-256 con el índice y recalcula sus huellas y enlaces. Solo `auditoria`.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      responses:
-        "200": { description: "{segmentos, registros, integro, segmentoConProblema, problema}" }
-
-  /interno/v1/auditoria/anclas:
-    get:
-      operationId: listarAnclasAuditoria
-      description: Anclas diarias de la cadena (ADR-31); la API pública las sirve por medio de `auditoria`.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      responses:
-        "200": { description: "Lista: fecha, secuencia, hash, registros, segmentos, publicadaEn, destino, referencia" }
-    post:
-      operationId: anclarAuditoria
-      description: |
-        Fija el ancla de hoy (si no existe) y la publica fuera del sistema si aún no se pudo. No ancla
-        una cadena rota (409). Solo `auditoria`.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      responses:
-        "200": { description: El ancla de hoy }
-        "404": { description: La cadena está vacía }
-        "409": { description: La cadena está rota }
-
-  /interno/v1/auditoria/anclas/verificacion:
-    post:
-      operationId: verificarAnclasAuditoria
-      description: |
-        Compara las anclas publicadas afuera (GitHub; si no hay destino, las de la base) con el hash que
-        hoy tiene cada secuencia, en la base o dentro de su segmento archivado. Solo `auditoria`.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      responses:
-        "200": { description: "{fuente, anclas, coinciden, distintas[]}" }
-
-  /interno/v1/acciones-auditadas:
-    post:
-      operationId: publicarAccionAuditada
-      description: |
-        identidad, reportes, atencion o indicadores. Deja un evento accion.auditada en
-        el outbox (para acciones sin otra escritura, p. ej. un inicio de sesión fallido).
-        Las operaciones registrarCuenta, actualizarCuenta, eliminarCuenta y
-        decidirModeracion aceptan además un arreglo `eventos` con accion.auditada que
-        se guarda en su misma transacción.
-      parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EventoSaliente" }
-      responses:
-        "202": { description: En el outbox }
-        "403": { description: El servicio no puede emitir ese evento }
 
   /interno/v1/catalogo/municipio-cercano:
     get:

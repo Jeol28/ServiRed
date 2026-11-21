@@ -73,9 +73,8 @@ public class ConfiguracionIdentidad {
 
     @Bean
     Autenticacion autenticacion(RepositorioCuentas cuentas, RepositorioSesiones sesiones, CifradorClaves c,
-                                EmisorTokens e, Clock reloj, PropiedadesJwt jwt,
-                                co.edu.javeriana.servired.identidad.aplicacion.puertos.RegistroAcciones acciones) {
-        return new Autenticacion(cuentas, sesiones, c, e, reloj, jwt.duracionRefresco(), acciones);
+                                EmisorTokens e, Clock reloj, PropiedadesJwt jwt) {
+        return new Autenticacion(cuentas, sesiones, c, e, reloj, jwt.duracionRefresco());
     }
 
     @Bean

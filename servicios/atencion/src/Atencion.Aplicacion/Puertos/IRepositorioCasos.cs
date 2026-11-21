@@ -75,8 +75,7 @@ public interface IRepositorioModeracion
         IdCorrelacion correlacion, CancellationToken ct);
 
     /// <exception cref="ConflictoDeVersion">si otro moderador decidió primero</exception>
-    Task<Moderacion> DecidirAsync(Guid idDenuncia, Decision decision, IReadOnlyList<SobreEventoSaliente> eventos,
-        IdCorrelacion correlacion, CancellationToken ct);
+    Task<Moderacion> DecidirAsync(Guid idDenuncia, Decision decision, IdCorrelacion correlacion, CancellationToken ct);
 
     Task<Archivo?> EvidenciaAsync(Guid idDenuncia, Guid idEvidencia, IdCorrelacion correlacion, CancellationToken ct);
 }

@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <!-- Aplicación: casos de uso y puertos. Solo conoce el dominio. -->
-  <PropertyGroup>
-    <RootNamespace>ServiRed.Auditoria.Aplicacion</RootNamespace>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../Auditoria.Dominio/Auditoria.Dominio.csproj" />
-  </ItemGroup>
-</Project>

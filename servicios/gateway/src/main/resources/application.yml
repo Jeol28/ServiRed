@@ -40,8 +40,7 @@ spring:
                   maxBackoff: 200ms
                   factor: 2
                   basedOnPreviousValue: false
-          # Los clientes solo conocen /api/v1/**. Persistencia NUNCA se enruta;
-          # de auditoría solo se expone la consulta (GET /api/v1/auditoria/**).
+          # Los clientes solo conocen /api/v1/**. Persistencia NUNCA se enruta.
           routes:
             - id: identidad
               uri: ${SERVICIO_IDENTIDAD_URL:http://identidad:8080}
@@ -64,12 +63,6 @@ spring:
               uri: ${SERVICIO_ATENCION_URL:http://atencion:8080}
               predicates:
                 - Path=/api/v1/casos,/api/v1/casos/**,/api/v1/moderacion/**
-            # Auditoría: solo la consulta /api/v1/auditoria/** (nunca /interno/**).
-            - id: auditoria
-              uri: ${SERVICIO_AUDITORIA_URL:http://auditoria:8080}
-              predicates:
-                - Path=/api/v1/auditoria/**
-                - Method=GET
             - id: indicadores
               uri: ${SERVICIO_INDICADORES_URL:http://indicadores:8080}
               predicates:

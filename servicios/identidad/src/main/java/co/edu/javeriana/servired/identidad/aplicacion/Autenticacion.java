@@ -14,7 +14,6 @@ import co.edu.javeriana.servired.identidad.dominio.Excepciones.SesionInvalida;
 import co.edu.javeriana.servired.identidad.dominio.IdCorrelacion;
 import co.edu.javeriana.servired.identidad.dominio.NuevaCuenta;
 import co.edu.javeriana.servired.identidad.dominio.Rol;
-import co.edu.javeriana.servired.identidad.aplicacion.puertos.RegistroAcciones;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -33,18 +32,11 @@ public class Autenticacion {
     private final EmisorTokens emisor;
     private final Clock reloj;
     private final Duration duracionRefresco;
-    private final RegistroAcciones acciones;
     /** Hash con el que se compara cuando el correo no existe, para igualar los tiempos de respuesta. */
     private final String hashFicticio;
 
     public Autenticacion(RepositorioCuentas cuentas, RepositorioSesiones sesiones, CifradorClaves cifrador,
                          EmisorTokens emisor, Clock reloj, Duration duracionRefresco) {
-        this(cuentas, sesiones, cifrador, emisor, reloj, duracionRefresco, (a, c) -> { });
-    }
-
-    public Autenticacion(RepositorioCuentas cuentas, RepositorioSesiones sesiones, CifradorClaves cifrador,
-                         EmisorTokens emisor, Clock reloj, Duration duracionRefresco, RegistroAcciones acciones) {
-        this.acciones = acciones;
         this.cuentas = cuentas;
         this.sesiones = sesiones;
         this.cifrador = cifrador;
@@ -57,9 +49,7 @@ public class Autenticacion {
     public Cuenta registrarCiudadano(String correo, String clave, String nombre, boolean aceptaTratamientoDatos,
                                      IdCorrelacion correlacion) {
         NuevaCuenta nueva = NuevaCuenta.ciudadano(correo, clave, nombre, aceptaTratamientoDatos, reloj.instant());
-        return cuentas.registrar(nueva, cifrador.cifrar(clave),
-                List.of(new AccionAuditada("ADMINISTRACION", "REGISTRO_CIUDADANO", true, nueva.idCuenta(), Rol.CIUDADANO,
-                        "CUENTA", nueva.idCuenta().toString(), Map.of())), correlacion);
+        return cuentas.registrar(nueva, cifrador.cifrar(clave), correlacion);
     }
 
     public Sesion iniciarSesion(String correo, String clave, IdCorrelacion correlacion) {
@@ -72,21 +62,16 @@ public class Autenticacion {
         var credenciales = cuentas.credenciales(c, correlacion);
         if (credenciales.isEmpty()) {
             cifrador.coincide(clave == null ? "" : clave, hashFicticio);
-            auditar(AccionAuditada.acceso("INICIO_SESION_FALLIDO", false, null, null,
-                    Map.of("motivo", "CUENTA_INEXISTENTE")), correlacion);
             throw new CredencialesInvalidas();
         }
         var cred = credenciales.get();
         if (clave == null || !cifrador.coincide(clave, cred.hashClave()) || !cred.activa()) {
-            auditar(AccionAuditada.acceso("INICIO_SESION_FALLIDO", false, cred.idCuenta(), null,
-                    Map.of("motivo", cred.activa() ? "CLAVE_INCORRECTA" : "CUENTA_INACTIVA")), correlacion);
             throw new CredencialesInvalidas();
         }
         var refresco = TokensRefresco.generar();
         var acceso = emisor.planear();
         sesiones.abrir(UUID.randomUUID(), cred.idCuenta(), refresco.hash(),
                 reloj.instant().plus(duracionRefresco), acceso, correlacion);
-        auditar(AccionAuditada.acceso("INICIO_SESION", true, cred.idCuenta(), cred.rol(), Map.of()), correlacion);
         return new Sesion(emisor.emitir(acceso, cred.idCuenta(), cred.rol(), cred.idEmpresa(), cred.creadaEn()), refresco.valor(),
                 cred.idCuenta(), cred.rol(), cred.nombre(), cred.idEmpresa());
     }
@@ -99,26 +84,11 @@ public class Autenticacion {
         var acceso = emisor.planear();
         var rotacion = sesiones.rotar(TokensRefresco.hash(tokenRefresco), UUID.randomUUID(), nuevo.hash(),
                 reloj.instant().plus(duracionRefresco), acceso, correlacion);
-        if (rotacion.reutilizado()) {
-            auditar(AccionAuditada.seguridad("REFRESCO_REUTILIZADO",
-                    Map.of("consecuencia", "sesiones de la cuenta revocadas")), correlacion);
-        }
         Cuenta cuenta = rotacion.cuenta().orElseThrow(SesionInvalida::new);
         return new Sesion(emisor.emitir(acceso, cuenta.idCuenta(), cuenta.rol(), cuenta.idEmpresa(), cuenta.creadaEn()), nuevo.valor(),
                 cuenta.idCuenta(), cuenta.rol(), cuenta.nombre(), cuenta.idEmpresa());
     }
 
-    /**
-     * La auditoría de accesos es de mejor esfuerzo: si no se puede publicar, el
-     * usuario no queda bloqueado (la falla se registra en el log del adaptador).
-     */
-    private void auditar(AccionAuditada accion, IdCorrelacion correlacion) {
-        try {
-            acciones.publicar(accion, correlacion);
-        } catch (RuntimeException e) {
-            // Intencional: RNF-DC2, una falla de auditoría no impide la operación principal.
-        }
-    }
 
     public void cerrarSesion(String tokenRefresco, IdCorrelacion correlacion) {
         if (tokenRefresco != null && !tokenRefresco.isBlank() && tokenRefresco.length() <= 100) {

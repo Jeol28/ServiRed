@@ -119,10 +119,9 @@ public sealed class PersistenciaFalsa : IRepositorioCasos, ICatalogoAtencion, IR
         return Task.FromResult(new Pagina<Moderacion>(lista, lista.Count, pagina, tamano));
     }
 
-    Task<Moderacion> IRepositorioModeracion.DecidirAsync(Guid idDenuncia, Decision d,
-        IReadOnlyList<SobreEventoSaliente> eventos, IdCorrelacion correlacion, CancellationToken ct)
+    Task<Moderacion> IRepositorioModeracion.DecidirAsync(Guid idDenuncia, Decision d, IdCorrelacion correlacion,
+        CancellationToken ct)
     {
-        foreach (var e in eventos) Eventos.Enqueue(e);
         var m = Moderaciones[idDenuncia];
         if (m.Version != d.VersionEsperada) throw new ConflictoDeVersion();
         var nueva = m with { Estado = d.Estado, Nota = d.Nota, ModeradaPor = d.ModeradaPor, ModeradaEn = d.Fecha, Version = m.Version + 1 };

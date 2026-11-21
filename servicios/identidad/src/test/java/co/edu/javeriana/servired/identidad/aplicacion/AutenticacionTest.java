@@ -49,7 +49,7 @@ class AutenticacionTest {
     };
     private final PersistenciaEnMemoria persistencia = new PersistenciaEnMemoria();
     private final Autenticacion auth = new Autenticacion(persistencia, persistencia, CIFRADOR, emisor,
-            Clock.systemUTC(), Duration.ofDays(14), persistencia);
+            Clock.systemUTC(), Duration.ofDays(14));
     private final AdministracionCuentas admin = new AdministracionCuentas(persistencia, CIFRADOR, Clock.systemUTC());
     private final IdCorrelacion correlacion = IdCorrelacion.nuevo();
 
@@ -160,55 +160,6 @@ class AutenticacionTest {
                 correlacion).rol()).isEqualTo(Rol.REGULADOR);
     }
 
-    @Test
-    void auditaLosAccesosSinDatosPersonales() {
-        registrar();
-        auth.iniciarSesion("ana@ejemplo.co", "clave-segura-1", correlacion);
-        try {
-            auth.iniciarSesion("ana@ejemplo.co", "mala-clave-12", correlacion);
-        } catch (CredencialesInvalidas e) {
-            // esperado
-        }
-        try {
-            auth.iniciarSesion("nadie@ejemplo.co", "mala-clave-12", correlacion);
-        } catch (CredencialesInvalidas e) {
-            // esperado
-        }
 
-        assertThat(persistencia.acciones).extracting(AccionAuditada::accion)
-                .containsExactly("REGISTRO_CIUDADANO", "INICIO_SESION", "INICIO_SESION_FALLIDO", "INICIO_SESION_FALLIDO");
-        assertThat(persistencia.acciones.get(2).actorId()).isNull();
-        assertThat(persistencia.acciones.get(2).recursoId()).isNotNull();
-        assertThat(persistencia.acciones.toString()).doesNotContain("ana@ejemplo.co", "nadie@", "clave");
-    }
 
-    @Test
-    void laReutilizacionDelRefrescoEsUnaAccionDeSeguridad() {
-        registrar();
-        var s = auth.iniciarSesion("ana@ejemplo.co", "clave-segura-1", correlacion);
-        auth.renovar(s.tokenRefresco(), correlacion);
-        try {
-            auth.renovar(s.tokenRefresco(), correlacion);
-        } catch (SesionInvalida e) {
-            // esperado
-        }
-
-        assertThat(persistencia.acciones).anySatisfy(a -> {
-            assertThat(a.categoria()).isEqualTo("SEGURIDAD");
-            assertThat(a.accion()).isEqualTo("REFRESCO_REUTILIZADO");
-        });
-    }
-
-    @Test
-    void lasAccionesAdministrativasViajanConLaOperacion() {
-        var administrador = new Solicitante(UUID.randomUUID(), Rol.ADMINISTRADOR);
-        var cuenta = admin.crear(administrador, "re@ejemplo.co", "clave-segura-1", null, Rol.REGULADOR, null, correlacion);
-        admin.actualizar(administrador, cuenta.idCuenta(), null, false, null, correlacion);
-        admin.eliminar(administrador, cuenta.idCuenta(), correlacion);
-
-        assertThat(persistencia.acciones).extracting(AccionAuditada::accion)
-                .containsExactly("CUENTA_CREADA", "CUENTA_ACTUALIZADA", "CUENTA_ELIMINADA");
-        assertThat(persistencia.acciones).allSatisfy(a -> assertThat(a.actorId()).isEqualTo(administrador.idCuenta()));
-        assertThat(persistencia.acciones.get(1).detalle()).containsEntry("cambios", java.util.List.of("desactivada"));
-    }
 }

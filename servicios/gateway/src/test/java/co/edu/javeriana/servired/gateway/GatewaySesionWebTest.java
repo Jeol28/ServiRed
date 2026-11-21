@@ -97,7 +97,7 @@ class GatewaySesionWebTest {
         String base = "http://localhost:" + IDENTIDAD.getAddress().getPort();
         r.add("servired.jwt.jwks-url", () -> base + "/.well-known/jwks.json");
         r.add("servired.jwt.revocacion.url", () -> base + "/interno/v1/tokens-revocados");
-        for (String s : new String[]{"IDENTIDAD", "REPORTES", "ATENCION", "INDICADORES", "AUDITORIA"}) {
+        for (String s : new String[]{"IDENTIDAD", "REPORTES", "ATENCION", "INDICADORES"}) {
             r.add("SERVICIO_" + s + "_URL", () -> base);
         }
     }

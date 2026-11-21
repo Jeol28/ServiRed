@@ -14,9 +14,8 @@ import java.util.UUID;
 
 /**
  * RF-1 / RF-2: valida el reporte, resuelve su municipio y lo persiste junto con
- * reporte.creado. Solo depende de Persistencia: Atención, Indicadores y
- * Auditoría se enteran por el evento, así que su falla no impide registrar
- * (RNF-DC2).
+ * reporte.creado. Solo depende de Persistencia: Atención e Indicadores se
+ * enteran por el evento, así que su falla no impide registrar (RNF-DC2).
  */
 public class CrearReporte {
 

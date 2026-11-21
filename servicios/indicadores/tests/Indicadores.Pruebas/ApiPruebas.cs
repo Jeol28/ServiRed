@@ -27,7 +27,6 @@ public class ApiPruebas : IClassFixture<ApiPruebas.Fabrica>
             b.ConfigureTestServices(s =>
             {
                 s.AddSingleton<IVistaLectura>(Vista);
-                s.AddSingleton<IRegistroAcciones>(Vista);
                 foreach (var d in s.Where(d => d.ImplementationType?.Name == "ConsumidorEventos").ToList()) s.Remove(d);
                 s.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, o =>
                 {

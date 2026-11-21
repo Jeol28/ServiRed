@@ -15,20 +15,14 @@ import java.util.UUID;
 public record EventoSaliente(UUID idEvento, String tipo, int version, UUID correlationId,
                              String origen, String sobre) {
 
-    /**
-     * Quién puede emitir cada tipo de evento. accion.auditada (fase 7) la emite
-     * cualquier servicio que registre accesos, acciones administrativas,
-     * exportaciones o moderación (RF-12).
-     */
+    /** Quién puede emitir cada tipo de evento. */
     private static final Map<String, Set<ServicioCliente>> DUENOS = Map.of(
             "reporte.creado", Set.of(ServicioCliente.REPORTES),
             "restablecimiento.registrado", Set.of(ServicioCliente.REPORTES),
             "validacion.registrada", Set.of(ServicioCliente.REPORTES),
             "denuncia.recibida", Set.of(ServicioCliente.REPORTES),
             "caso.actualizado", Set.of(ServicioCliente.ATENCION),
-            "caso.cerrado", Set.of(ServicioCliente.ATENCION),
-            "accion.auditada", Set.of(ServicioCliente.IDENTIDAD, ServicioCliente.REPORTES, ServicioCliente.ATENCION,
-                    ServicioCliente.INDICADORES));
+            "caso.cerrado", Set.of(ServicioCliente.ATENCION));
 
     public EventoSaliente {
         Objects.requireNonNull(idEvento, "idEvento");

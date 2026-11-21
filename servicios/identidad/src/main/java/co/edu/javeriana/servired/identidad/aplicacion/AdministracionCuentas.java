@@ -41,12 +41,7 @@ public class AdministracionCuentas {
                         IdCorrelacion correlacion) {
         exigirAdministrador(admin);
         NuevaCuenta nueva = NuevaCuenta.personal(correo, clave, nombre, rol, idEmpresa, reloj.instant());
-        var detalle = new java.util.HashMap<String, Object>(Map.of("rol", rol.name()));
-        if (idEmpresa != null) {
-            detalle.put("idEmpresa", idEmpresa.toString());
-        }
-        return cuentas.registrar(nueva, cifrador.cifrar(clave),
-                List.of(AccionAuditada.administracion("CUENTA_CREADA", admin, nueva.idCuenta(), detalle)), correlacion);
+        return cuentas.registrar(nueva, cifrador.cifrar(clave), correlacion);
     }
 
     public PaginaCuentas listar(Solicitante admin, Rol rol, String correo, int pagina, int tamano, IdCorrelacion correlacion) {
@@ -72,21 +67,14 @@ public class AdministracionCuentas {
                 throw new DatosInvalidos("idEmpresa", "solo aplica a operadores");
             }
         }
-        var cambios = new java.util.ArrayList<String>();
-        if (nombre != null) cambios.add("nombre");
-        if (activa != null) cambios.add(activa ? "activada" : "desactivada");
-        if (idEmpresa != null) cambios.add("empresa");
-        return cuentas.actualizar(idCuenta, new Cambios(limpiar(nombre), activa, idEmpresa, null),
-                        List.of(AccionAuditada.administracion("CUENTA_ACTUALIZADA", admin, idCuenta,
-                                Map.of("cambios", List.copyOf(cambios)))), correlacion)
+        return cuentas.actualizar(idCuenta, new Cambios(limpiar(nombre), activa, idEmpresa, null), correlacion)
                 .orElseThrow(CuentaNoEncontrada::new);
     }
 
     public void eliminar(Solicitante admin, UUID idCuenta, IdCorrelacion correlacion) {
         exigirAdministrador(admin);
         ReglasAdministracion.validarCambioDeOtraCuenta(admin.idCuenta(), idCuenta, null, true);
-        if (!cuentas.eliminar(idCuenta, List.of(AccionAuditada.administracion("CUENTA_ELIMINADA", admin, idCuenta,
-                Map.of())), correlacion)) {
+        if (!cuentas.eliminar(idCuenta, correlacion)) {
             throw new CuentaNoEncontrada();
         }
     }
@@ -110,19 +98,14 @@ public class AdministracionCuentas {
             PoliticaClave.validar(claveNueva, actual.correo());
             hashNuevo = cifrador.cifrar(claveNueva);
         }
-        List<AccionAuditada> acciones = hashNuevo == null ? List.of()
-                : List.of(AccionAuditada.administracion("CLAVE_CAMBIADA", yo, yo.idCuenta(),
-                        Map.of("consecuencia", "sesiones revocadas")));
-        return cuentas.actualizar(yo.idCuenta(), new Cambios(limpiar(nombre), null, null, hashNuevo), acciones,
-                        correlacion)
+        return cuentas.actualizar(yo.idCuenta(), new Cambios(limpiar(nombre), null, null, hashNuevo), correlacion)
                 .orElseThrow(CuentaNoEncontrada::new);
     }
 
     /** Derecho de supresión (Ley 1581): los datos personales se anonimizan. */
     public void eliminarPropia(Solicitante yo, IdCorrelacion correlacion) {
         ReglasAdministracion.validarSupresionPropia(yo.rol());
-        if (!cuentas.eliminar(yo.idCuenta(), List.of(AccionAuditada.administracion("CUENTA_SUPRIMIDA", yo,
-                yo.idCuenta(), Map.of())), correlacion)) {
+        if (!cuentas.eliminar(yo.idCuenta(), correlacion)) {
             throw new CuentaNoEncontrada();
         }
     }

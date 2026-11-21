@@ -1,6 +1,6 @@
 # Gateway
 
-Único punto de entrada de los clientes (portales y apps). Enruta hacia los microservicios, garantiza el `X-Correlation-Id` y, desde la fase 3, valida JWT, aplica RBAC por ruta y límites de uso. **Nunca** enruta hacia persistencia; de auditoría solo la consulta (`GET /api/v1/auditoria/**`).
+Único punto de entrada de los clientes (portales y apps). Enruta hacia los microservicios, garantiza el `X-Correlation-Id` y, desde la fase 3, valida JWT, aplica RBAC por ruta y límites de uso. **Nunca** enruta hacia persistencia.
 
 | | |
 |---|---|
@@ -36,7 +36,6 @@ Para correrlo junto al resto: `docker compose up -d --build gateway` desde la ra
 | `/api/v1/reportes/**` | reportes |
 | `/api/v1/denuncias/**` | reportes, **sin** `Authorization` ni `Cookie` (ADR-09) |
 | `/api/v1/casos/**`, `/api/v1/moderacion/**` | atencion |
-| `GET /api/v1/auditoria/**` | auditoria (solo lectura) |
 | `/api/v1/indicadores/**`, `/api/v1/mapas/**`, `/api/v1/datos-abiertos/**` | indicadores |
 
 ## Correlación

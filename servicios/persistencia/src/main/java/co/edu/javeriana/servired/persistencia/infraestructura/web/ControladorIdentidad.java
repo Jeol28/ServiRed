@@ -18,7 +18,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
-import co.edu.javeriana.servired.persistencia.infraestructura.web.Solicitudes.EventoDto;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -61,8 +60,7 @@ public class ControladorIdentidad {
                                             @RequestHeader(IdCorrelacion.CABECERA) String correlacion,
                                             @Valid @RequestBody SolicitudRegistrar c) {
         var r = cuentas.registrar(s, new IdCorrelacion(correlacion), new CuentaNueva(c.idCuenta(), c.correo(),
-                c.hashClave(), c.rol(), c.idEmpresa(), c.nombre(), c.consentimientoDatosEn(), c.creadaEn()),
-                eventos(c.eventos()));
+                c.hashClave(), c.rol(), c.idEmpresa(), c.nombre(), c.consentimientoDatosEn(), c.creadaEn()));
         return ResponseEntity.status(r.nueva() ? HttpStatus.CREATED : HttpStatus.OK).body(r.cuenta());
     }
 
@@ -90,20 +88,15 @@ public class ControladorIdentidad {
 
     @PostMapping("/cuentas/{idCuenta}/actualizar")
     public ResponseEntity<Cuenta> actualizar(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
-                                             @RequestHeader(IdCorrelacion.CABECERA) String correlacion,
                                              @PathVariable UUID idCuenta, @Valid @RequestBody CambiosCuentaDto c) {
-        return ResponseEntity.of(cuentas.actualizar(s, new IdCorrelacion(correlacion), idCuenta,
-                new CambiosCuenta(c.nombre(), c.activa(), c.idEmpresa(), c.hashClave()), eventos(c.eventos())));
+        return ResponseEntity.of(cuentas.actualizar(s, idCuenta,
+                new CambiosCuenta(c.nombre(), c.activa(), c.idEmpresa(), c.hashClave())));
     }
 
     @PostMapping("/cuentas/{idCuenta}/eliminar")
     public ResponseEntity<Void> eliminar(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
-                                         @RequestHeader(IdCorrelacion.CABECERA) String correlacion,
-                                         @PathVariable UUID idCuenta,
-                                         @RequestBody(required = false) SolicitudEliminar cuerpo) {
-        return cuentas.eliminar(s, new IdCorrelacion(correlacion), idCuenta,
-                eventos(cuerpo == null ? null : cuerpo.eventos()))
-                ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+                                         @PathVariable UUID idCuenta) {
+        return cuentas.eliminar(s, idCuenta) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
     @PostMapping("/sesiones/abrir")
@@ -146,21 +139,15 @@ public class ControladorIdentidad {
     public record SolicitudRegistrar(@NotNull UUID idCuenta, @NotBlank @Size(max = 254) String correo,
                                      @NotBlank String hashClave, @NotNull @Pattern(regexp = ROLES) String rol,
                                      UUID idEmpresa, @Size(max = 120) String nombre, Instant consentimientoDatosEn,
-                                     @NotNull Instant creadaEn, List<@Valid EventoDto> eventos) {
+                                     @NotNull Instant creadaEn) {
     }
 
-    public record SolicitudEliminar(List<@Valid EventoDto> eventos) {
-    }
 
-    private List<co.edu.javeriana.servired.persistencia.dominio.EventoSaliente> eventos(List<EventoDto> dtos) {
-        return dtos == null ? List.of() : dtos.stream().map(solicitudes::evento).toList();
-    }
 
     public record SolicitudCredenciales(@NotBlank @Size(max = 254) String correo) {
     }
 
-    public record CambiosCuentaDto(@Size(max = 120) String nombre, Boolean activa, UUID idEmpresa, String hashClave,
-                                   List<@Valid EventoDto> eventos) {
+    public record CambiosCuentaDto(@Size(max = 120) String nombre, Boolean activa, UUID idEmpresa, String hashClave) {
     }
 
     public record SolicitudSesion(@NotNull UUID idSesion, @NotNull UUID idCuenta,

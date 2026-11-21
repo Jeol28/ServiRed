@@ -19,7 +19,7 @@ servers:
 channels:
   reporte_creado:
     address: reporte.creado.v1
-    description: "Reporte de corte persistido (RF-1). Consumidores: atencion, indicadores, auditoria."
+    description: "Reporte de corte persistido (RF-1). Consumidores: atencion, indicadores."
     bindings:
       amqp:
         is: routingKey
@@ -33,7 +33,7 @@ channels:
         $ref: '#/components/messages/reporte_creado_v1'
   restablecimiento_registrado:
     address: restablecimiento.registrado.v1
-    description: "Restablecimiento registrado (RF-3). Consumidores: atencion, indicadores, auditoria."
+    description: "Restablecimiento registrado (RF-3). Consumidores: atencion, indicadores."
     bindings:
       amqp:
         is: routingKey
@@ -47,7 +47,7 @@ channels:
         $ref: '#/components/messages/restablecimiento_registrado_v1'
   validacion_registrada:
     address: validacion.registrada.v1
-    description: "Validación comunitaria registrada (RF-4). Consumidores: atencion, indicadores, auditoria."
+    description: "Validación comunitaria registrada (RF-4). Consumidores: atencion, indicadores."
     bindings:
       amqp:
         is: routingKey
@@ -61,7 +61,7 @@ channels:
         $ref: '#/components/messages/validacion_registrada_v1'
   denuncia_recibida:
     address: denuncia.recibida.v1
-    description: "Denuncia anónima recibida (RF-5). Consumidores: atencion, auditoria."
+    description: "Denuncia anónima recibida (RF-5). Consumidores: atencion."
     bindings:
       amqp:
         is: routingKey
@@ -75,7 +75,7 @@ channels:
         $ref: '#/components/messages/denuncia_recibida_v1'
   caso_actualizado:
     address: caso.actualizado.v1
-    description: "Caso actualizado (RF-7). Consumidores: reportes, indicadores, auditoria."
+    description: "Caso actualizado (RF-7). Consumidores: reportes, indicadores."
     bindings:
       amqp:
         is: routingKey
@@ -89,7 +89,7 @@ channels:
         $ref: '#/components/messages/caso_actualizado_v1'
   caso_cerrado:
     address: caso.cerrado.v1
-    description: "Caso cerrado (RF-7). Consumidores: reportes, indicadores, auditoria."
+    description: "Caso cerrado (RF-7). Consumidores: reportes, indicadores."
     bindings:
       amqp:
         is: routingKey
@@ -101,26 +101,7 @@ channels:
     messages:
       caso_cerrado_v1:
         $ref: '#/components/messages/caso_cerrado_v1'
-  accion_auditada:
-    address: accion.auditada.v1
-    description: "Acción auditable: accesos, administración, exportaciones, moderación y seguridad (RF-12). Consumidor: auditoria."
-    bindings:
-      amqp:
-        is: routingKey
-        exchange:
-          name: servired.eventos
-          type: topic
-          durable: true
-          autoDelete: false
-    messages:
-      accion_auditada_v1:
-        $ref: '#/components/messages/accion_auditada_v1'
 operations:
-  publicar_accion_auditada:
-    action: send
-    summary: "Publicado por identidad, reportes, atencion e indicadores"
-    channel:
-      $ref: '#/channels/accion_auditada'
   publicar_reporte_creado:
     action: send
     summary: "Publicado por reportes"
@@ -264,18 +245,3 @@ components:
       bindings:
         amqp:
           deliveryMode: 2
-    accion_auditada_v1:
-      name: accion.auditada
-      title: accion.auditada v1
-      summary: "Acción auditable (RF-12)"
-      payload:
-        allOf:
-          - $ref: './esquemas/sobre-evento.v1.json'
-          - type: object
-            properties:
-              tipo:
-                const: accion.auditada
-              version:
-                const: 1
-              datos:
-                $ref: './esquemas/accion.auditada.v1.json'
