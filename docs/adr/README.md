@@ -36,3 +36,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-32](ADR-32-recalculo-del-municipio-de-reportes-viejos.md) | Recálculo del municipio de los reportes ubicados por centroide | Aceptada |
 | [ADR-33](ADR-33-se-retira-la-auditoria.md) | Se retira la auditoría | Revertida (V18 y V19) |
 | [ADR-34](ADR-34-mapa-base-openfreemap.md) | Mapa base vectorial de OpenFreeMap | Aceptada |
+| [ADR-35](ADR-35-empresas-reales-y-zonas-de-servicio.md) | Empresas prestadoras reales y una sola dueña por zona de servicio | Aceptada |

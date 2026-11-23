@@ -23,7 +23,7 @@ El SAD no fija umbrales ni reglas concretas para RF-3, RF-4 y RF-6.
 - **Duración (RF-3):** `fechaRestablecimiento − inicioEstimado`. El inicio no
   puede ser futuro y el restablecimiento debe ser posterior (RNF-DAT1).
 - **Enrutamiento (RF-6):** cada empresa operadora declara su cobertura
-  (municipio × tipo de servicio). Un operador solo ve los casos de su empresa;
+  (municipio × tipo de servicio). Desde [ADR-35](ADR-35-empresas-reales-y-zonas-de-servicio.md), empresas reales con una sola dueña por zona. Un operador solo ve los casos de su empresa;
   el regulador ve todo en solo lectura y exporta.
 - **Inicio del corte (RNF-DAT1, fase 2):** no puede ser futuro (se toleran
   **5 minutos** de diferencia de reloj del dispositivo y, en ese caso, se ajusta

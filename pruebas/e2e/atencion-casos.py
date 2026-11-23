@@ -23,11 +23,14 @@ from datetime import datetime, timedelta, timezone
 from comun import (buscar_caso, comprobar, correo_nuevo, entrar_como_admin, esperar, http, http_crudo, mensajes_en_cola,
                    multipart, png_con_metadatos, registrar_y_entrar, terminar)
 
-ENERGIA_ANDINA = "a0000000-0000-4000-8000-000000000001"   # ENERGIA en Bogotá, Medellín, Bucaramanga
-AGUAS_SABANA = "a0000000-0000-4000-8000-000000000002"
+# Empresas reales (ADR-35): UUID v5 de su NIT, fijos.
+ENERGIA_ANDINA = "619a2e48-402d-5782-9daf-57f16169b157"   # Enel Colombia: energía en Bogotá
+AGUAS_SABANA = "ece4de53-d488-5b2b-b56d-f1f115e7a882"     # Acueducto de Bogotá
+AREA_LIMPIA = "1caf8bbe-15c1-50e2-a79a-0e89c29d760c"      # aseo de Suba (Área de Servicio Exclusivo)
 BOGOTA = {"latitud": 4.6287, "longitud": -74.0648}
 CERCA = {"latitud": 4.6300, "longitud": -74.0650}
-LETICIA = {"latitud": -4.2153, "longitud": -69.9406}         # sin cobertura de ejemplo
+LETICIA = {"latitud": -4.2153, "longitud": -69.9406}         # sin red de gas natural
+SUBA = {"latitud": 4.7417, "longitud": -74.0839}
 COLOMBIA = timezone(timedelta(hours=-5))
 CLAVE = "una clave larga de prueba"
 
@@ -73,7 +76,7 @@ print("1) Caso enrutado y priorizado (RF-6)")
 id_reporte = reporte(ciudadano, "ENERGIA", BOGOTA, "SECTOR")
 comprobar(esperar(lambda: caso_de(operador, id_reporte) is not None), "el operador de la empresa con cobertura lo ve")
 caso = caso_de(operador, id_reporte)
-comprobar(caso["idEmpresa"] == ENERGIA_ANDINA and caso["estado"] == "RECIBIDO", "enrutado a Energía Andina, RECIBIDO")
+comprobar(caso["idEmpresa"] == ENERGIA_ANDINA and caso["estado"] == "RECIBIDO", "enrutado a Enel (dueña de la zona), RECIBIDO")
 comprobar(caso["prioridad"] == "ALTA", f"prioridad ALTA por magnitud SECTOR (fue {caso['prioridad']})")
 comprobar("idCiudadano" not in caso, "el caso no expone al ciudadano")
 id_caso = caso["idCaso"]
@@ -117,14 +120,27 @@ print("5) Segregación de roles, enrutamiento y asignación")
 comprobar(http("GET", f"/api/v1/casos/{id_caso}", token=regulador)[0] == 200, "el regulador consulta")
 comprobar(http("POST", f"/api/v1/casos/{id_caso}/atender", token=regulador)[0] == 403, "el regulador no gestiona")
 comprobar(http("GET", "/api/v1/casos", token=ciudadano)[0] == 403, "el ciudadano no ve casos")
-id_reporte_3 = reporte(ciudadano, "ENERGIA", LETICIA, "VIVIENDA")
-comprobar(esperar(lambda: caso_de(admin, id_reporte_3, "&sinEmpresa=true") is not None),
-          "un reporte sin cobertura queda sin empresa (bandeja del administrador)")
-id_caso_3 = caso_de(admin, id_reporte_3, "&sinEmpresa=true")["idCaso"]
-comprobar(http("PUT", f"/api/v1/casos/{id_caso_3}/empresa", {"idEmpresa": ENERGIA_ANDINA}, token=operador)[0] == 404,
+id_reporte_sin = reporte(ciudadano, "GAS", LETICIA, "VIVIENDA")
+comprobar(esperar(lambda: caso_de(admin, id_reporte_sin, "&sinEmpresa=true") is not None),
+          "donde nadie presta el servicio el caso queda sin empresa (bandeja del administrador)")
+id_caso_sin = caso_de(admin, id_reporte_sin, "&sinEmpresa=true")["idCaso"]
+comprobar(http("PUT", f"/api/v1/casos/{id_caso_sin}/empresa", {"idEmpresa": ENERGIA_ANDINA}, token=operador)[0] == 404,
           "un operador no ve ni enruta casos sin empresa (404)")
-estado, _, c = http("PUT", f"/api/v1/casos/{id_caso_3}/empresa", {"idEmpresa": ENERGIA_ANDINA}, token=admin)
-comprobar(estado == 200 and c["idEmpresa"] == ENERGIA_ANDINA, "el administrador lo enruta")
+estado, _, p = http("PUT", f"/api/v1/casos/{id_caso_sin}/empresa", {"idEmpresa": ENERGIA_ANDINA}, token=admin)
+comprobar(estado == 409 and p["motivo"] == "SIN_EMPRESA_EN_ZONA", "ni el administrador lo da a una empresa de otra zona")
+
+print("5b) Solo la empresa dueña de la zona (ADR-35)")
+id_reporte_3 = reporte(ciudadano, "ENERGIA", BOGOTA, "VIVIENDA")
+comprobar(esperar(lambda: caso_de(operador, id_reporte_3) is not None), "caso de Enel")
+id_caso_3 = caso_de(operador, id_reporte_3)["idCaso"]
+estado, _, z = http("GET", f"/api/v1/casos/{id_caso_3}/zona", token=admin)
+comprobar(estado == 200 and z["idEmpresa"] == ENERGIA_ANDINA, f"su zona es {z.get('nombreZona')}, de Enel")
+estado, _, p = http("PUT", f"/api/v1/casos/{id_caso_3}/empresa", {"idEmpresa": AGUAS_SABANA}, token=admin)
+comprobar(estado == 409 and p["motivo"] == "FUERA_DE_ZONA", "no se puede enrutar a otra empresa (FUERA_DE_ZONA)")
+id_reporte_suba = reporte(ciudadano, "ASEO", SUBA, "CUADRA")
+comprobar(esperar(lambda: caso_de(admin, id_reporte_suba) is not None), "caso de aseo en Suba")
+comprobar(caso_de(admin, id_reporte_suba)["idEmpresa"] == AREA_LIMPIA,
+          "el aseo de Suba va a Área Limpia (Área de Servicio Exclusivo de la localidad)")
 estado, _, c = http("PUT", f"/api/v1/casos/{id_caso_3}/asignacion", {"idOperador": id_colega}, token=operador)
 comprobar(estado == 200 and c["asignadoA"] == id_colega, "se asigna a un colega de la empresa")
 estado, _, p = http("PUT", f"/api/v1/casos/{id_caso_3}/asignacion", {"idOperador": id_operador_otra}, token=operador)

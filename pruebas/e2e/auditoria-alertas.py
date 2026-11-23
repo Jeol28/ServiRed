@@ -67,7 +67,7 @@ sesion_admin = entrar_como_admin()
 admin, id_admin = sesion_admin["tokenAcceso"], sesion_admin["cuenta"]["idCuenta"]
 
 print("1) Acciones administrativas y accesos (RF-12)")
-correo_op, id_op, sesion_op = personal(admin, "OPERADOR", "a0000000-0000-4000-8000-000000000001")
+correo_op, id_op, sesion_op = personal(admin, "OPERADOR", "619a2e48-402d-5782-9daf-57f16169b157")
 operador = sesion_op["tokenAcceso"]
 correo_reg, id_reg, sesion_reg = personal(admin, "REGULADOR")
 regulador = sesion_reg["tokenAcceso"]

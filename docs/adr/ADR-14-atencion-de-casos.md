@@ -12,6 +12,8 @@ transiciones permitidas ni cómo se segrega el acceso entre empresas.
 - **Enrutamiento:** por la cobertura declarada (empresa × municipio × servicio).
   Si varias empresas cubren, se elige la de menor identificador (determinista);
   si ninguna, el caso queda **sin empresa** y lo enruta un administrador.
+  **Reemplazado por [ADR-35](ADR-35-empresas-reales-y-zonas-de-servicio.md):** una sola empresa dueña por zona de servicio (localidad o comuna,
+  cabecera o resto rural); el administrador solo enruta a esa dueña.
 - **Prioridad:** puntaje = magnitud (VIVIENDA 1, CUADRA 2, BARRIO 3, SECTOR 4)
   + 1 si la comunidad validó el corte + 1 si es gas (riesgo para la seguridad).
   1 → BAJA, 2–3 → MEDIA, 4 → ALTA, 5+ → CRITICA. Se recalcula al cambiar la
@@ -31,7 +33,8 @@ transiciones permitidas ni cómo se segrega el acceso entre empresas.
 - **Eventos:** `caso.actualizado` cuando cambia estado, prioridad, asignación o
   empresa; además `caso.cerrado` al cerrar. Ambos salen del outbox en la misma
   transacción. Reportes los traduce al estado del ciudadano (ADR-07).
-- **Moderación:** la denuncia recibida se asigna a la empresa con cobertura; el
+- **Moderación:** la denuncia recibida se asigna a la empresa con cobertura (desde [ADR-35](ADR-35-empresas-reales-y-zonas-de-servicio.md), la
+  dueña de la zona de la denuncia); el
   operador la marca VALIDADA o DESCARTADA con una nota (una sola vez). El
   contenido sigue en el dominio de reportes; la decisión, en el de atención.
 

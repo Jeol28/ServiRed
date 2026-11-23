@@ -29,9 +29,9 @@ from datetime import datetime, timedelta, timezone
 from comun import (ENV, RABBIT_API, RAIZ, buscar_caso, comprobar, correo_nuevo, entrar_como_admin, esperar, http, http_crudo,
                    multipart, png_con_metadatos, registrar_y_entrar, terminar)
 
-ENERGIA_ANDINA = "a0000000-0000-4000-8000-000000000001"
+ENERGIA_ANDINA = "619a2e48-402d-5782-9daf-57f16169b157"   # Enel Colombia (ADR-35)
 BOGOTA = {"latitud": 4.6287, "longitud": -74.0648}
-LETICIA = {"latitud": -4.2153, "longitud": -69.9406}         # sin empresa con cobertura
+LETICIA = {"latitud": -4.2153, "longitud": -69.9406}         # sin red de gas natural: sin empresa (ADR-35)
 CERCA = {"latitud": 4.6300, "longitud": -74.0650}
 COLOMBIA = timezone(timedelta(hours=-5))
 CLAVE = "una clave larga de prueba"
@@ -128,7 +128,7 @@ try:
 
     # Un caso SIN empresa: su caso.actualizado no lleva idEmpresaOperadora (antes salía null).
     estado, _, sin = http("POST", "/api/v1/reportes", {
-        "tipoServicio": "ENERGIA", "ubicacion": LETICIA, "inicioEstimado": hace(1), "magnitud": "VIVIENDA"},
+        "tipoServicio": "GAS", "ubicacion": LETICIA, "inicioEstimado": hace(1), "magnitud": "VIVIENDA"},
         correlacion=str(uuid.uuid4()), token=autor)
     comprobar(estado == 201, f"reporte en Leticia (sin empresa con cobertura) ({estado})")
     LETICIA_SIN_EMPRESA = "&sinEmpresa=true&codigoMunicipio=91001"

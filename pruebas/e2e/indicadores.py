@@ -30,7 +30,7 @@ codigo, lat, lon = sql("""
     SELECT codigo || '|' || latitud || '|' || longitud FROM catalogo.municipios
     WHERE tipo = 'MUNICIPIO' AND codigo NOT IN (SELECT codigo_municipio FROM indicadores.vista_reportes
                                                 WHERE codigo_municipio IS NOT NULL)
-      AND codigo NOT IN (SELECT codigo_municipio FROM catalogo.coberturas)
+      AND codigo NOT IN (SELECT codigo_municipio FROM catalogo.coberturas WHERE tipo_servicio = 'ACUEDUCTO')
     ORDER BY random() LIMIT 1""").split("|")
 lat, lon = float(lat), float(lon)
 print(f"Municipio de la corrida: {codigo}")
@@ -122,7 +122,7 @@ http("POST", "/api/v1/cuentas", {"correo": correo_reg, "clave": CLAVE, "rol": "R
 regulador = http("POST", "/api/v1/auth/login", {"correo": correo_reg, "clave": CLAVE})[2]["tokenAcceso"]
 correo_op = correo_nuevo("operador")
 http("POST", "/api/v1/cuentas", {"correo": correo_op, "clave": CLAVE, "rol": "OPERADOR",
-                                 "idEmpresa": "a0000000-0000-4000-8000-000000000001"}, token=admin)
+                                 "idEmpresa": "619a2e48-402d-5782-9daf-57f16169b157"}, token=admin)
 operador = http("POST", "/api/v1/auth/login", {"correo": correo_op, "clave": CLAVE})[2]["tokenAcceso"]
 ruta = f"/api/v1/indicadores/exportaciones/reportes?formato=csv&codigoMunicipio={codigo}"
 comprobar(http_crudo("GET", ruta, None, None)[0] == 401, "sin token -> 401")
