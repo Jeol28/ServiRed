@@ -228,7 +228,8 @@ table.sr-tabla { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .sr-redondo { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
 
 .sr-pildora {
-  display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 1; max-width: 460px;
+  // Del ancho de su texto (no se estira); si no cabe, se encoge y el subtítulo se corta con «…».
+  display: flex; flex-direction: column; justify-content: center; min-width: 0; flex: 0 1 auto; max-width: 460px;
   border-radius: 999px; padding: .35rem 1.1rem; min-height: 48px; text-decoration: none; color: var(--sr-texto);
 }
 .sr-pildora .marca { font-weight: 800; color: var(--sr-primario); line-height: 1.2; }
