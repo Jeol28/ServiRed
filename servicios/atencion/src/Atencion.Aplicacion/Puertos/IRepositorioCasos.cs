@@ -57,8 +57,11 @@ public interface IRepositorioCasos
 
 public interface ICatalogoAtencion
 {
-    Task<IReadOnlyList<Guid>> EmpresasConCoberturaAsync(string codigoMunicipio, TipoServicio servicio,
-        IdCorrelacion correlacion, CancellationToken ct);
+    /// <summary>La zona de la consulta y su única empresa dueña (ADR-35); null si no se puede ubicar.</summary>
+    Task<Cobertura?> CoberturaAsync(ConsultaCobertura consulta, IdCorrelacion correlacion, CancellationToken ct);
+
+    /// <summary>Empresas prestadoras reales, por nombre.</summary>
+    Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(IdCorrelacion correlacion, CancellationToken ct);
 
     /// <summary>¿La cuenta es un operador activo de la empresa? (sin más datos personales).</summary>
     Task<bool> EsOperadorDeAsync(Guid idCuenta, Guid idEmpresa, IdCorrelacion correlacion, CancellationToken ct);

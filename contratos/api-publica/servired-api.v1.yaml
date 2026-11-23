@@ -477,7 +477,13 @@ paths:
     put:
       tags: [casos]
       operationId: enrutarCaso
-      summary: Enrutar manualmente a otra empresa (solo ADMINISTRADOR)
+      summary: Enrutar a la empresa dueña de la zona del caso (solo ADMINISTRADOR)
+      description: |
+        Cada zona de servicio (localidad o comuna, cabecera urbana o resto rural de un municipio)
+        tiene una sola empresa dueña por servicio, y solo ella gestiona los casos que caen allí
+        (ADR-35). El administrador solo puede enrutar a esa empresa; sirve para casos que
+        quedaron sin empresa o con otra. 409 con `motivo`: `FUERA_DE_ZONA` (otra empresa),
+        `SIN_EMPRESA_EN_ZONA` (nadie presta el servicio allí), `SIN_CAMBIO` o `CERRADO`.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
         - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
@@ -495,6 +501,46 @@ paths:
         "403": { $ref: "#/components/responses/Prohibido" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
         "409": { $ref: "#/components/responses/ReglaIncumplida" }
+
+  /api/v1/casos/{idCaso}/zona:
+    get:
+      tags: [casos]
+      operationId: zonaDelCaso
+      summary: Zona de servicio del caso y su única empresa dueña (ADR-35)
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: idCaso, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Zona y empresa dueña (sin empresa si nadie presta el servicio allí)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ZonaCaso" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /api/v1/empresas:
+    get:
+      tags: [casos]
+      operationId: listarEmpresas
+      summary: Empresas prestadoras reales (OPERADOR, REGULADOR, ADMINISTRADOR)
+      description: |
+        Catálogo de las empresas dueñas de al menos una zona (ADR-35), por nombre. Fuentes: RUPS de
+        la Superservicios, tarifas de gas natural, Áreas de Servicio Exclusivo de aseo de Bogotá y
+        operadores de red de energía.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      responses:
+        "200":
+          description: Empresas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EmpresaPrestadora" }
+        "401": { $ref: "#/components/responses/NoAutenticado" }
+        "403": { $ref: "#/components/responses/Prohibido" }
 
   /api/v1/casos/{idCaso}/evidencias/{idEvidencia}:
     get:
@@ -1029,7 +1075,7 @@ paths:
       tags: [autenticacion]
       operationId: cerrarSesion
       summary: Cerrar la sesión (revoca el token de refresco)
-      description: Con `X-Sesion-Web: cookie`, el cuerpo es `{}`; el gateway revoca el refresco de la cookie y la borra.
+      description: "Con `X-Sesion-Web: cookie`, el cuerpo es `{}`; el gateway revoca el refresco de la cookie y la borra."
       security: []
       parameters:
         - name: X-Sesion-Web
@@ -1306,6 +1352,23 @@ components:
       additionalProperties: false
       properties:
         resolucion: { type: string, maxLength: 1000 }
+
+    EmpresaPrestadora:
+      type: object
+      required: [idEmpresa, nit, nombre]
+      properties:
+        idEmpresa: { type: string, format: uuid, description: UUID v5 de su NIT (estable) }
+        nit: { type: string, description: Sin dígito de verificación }
+        nombre: { type: string }
+
+    ZonaCaso:
+      type: object
+      required: [idZona, nombreZona]
+      properties:
+        idZona: { type: string, example: "11001-L11", description: "<municipio>-U cabecera, -R resto rural, -L/-C localidad o comuna" }
+        nombreZona: { type: string, example: Suba }
+        idEmpresa: { type: [string, "null"], format: uuid }
+        nombreEmpresa: { type: [string, "null"] }
 
     Caso:
       type: object

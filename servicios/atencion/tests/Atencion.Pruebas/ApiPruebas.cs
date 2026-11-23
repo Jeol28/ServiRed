@@ -154,21 +154,43 @@ public class ApiPruebas : IClassFixture<ApiPruebas.Fabrica>
     }
 
     [Fact]
-    public async Task ElAdministradorEnrutaUnCasoSinCobertura()
+    public async Task ElAdministradorSoloEnrutaALaDuenaDeLaZona()
     {
         var caso = _fabrica.Persistencia.Sembrar(PersistenciaFalsa.EmpresaA) with { IdEmpresa = null };
         _fabrica.Persistencia.Casos[caso.IdCaso] = caso;
+        var admin = Token(Rol.ADMINISTRADOR);
 
-        var r = await Enviar(HttpMethod.Put, $"/api/v1/casos/{caso.IdCaso}/empresa", Token(Rol.ADMINISTRADOR),
+        var zona = await Enviar(HttpMethod.Get, $"/api/v1/casos/{caso.IdCaso}/zona", admin);
+        Assert.Equal(HttpStatusCode.OK, zona.StatusCode);
+        var z = await zona.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("11001-U", z.GetProperty("idZona").GetString());
+        Assert.Equal(PersistenciaFalsa.EmpresaA, z.GetProperty("idEmpresa").GetGuid());
+
+        // Otra empresa no: solo la dueña de la zona gestiona el caso.
+        var fuera = await Enviar(HttpMethod.Put, $"/api/v1/casos/{caso.IdCaso}/empresa", admin,
             new { idEmpresa = PersistenciaFalsa.EmpresaB });
+        Assert.Equal(HttpStatusCode.Conflict, fuera.StatusCode);
+        Assert.Equal("FUERA_DE_ZONA", (await fuera.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("motivo").GetString());
 
+        var r = await Enviar(HttpMethod.Put, $"/api/v1/casos/{caso.IdCaso}/empresa", admin,
+            new { idEmpresa = PersistenciaFalsa.EmpresaA });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Equal(PersistenciaFalsa.EmpresaB, (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("idEmpresa").GetGuid());
-        // Un operador (aun de la empresa del caso) no enruta.
+        Assert.Equal(PersistenciaFalsa.EmpresaA, (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("idEmpresa").GetGuid());
+        // Un operador no enruta, y el de otra empresa no ve el caso.
         Assert.Equal(HttpStatusCode.Forbidden, (await Enviar(HttpMethod.Put, $"/api/v1/casos/{caso.IdCaso}/empresa",
-            Token(Rol.OPERADOR, PersistenciaFalsa.EmpresaB), new { idEmpresa = PersistenciaFalsa.EmpresaA })).StatusCode);
-        // Y el operador de la empresa anterior ya no lo ve.
-        Assert.Equal(HttpStatusCode.NotFound, (await Enviar(HttpMethod.Get, $"/api/v1/casos/{caso.IdCaso}", Operador())).StatusCode);
+            Operador(), new { idEmpresa = PersistenciaFalsa.EmpresaA })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Enviar(HttpMethod.Get, $"/api/v1/casos/{caso.IdCaso}",
+            Token(Rol.OPERADOR, PersistenciaFalsa.EmpresaB))).StatusCode);
+    }
+
+    [Fact]
+    public async Task ElPersonalConsultaElCatalogoDeEmpresas()
+    {
+        var r = await Enviar(HttpMethod.Get, "/api/v1/empresas", Operador());
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal(2, (await r.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength());
+        Assert.Equal(HttpStatusCode.Forbidden, (await Enviar(HttpMethod.Get, "/api/v1/empresas",
+            Token(Rol.CIUDADANO))).StatusCode);
     }
 
     [Fact]

@@ -54,6 +54,8 @@ public final class ReglasAcceso {
             Regla.roles(null, Set.of(OPERADOR, ADMINISTRADOR), "/api/v1/casos", "/api/v1/casos/**"),
             // Moderación de denuncias anónimas (RF-5): el regulador solo consulta
             Regla.roles("GET", Set.of(OPERADOR, REGULADOR, ADMINISTRADOR), "/api/v1/moderacion/**"),
+            // Catálogo de empresas prestadoras reales (ADR-35): solo lectura para el personal.
+            Regla.roles("GET", Set.of(OPERADOR, REGULADOR, ADMINISTRADOR), "/api/v1/empresas"),
             Regla.roles(null, Set.of(OPERADOR, ADMINISTRADOR), "/api/v1/moderacion/**"),
             // Anclas de la cadena de auditoría (ADR-31): públicas, para que cualquiera las guarde afuera
             Regla.publica("GET", "/api/v1/auditoria/anclas"),

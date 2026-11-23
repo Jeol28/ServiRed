@@ -586,13 +586,31 @@ paths:
   /interno/v1/catalogo/cobertura:
     get:
       operationId: buscarCobertura
-      description: Empresas que prestan el servicio en el municipio, ordenadas por id.
+      description: |
+        Solo `atencion`. Zona de servicio y su única empresa dueña (ADR-35). Busca por el punto
+        (latitud y longitud) si lo hay; si no, por la ubicación guardada de la denuncia
+        (idDenuncia: el evento no la trae); si no, la cabecera del municipio. Una localidad o
+        comuna sin dueño propio hereda el de su cabecera o resto rural.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
-        - { name: codigoMunicipio, in: query, required: true, schema: { type: string } }
         - { name: tipoServicio, in: query, required: true, schema: { type: string } }
+        - { name: latitud, in: query, schema: { type: number } }
+        - { name: longitud, in: query, schema: { type: number } }
+        - { name: idDenuncia, in: query, schema: { type: string, format: uuid } }
+        - { name: codigoMunicipio, in: query, schema: { type: string } }
       responses:
-        "200": { description: "[{idEmpresa, nombre}]" }
+        "200": { description: "{idZona, nombreZona, empresa: {idEmpresa, nombre} | null}" }
+        "400": { description: Sin punto, denuncia ni municipio }
+        "404": { description: No se pudo ubicar la zona }
+
+  /interno/v1/catalogo/empresas:
+    get:
+      operationId: listarEmpresas
+      description: Solo `atencion`. Empresas prestadoras reales, por nombre.
+      parameters:
+        - $ref: "#/components/parameters/IdCorrelacion"
+      responses:
+        "200": { description: "[{idEmpresa, nit, nombre}]" }
 
   /interno/v1/operadores/{idCuenta}:
     get:

@@ -119,6 +119,8 @@ public class AplicacionPruebas
 
         Assert.Equal(PersistenciaFalsa.EmpresaA, m.IdEmpresa);
         Assert.Equal(EstadoModeracion.PENDIENTE, m.Estado);
+        // El evento no trae la ubicación: Persistencia busca la zona por la denuncia guardada.
+        Assert.Contains(_p.ConsultasCobertura, q => q.IdDenuncia == m.IdDenuncia && q.Latitud is null);
     }
 
     [Fact]

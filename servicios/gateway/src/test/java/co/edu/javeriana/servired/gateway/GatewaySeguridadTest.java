@@ -197,6 +197,10 @@ class GatewaySeguridadTest {
         cliente.post().uri("/api/v1/moderacion/denuncias/x/decision").header("Authorization", token("OPERADOR"))
                 .exchange().expectStatus().isOk();
         get("/api/v1/moderacion/denuncias", token("CIUDADANO")).expectStatus().isForbidden();
+        // Catálogo de empresas (ADR-35): personal sí, ciudadano no.
+        get("/api/v1/empresas", token("OPERADOR")).expectStatus().isOk();
+        get("/api/v1/empresas", token("REGULADOR")).expectStatus().isOk();
+        get("/api/v1/empresas", token("CIUDADANO")).expectStatus().isForbidden();
         get("/api/v1/auditoria/registros", token("REGULADOR")).expectStatus().isOk();
         get("/api/v1/auditoria/registros", token("OPERADOR")).expectStatus().isForbidden();
         get("/api/v1/auditoria/registros", null).expectStatus().isUnauthorized();

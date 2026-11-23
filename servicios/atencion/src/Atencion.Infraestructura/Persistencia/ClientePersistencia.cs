@@ -82,13 +82,21 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
         BytesAsync($"/interno/v1/casos/{idCaso}/evidencias/{idEvidencia}", correlacion, ct);
 
     // --------------------------------------------------------------- catálogo
-    public async Task<IReadOnlyList<Guid>> EmpresasConCoberturaAsync(string codigoMunicipio, TipoServicio servicio,
-        IdCorrelacion correlacion, CancellationToken ct)
+    public async Task<Cobertura?> CoberturaAsync(ConsultaCobertura q, IdCorrelacion correlacion, CancellationToken ct)
     {
-        var empresas = await EnviarAsync<List<EmpresaDto>>(HttpMethod.Get,
-            $"/interno/v1/catalogo/cobertura?codigoMunicipio={codigoMunicipio}&tipoServicio={servicio}", null, correlacion, ct);
-        return empresas!.Select(e => e.IdEmpresa).ToList();
+        var parametros = new List<string> { $"tipoServicio={q.Servicio}" };
+        if (q.Latitud is { } lat && q.Longitud is { } lon)
+            parametros.Add(FormattableString.Invariant($"latitud={lat}&longitud={lon}"));
+        if (q.IdDenuncia is { } den) parametros.Add($"idDenuncia={den}");
+        if (q.CodigoMunicipio is { } m) parametros.Add($"codigoMunicipio={Uri.EscapeDataString(m)}");
+        var r = await EnviarAsync<CoberturaDto>(HttpMethod.Get,
+            "/interno/v1/catalogo/cobertura?" + string.Join('&', parametros), null, correlacion, ct, permitir404: true);
+        return r is null ? null : new Cobertura(r.IdZona, r.NombreZona, r.Empresa?.IdEmpresa, r.Empresa?.Nombre);
     }
+
+    public async Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(IdCorrelacion correlacion, CancellationToken ct) =>
+        (await EnviarAsync<List<EmpresaPrestadora>>(HttpMethod.Get, "/interno/v1/catalogo/empresas", null, correlacion,
+            ct))!;
 
     public async Task<bool> EsOperadorDeAsync(Guid idCuenta, Guid idEmpresa, IdCorrelacion correlacion, CancellationToken ct)
     {
@@ -175,6 +183,7 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
     }
 
     private sealed record EmpresaDto(Guid IdEmpresa, string Nombre);
+    private sealed record CoberturaDto(string IdZona, string NombreZona, EmpresaDto? Empresa);
 
     private sealed record PaginaDto<T>(List<T> Elementos, long Total, int Pagina, int Tamano);
 }

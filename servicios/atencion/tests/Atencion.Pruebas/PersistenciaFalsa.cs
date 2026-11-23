@@ -21,7 +21,13 @@ public sealed class PersistenciaFalsa : IRepositorioCasos, ICatalogoAtencion, IR
     public readonly ConcurrentDictionary<Guid, int> FallasTransitorias = new();
     public readonly ConcurrentBag<Guid> RechazosPermanentes = [];
     public readonly HashSet<(Guid, Guid)> Operadores = [];
-    public Dictionary<string, Guid[]> Cobertura = new() { ["11001|ENERGIA"] = [EmpresaB, EmpresaA] };
+    /// <summary>Zona y dueña por municipio y servicio (la falsa ignora el punto exacto).</summary>
+    public Dictionary<string, Cobertura> Zonas = new()
+    {
+        ["11001|ENERGIA"] = new Cobertura("11001-U", "Cabecera de Bogotá", EmpresaA, "Empresa A"),
+        ["91001|ENERGIA"] = new Cobertura("91001-U", "Cabecera de Leticia", null, null),
+    };
+    public readonly ConcurrentBag<ConsultaCobertura> ConsultasCobertura = [];
     public int ConflictosPendientes;
 
     public Task<Caso> AbrirAsync(Caso caso, IReadOnlyList<SobreEventoSaliente> eventos, IdCorrelacion correlacion,
@@ -96,9 +102,15 @@ public sealed class PersistenciaFalsa : IRepositorioCasos, ICatalogoAtencion, IR
     public Task<Archivo?> EvidenciaAsync(Guid idCaso, Guid idEvidencia, IdCorrelacion correlacion, CancellationToken ct) =>
         Task.FromResult<Archivo?>(Casos.ContainsKey(idCaso) ? new Archivo("image/png", [1, 2, 3]) : null);
 
-    public Task<IReadOnlyList<Guid>> EmpresasConCoberturaAsync(string codigoMunicipio, TipoServicio servicio,
-        IdCorrelacion correlacion, CancellationToken ct) =>
-        Task.FromResult<IReadOnlyList<Guid>>(Cobertura.GetValueOrDefault($"{codigoMunicipio}|{servicio}") ?? []);
+    public Task<Cobertura?> CoberturaAsync(ConsultaCobertura consulta, IdCorrelacion correlacion, CancellationToken ct)
+    {
+        ConsultasCobertura.Add(consulta);
+        return Task.FromResult(Zonas.GetValueOrDefault($"{consulta.CodigoMunicipio}|{consulta.Servicio}"));
+    }
+
+    public Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(IdCorrelacion correlacion, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<EmpresaPrestadora>>(
+            [new EmpresaPrestadora(EmpresaA, "800000001", "Empresa A"), new EmpresaPrestadora(EmpresaB, "800000002", "Empresa B")]);
 
     public Task<bool> EsOperadorDeAsync(Guid idCuenta, Guid idEmpresa, IdCorrelacion correlacion, CancellationToken ct) =>
         Task.FromResult(Operadores.Contains((idCuenta, idEmpresa)));

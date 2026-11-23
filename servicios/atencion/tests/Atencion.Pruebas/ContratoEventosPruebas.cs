@@ -44,7 +44,7 @@ public class ContratoEventosPruebas
                 resueltoSinResolucion.Cerrar(Admin, null, Ahora), Correlacion)] },
             { "resolver por restablecimiento (automático)", [.. EventosCaso.Para(sinEmpresa,
                 sinEmpresa.ResolverPorRestablecimiento(90, Ahora)!, Correlacion)] },
-            { "enrutar a una empresa", [.. EventosCaso.Para(sinEmpresa, sinEmpresa.Enrutar(Admin, Empresa, Ahora), Correlacion)] },
+            { "enrutar a una empresa", [.. EventosCaso.Para(sinEmpresa, sinEmpresa.Enrutar(Admin, Empresa, new Cobertura("11001-U", "Cabecera de Bogotá", Empresa, "E"), Ahora), Correlacion)] },
             { "moderar una denuncia", [EventosCaso.DenunciaModerada(new Actor(Guid.NewGuid(), Rol.OPERADOR, Empresa),
                 Guid.NewGuid(), EstadoModeracion.VALIDADA, Correlacion, Ahora)] },
         };

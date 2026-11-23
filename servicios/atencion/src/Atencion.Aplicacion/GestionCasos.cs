@@ -40,8 +40,31 @@ public sealed class GestionCasos(IRepositorioCasos casos, ICatalogoAtencion cata
         CancellationToken ct) =>
         DecidirAsync(actor, idCaso, c => c.FijarPrioridad(actor, prioridad, reloj.GetUtcNow()), correlacion, ct);
 
-    public Task<Caso> EnrutarAsync(Actor actor, Guid idCaso, Guid idEmpresa, IdCorrelacion correlacion, CancellationToken ct) =>
-        DecidirAsync(actor, idCaso, c => c.Enrutar(actor, idEmpresa, reloj.GetUtcNow()), correlacion, ct);
+    /// <summary>El administrador enruta, solo a la empresa dueña de la zona del caso (ADR-35).</summary>
+    public async Task<Caso> EnrutarAsync(Actor actor, Guid idCaso, Guid idEmpresa, IdCorrelacion correlacion,
+        CancellationToken ct)
+    {
+        var caso = await ConsultarAsync(actor, idCaso, correlacion, ct);
+        var zona = await catalogo.CoberturaAsync(ConsultaCobertura.DeCaso(caso), correlacion, ct);
+        return await GuardarAsync(caso, caso.Enrutar(actor, idEmpresa, zona, reloj.GetUtcNow()), correlacion, ct);
+    }
+
+    /// <summary>La zona del caso y su empresa dueña: para enrutar desde el portal.</summary>
+    public async Task<Cobertura> ZonaAsync(Actor actor, Guid idCaso, IdCorrelacion correlacion, CancellationToken ct)
+    {
+        var caso = await ConsultarAsync(actor, idCaso, correlacion, ct);
+        return await catalogo.CoberturaAsync(ConsultaCobertura.DeCaso(caso), correlacion, ct)
+               ?? throw new NoEncontrado("No se pudo ubicar la zona del caso");
+    }
+
+    /// <summary>Catálogo de empresas prestadoras reales (nombres en el portal y alta de operadores).</summary>
+    public Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(Actor actor, IdCorrelacion correlacion,
+        CancellationToken ct)
+    {
+        if (actor.Rol is not (Rol.OPERADOR or Rol.REGULADOR or Rol.ADMINISTRADOR))
+            throw new AccesoDenegado("Rol sin acceso al catálogo de empresas");
+        return catalogo.EmpresasAsync(correlacion, ct);
+    }
 
     /// <summary>Asigna a otro operador de la empresa del caso o, si no se indica, a quien lo pide.</summary>
     public async Task<Caso> AsignarAsync(Actor actor, Guid idCaso, Guid? idOperador, IdCorrelacion correlacion,

@@ -75,11 +75,18 @@ public class CasoPruebas
     }
 
     [Fact]
-    public void SoloElAdministradorEnruta()
+    public void SoloElAdministradorEnrutaYSoloALaDuenaDeLaZona()
     {
-        Assert.Throws<AccesoDenegado>(() => Caso().Enrutar(_operador, Guid.NewGuid(), Ahora));
-        var otra = Guid.NewGuid();
-        Assert.Equal(otra, Caso().Enrutar(_admin, otra, Ahora).IdEmpresa);
+        var duena = Guid.NewGuid();
+        var zona = new Cobertura("11001-L11", "Suba", duena, "Área Limpia");
+        Assert.Throws<AccesoDenegado>(() => Caso().Enrutar(_operador, duena, zona, Ahora));
+        Assert.Equal(duena, Caso().Enrutar(_admin, duena, zona, Ahora).IdEmpresa);
+
+        var otra = Assert.Throws<ReglaIncumplida>(() => Caso().Enrutar(_admin, Guid.NewGuid(), zona, Ahora));
+        Assert.Equal("FUERA_DE_ZONA", otra.Motivo);
+        var sinDuena = Assert.Throws<ReglaIncumplida>(() =>
+            Caso().Enrutar(_admin, duena, zona with { IdEmpresa = null }, Ahora));
+        Assert.Equal("SIN_EMPRESA_EN_ZONA", sinDuena.Motivo);
     }
 
     [Fact]
@@ -115,14 +122,6 @@ public class CasoPruebas
     public void PoliticaDePrioridad(TipoServicio servicio, Magnitud magnitud, bool validado, Prioridad esperada) =>
         Assert.Equal(esperada, PoliticaPrioridad.Calcular(servicio, magnitud, validado));
 
-    [Fact]
-    public void ElEnrutadorEsDeterministaYToleraSinCobertura()
-    {
-        var a = Guid.Parse("00000000-0000-0000-0000-00000000000a");
-        var b = Guid.Parse("00000000-0000-0000-0000-00000000000b");
-        Assert.Equal(a, Enrutador.Elegir([b, a]));
-        Assert.Null(Enrutador.Elegir([]));
-    }
 
     [Fact]
     public void LaModeracionSeDecideUnaVezYConNota()

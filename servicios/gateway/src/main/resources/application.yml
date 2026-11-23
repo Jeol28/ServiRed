@@ -63,7 +63,7 @@ spring:
             - id: atencion
               uri: ${SERVICIO_ATENCION_URL:http://atencion:8080}
               predicates:
-                - Path=/api/v1/casos,/api/v1/casos/**,/api/v1/moderacion/**
+                - Path=/api/v1/casos,/api/v1/casos/**,/api/v1/moderacion/**,/api/v1/empresas
             # Auditoría: solo la consulta /api/v1/auditoria/** (nunca /interno/**).
             - id: auditoria
               uri: ${SERVICIO_AUDITORIA_URL:http://auditoria:8080}

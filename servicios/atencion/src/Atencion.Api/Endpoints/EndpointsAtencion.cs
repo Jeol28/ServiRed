@@ -37,6 +37,10 @@ public static class EndpointsAtencion
         casos.MapGet("/{idCaso:guid}", (Guid idCaso, HttpContext h, GestionCasos g, CancellationToken ct) =>
             g.ConsultarAsync(ActorActual.De(h), idCaso, Correlacion(h), ct));
 
+        // Zona del caso y su única empresa dueña (ADR-35): el portal la ofrece al enrutar.
+        casos.MapGet("/{idCaso:guid}/zona", (Guid idCaso, HttpContext h, GestionCasos g, CancellationToken ct) =>
+            g.ZonaAsync(ActorActual.De(h), idCaso, Correlacion(h), ct));
+
         casos.MapGet("/{idCaso:guid}/evidencias/{idEvidencia:guid}",
             async (Guid idCaso, Guid idEvidencia, HttpContext h, GestionCasos g, CancellationToken ct) =>
             {
@@ -70,6 +74,11 @@ public static class EndpointsAtencion
         gestion.MapPut("/{idCaso:guid}/empresa",
             (Guid idCaso, EmpresaDto dto, HttpContext h, GestionCasos g, CancellationToken ct) =>
                 g.EnrutarAsync(ActorActual.De(h), idCaso, dto.IdEmpresa, Correlacion(h), ct));
+
+        // Catálogo de empresas prestadoras reales (ADR-35).
+        app.MapGet("/api/v1/empresas", (HttpContext h, GestionCasos g, CancellationToken ct) =>
+                g.EmpresasAsync(ActorActual.De(h), Correlacion(h), ct))
+            .RequireAuthorization(ConfiguracionJwt.PoliticaLeerCasos);
 
         // --------------------------------------------------------- moderación
         var moderacion = app.MapGroup("/api/v1/moderacion/denuncias")

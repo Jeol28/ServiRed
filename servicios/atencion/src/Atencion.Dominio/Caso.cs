@@ -131,13 +131,22 @@ public sealed partial record Caso(
             Prioridad: prioridad, PrioridadManual: true);
     }
 
-    /// <summary>Solo un administrador cambia la empresa responsable (casos sin cobertura o mal enrutados).</summary>
-    public CambiosCaso Enrutar(Actor actor, Guid idEmpresa, DateTimeOffset ahora)
+    /// <summary>
+    /// Solo un administrador enruta, y solo a la empresa dueña de la zona del caso (ADR-35): sirve
+    /// para casos que quedaron sin empresa o con otra (p. ej. si cambió la cobertura).
+    /// </summary>
+    public CambiosCaso Enrutar(Actor actor, Guid idEmpresa, Cobertura? zona, DateTimeOffset ahora)
     {
         if (actor.Rol != Rol.ADMINISTRADOR) throw new AccesoDenegado("Solo un administrador enruta casos");
         if (EstaCerrado) throw new ReglaIncumplida("CERRADO", "El caso está cerrado");
+        if (zona?.IdEmpresa is not { } duena)
+            throw new ReglaIncumplida("SIN_EMPRESA_EN_ZONA",
+                $"Ninguna empresa presta este servicio en {zona?.NombreZona ?? "la zona del caso"}");
+        if (idEmpresa != duena)
+            throw new ReglaIncumplida("FUERA_DE_ZONA",
+                $"Solo la empresa dueña de {zona.NombreZona} ({zona.NombreEmpresa}) puede gestionar el caso");
         if (IdEmpresa == idEmpresa) throw new ReglaIncumplida("SIN_CAMBIO", "El caso ya es de esa empresa");
-        return new CambiosCaso(Version, "Enrutado manualmente a otra empresa", actor.IdCuenta, ahora,
+        return new CambiosCaso(Version, $"Enrutado a la empresa dueña de {zona.NombreZona}", actor.IdCuenta, ahora,
             IdEmpresa: idEmpresa);
     }
 

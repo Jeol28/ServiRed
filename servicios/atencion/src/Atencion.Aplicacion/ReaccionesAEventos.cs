@@ -18,11 +18,16 @@ public sealed class ReaccionesAEventos(
 {
     private const int IntentosPorConcurrencia = 3;
 
-    /// <summary>reporte.creado: abre el caso enrutado a la empresa con cobertura y priorizado.</summary>
+    /// <summary>
+    /// reporte.creado: abre el caso enrutado a la única empresa dueña de la zona del reporte
+    /// (ADR-35) y priorizado. Si nadie presta el servicio allí, queda sin empresa.
+    /// </summary>
     public async Task<Caso> AbrirCasoAsync(DatosReporteCreado d, IdCorrelacion correlacion, CancellationToken ct)
     {
         var (servicio, magnitud) = Parsear(d.TipoServicio, d.Magnitud);
-        var empresa = Enrutador.Elegir(await catalogo.EmpresasConCoberturaAsync(d.CodigoMunicipio, servicio, correlacion, ct));
+        var zona = await catalogo.CoberturaAsync(new ConsultaCobertura(servicio, d.Ubicacion?.Latitud,
+            d.Ubicacion?.Longitud, null, d.CodigoMunicipio), correlacion, ct);
+        var empresa = zona?.IdEmpresa;
         Caso caso;
         try
         {
@@ -47,12 +52,16 @@ public sealed class ReaccionesAEventos(
             ? AplicarAsync(d.IdReporte, c => c.RegistrarValidacionDelCorte(d.Validado, reloj.GetUtcNow()), correlacion, ct)
             : Task.FromResult<Caso?>(null);
 
-    /// <summary>denuncia.recibida: abre la moderación en la empresa con cobertura.</summary>
+    /// <summary>
+    /// denuncia.recibida: abre la moderación en la empresa dueña de la zona de la denuncia. El
+    /// evento no trae la ubicación (anonimato); Persistencia usa la que guardó.
+    /// </summary>
     public async Task<Moderacion> AbrirModeracionAsync(DatosDenuncia d, IdCorrelacion correlacion, CancellationToken ct)
     {
         var (servicio, _) = Parsear(d.TipoServicio, "VIVIENDA");
-        var empresa = Enrutador.Elegir(await catalogo.EmpresasConCoberturaAsync(d.CodigoMunicipio, servicio, correlacion, ct));
-        return await moderacion.AbrirAsync(d.IdDenuncia, empresa, d.FechaRecepcion, correlacion, ct);
+        var zona = await catalogo.CoberturaAsync(new ConsultaCobertura(servicio, IdDenuncia: d.IdDenuncia,
+            CodigoMunicipio: d.CodigoMunicipio), correlacion, ct);
+        return await moderacion.AbrirAsync(d.IdDenuncia, zona?.IdEmpresa, d.FechaRecepcion, correlacion, ct);
     }
 
     /// <summary>
