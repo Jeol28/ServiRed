@@ -47,6 +47,6 @@ actualización. El SAD no fija umbrales ni el nivel de agregación.
   municipales las celdas miden 0,05° (~5,5 km) y se muestran desde 5 reportes.
 - No hay tasas por habitante (no hay datos de población en la semilla).
 - Las exportaciones se registran en el log; el registro de auditoría formal
-  (RF-12) se retiró ([ADR-33](ADR-33-se-retira-la-auditoria.md)).
+  (RF-12) llega en la fase 7.
 - Los eventos acumulados en `indicadores.eventos` desde la fase 2 se procesaron
   al arrancar el consumidor, así que la vista incluye la historia.

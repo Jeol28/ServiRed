@@ -25,6 +25,7 @@ public static class ServiciosInfraestructura
             http.DefaultRequestHeaders.Add(ClienteVistaLectura.CabeceraClave, persistencia.Clave);
         }).ConCircuitoPersistencia(persistencia.Timeout);
         servicios.AddTransient<IVistaLectura>(sp => sp.GetRequiredService<ClienteVistaLectura>());
+        servicios.AddTransient<IRegistroAcciones>(sp => sp.GetRequiredService<ClienteVistaLectura>());
         servicios.AddScoped<ProyeccionEventos>();
         servicios.AddScoped<ConsultasIndicadores>();
 

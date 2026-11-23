@@ -50,8 +50,8 @@ Simula un corte masivo en Bogotá (escenario E7):
 - **Reintentos como la app:** ante un error de red o un 5xx se reintenta con el mismo
   `X-Correlation-Id`.
 - **Qué comprueba para cada 201:**
-  - está en la base, publicó `reporte.creado`, abrió su caso, llegó a la vista (y, mientras existió, quedó en
-    Auditoría, retirada en ADR-33);
+  - está en la base, publicó `reporte.creado`, abrió su caso, llegó a la vista y quedó en
+    Auditoría;
   - no hay duplicados y las DLQ no crecieron;
   - RNF-R1 (p95 ≤ 2 s) y RNF-R3 (visible para el operador en ≤ 10 s).
 - **Fotos (`--fotos`, por defecto 0,5):** la mitad de los ciudadanos adjunta una foto como
@@ -76,7 +76,7 @@ consultas. En la segunda corrida, además, 607 fotos (la tabla es de esa corrida
 | Comprobación | Resultado |
 |---|---|
 | Aceptados (201) | 1200 de 1200, sin reintentos |
-| Perdidos | 0. Los 1200 en la base, con `reporte.creado` publicado, caso, fila en la vista y registro en Auditoría (retirada después, ADR-33), 3 s después del fin del pico |
+| Perdidos | 0. Los 1200 en la base, con `reporte.creado` publicado, caso, fila en la vista y registro en Auditoría, 3 s después del fin del pico |
 | Duplicados / DLQ | 0 / sin crecer |
 | Creación (RNF-R1) | p50 7 ms · p95 13 ms · máx 37 ms |
 | Fotos | 607 de 607 aceptadas, con referencia en la base, descargables y sin EXIF; subida p50 141 ms · p95 163 ms · máx 202 ms |
@@ -109,8 +109,8 @@ consultas. En la segunda corrida, además, 607 fotos (la tabla es de esa corrida
     publica una segunda apertura, y solo admite `caso.actualizado`.
   - **Consumidores:** Reportes ignora `RECIBIDO`, así que el ciudadano no ve cambios.
     Indicadores completa la fila; un evento de apertura tardío no pisa un cambio
-    posterior, porque la vista compara `caso_en`. (Auditoría lo registraba
-    como `CASO_ACTUALIZADO`; se retiró en ADR-33.)
+    posterior, porque la vista compara `caso_en`. Auditoría lo registra como
+    `CASO_ACTUALIZADO`.
   - **Datos anteriores:** los casos abiertos antes del cambio se reparan una vez con
     `reconstruir-indicadores.py --aplicar`, también en la VM. La e2e
     `apertura-de-caso.py` comprueba que después los reportes nuevos dejan la vista

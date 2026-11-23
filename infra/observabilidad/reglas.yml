@@ -1,4 +1,5 @@
-# Alertas operativas de SERVI-RED. Se ven en Alertmanager y Grafana (ADR-33).
+# Alertas de SERVI-RED (RF-13, ADR-16). Alertmanager las envía a Auditoría,
+# que las deja en el registro de auditoría (categoría ALERTA).
 groups:
   - name: servired-operacion
     rules:
@@ -15,7 +16,7 @@ groups:
         expr: |
           absent(up{job="persistencia"} == 1) or absent(up{job="reportes"} == 1)
           or absent(up{job="identidad"} == 1) or absent(up{job="atencion"} == 1)
-          or absent(up{job="indicadores"} == 1)
+          or absent(up{job="indicadores"} == 1) or absent(up{job="auditoria"} == 1)
         for: 1m
         labels: { severity: critica }
         annotations:
@@ -71,6 +72,34 @@ groups:
         annotations:
           summary: "Un evento lleva {{ $value | humanizeDuration }} guardado sin publicar: revisar RabbitMQ y el relay del outbox"
 
+      # Anclas externas de la cadena de auditoría (ADR-31).
+      - alert: AnclaDeAuditoriaSinPublicar
+        expr: max(servired_auditoria_ancla_antiguedad_segundos) > 2 * 86400
+        for: 1h
+        labels: { severity: alta, servicio: persistencia }
+        annotations:
+          summary: "Hace {{ $value | humanizeDuration }} que no se publica un ancla de la cadena de auditoría fuera del sistema: revisar AUDITORIA_ANCLAS_GITHUB_* y el token"
+
+      - alert: AnclaNoFijadaPorCadenaRota
+        expr: increase(servired_auditoria_anclas_cadena_rota_total[1d]) > 0
+        labels: { severity: critica, servicio: persistencia }
+        annotations:
+          summary: "No se fijó el ancla del día porque la cadena de auditoría está rota: verificar la integridad (posible manipulación)"
+
+      # Archivado del registro de auditoría (ADR-29).
+      - alert: ArchivoDeAuditoriaDetenido
+        expr: increase(servired_auditoria_archivo_detenidos_total[2d]) > 0
+        labels: { severity: critica, servicio: persistencia }
+        annotations:
+          summary: "El archivado de auditoría se detuvo porque la cadena de huellas está rota: verificar la integridad (posible manipulación del registro)"
+
+      - alert: ArchivoDeAuditoriaFallando
+        expr: increase(servired_auditoria_archivo_fallas_total[3d]) >= 2
+        labels: { severity: media, servicio: persistencia }
+        annotations:
+          summary: "El archivado de auditoría falló {{ $value }} veces en 3 días: revisar el almacén y la base (el registro sigue creciendo en la base)"
+
+      # Lista de revocación de tokens en el gateway (ADR-26).
       - alert: ListaDeRevocacionDesactualizada
         expr: max by (instance) (servired_revocacion_antiguedad_segundos) > 60
         for: 1m
@@ -140,6 +169,18 @@ groups:
 
   - name: servired-seguridad
     rules:
+      - alert: AlertaDeSeguridadDetectada
+        expr: increase(servired_alertas_seguridad_total[5m]) > 0
+        labels: { severity: alta, servicio: auditoria }
+        annotations:
+          summary: "Auditoría detectó {{ $labels.tipo }} (severidad {{ $labels.severidad }})"
+
+      - alert: IniciosDeSesionFallidosFrecuentes
+        expr: sum(increase(servired_acciones_auditadas_total{accion="INICIO_SESION_FALLIDO"}[5m])) > 20
+        labels: { severity: alta, servicio: identidad }
+        annotations:
+          summary: "{{ $value }} inicios de sesión fallidos en 5 minutos"
+
       - alert: AccesosDenegadosEnGateway
         expr: sum(increase(http_server_requests_seconds_count{job="gateway",status=~"401|403"}[5m])) > 50
         labels: { severity: media, servicio: gateway }

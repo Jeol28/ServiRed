@@ -41,6 +41,10 @@ export const routes: Routes = [
         loadComponent: () => import('./paginas/exportacion').then((m) => m.Exportacion),
       },
       {
+        path: 'auditoria', canActivate: [SUPERVISION], title: 'Auditoría',
+        loadComponent: () => import('./paginas/auditoria').then((m) => m.Auditoria),
+      },
+      {
         path: 'cuentas', canActivate: [guardiaRol('ADMINISTRADOR')], title: 'Cuentas',
         loadComponent: () => import('./paginas/cuentas').then((m) => m.Cuentas),
       },

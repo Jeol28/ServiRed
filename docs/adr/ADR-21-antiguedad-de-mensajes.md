@@ -37,9 +37,9 @@ guardado más viejo que aún no se ha publicado, o 0 si no hay ninguno. La consu
 - **Publicación:** Persistencia publica cada 2 s una sonda por el mismo exchange que los
   eventos. Lleva la routing key `sonda.v1` y la cabecera `x-sonda-publicada-ms` con su
   hora de publicación, y es un mensaje no persistente con cuerpo `{}`. La topología enruta
-  `sonda.v1` a las colas consumidoras (eran cuatro con la de Auditoría, retirada en ADR-33).
+  `sonda.v1` a las cuatro colas consumidoras; Auditoría ya la recibía por su `#`.
 - **Recepción:** cada consumidor, al recibir la sonda, guarda su hora de publicación y la
-  confirma. La sonda no llega a la lógica de negocio.
+  confirma. La sonda no llega a la lógica de negocio ni al registro de auditoría.
 - **Por qué funciona:** la cola es FIFO, así que todo lo publicado antes de la última
   sonda consumida ya salió. Por lo tanto, el mensaje más viejo pendiente tiene a lo sumo
   `ahora − publicación de esa sonda`.

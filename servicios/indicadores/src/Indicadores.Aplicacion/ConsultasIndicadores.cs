@@ -42,7 +42,7 @@ public sealed record PuntoOperativo(Guid IdReporte, string TipoServicio, double 
 /// Todo lo público pasa por <see cref="PoliticaAnonimizacion"/>; lo detallado solo
 /// lo ve el personal autorizado.
 /// </summary>
-public sealed class ConsultasIndicadores(IVistaLectura vista)
+public sealed class ConsultasIndicadores(IVistaLectura vista, IRegistroAcciones acciones)
 {
     public const int LimiteMapaOperativo = 5000;
     public const int LoteExportacion = 5000;
@@ -111,12 +111,20 @@ public sealed class ConsultasIndicadores(IVistaLectura vista)
 
     /// <summary>
     /// RF-10 regulatorio: todos los reportes del periodo, sin datos del ciudadano y
-    /// con coordenadas redondeadas (~110 m). Solo regulador y administrador.
+    /// con coordenadas redondeadas (~110 m). Solo regulador y administrador. Se
+    /// audita ANTES de entregar datos: si la auditoría no está disponible, no se exporta.
     /// </summary>
     public async IAsyncEnumerable<Hecho> ExportarAsync(Actor actor, FiltroVista f, IdCorrelacion c,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         ExigirPersonal(actor, Rol.REGULADOR, Rol.ADMINISTRADOR);
+        await acciones.PublicarAsync(new AccionAuditada("EXPORTACION", "EXPORTACION_REGULATORIA", actor, "EXPORTACION",
+            new Dictionary<string, object?>
+            {
+                ["desde"] = f.Periodo.Desde.ToString("O"), ["hasta"] = f.Periodo.Hasta.ToString("O"),
+                ["tipoServicio"] = f.TipoServicio?.ToString(), ["codigoDepartamento"] = f.CodigoDepartamento,
+                ["codigoMunicipio"] = f.CodigoMunicipio, ["idEmpresa"] = f.IdEmpresa?.ToString(),
+            }.Where(kv => kv.Value is not null).ToDictionary(kv => kv.Key, kv => kv.Value)), c, ct);
         for (var desde = 0; ; desde += LoteExportacion)
         {
             var pagina = await vista.HechosAsync(f, desde, LoteExportacion, c, ct);

@@ -17,8 +17,8 @@ demore, como en un pico real (los ciudadanos no esperan a que el sistema se deso
 
 Comprueba:
   1. Sin pérdida: cada reporte que recibió 201 está en la base, publicó su
-     reporte.creado (outbox), abrió su caso en Atención, y llegó a la vista de
-     Indicadores. Las colas de fallidos no crecen.
+     reporte.creado (outbox), abrió su caso en Atención, llegó a la vista de Indicadores
+     y quedó en Auditoría. Las colas de fallidos no crecen.
   2. Sin duplicados: los reintentos de la app (mismo X-Correlation-Id ante un error de
      red o un 5xx) no crean un segundo reporte.
   3. Se atiende el pico: ningún reporte termina rechazado por el sistema (5xx, timeout)
@@ -330,6 +330,8 @@ def main():
                             f"WHERE {filtro}",
         "en la vista de Indicadores": f"SELECT count(*) FROM reportes.reportes r JOIN indicadores.vista_reportes v "
                                       f"ON v.id_reporte = r.id WHERE {filtro}",
+        "en Auditoría": f"""SELECT count(DISTINCT r.id) FROM reportes.reportes r JOIN auditoria.registros a
+            ON a.tipo = 'reporte.creado' AND a.recurso_id = r.id::text WHERE {filtro}""",
     }
     esperados = len(aceptados)
     conteos, limite = {}, time.time() + args.espera_max

@@ -28,7 +28,8 @@
         "validacion.registrada",
         "denuncia.recibida",
         "caso.actualizado",
-        "caso.cerrado"
+        "caso.cerrado",
+        "accion.auditada"
       ]
     },
     "version": {

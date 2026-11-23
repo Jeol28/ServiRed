@@ -21,12 +21,13 @@ código con otro: se integran solo a través de estos contratos (RNF-DAT3).
 ## Eventos mínimos
 | Evento | Productor | Consumidores |
 |---|---|---|
-| `reporte.creado` | reportes | atencion, indicadores |
-| `restablecimiento.registrado` | reportes | atencion, indicadores |
-| `validacion.registrada` | reportes | atencion, indicadores |
-| `denuncia.recibida` | reportes | atencion |
-| `caso.actualizado` | atencion | reportes, indicadores |
-| `caso.cerrado` | atencion | reportes, indicadores |
+| `reporte.creado` | reportes | atencion, indicadores, auditoria |
+| `restablecimiento.registrado` | reportes | atencion, indicadores, auditoria |
+| `validacion.registrada` | reportes | atencion, indicadores, auditoria |
+| `denuncia.recibida` | reportes | atencion, auditoria |
+| `caso.actualizado` | atencion | reportes, indicadores, auditoria |
+| `caso.cerrado` | atencion | reportes, indicadores, auditoria |
+| `accion.auditada` | identidad, atencion, indicadores | auditoria |
 
 ## Cómo se verifica que Java y .NET hablan el mismo idioma
 Los esquemas son la regla. La comprueban tres niveles de pruebas, y todos validan los
@@ -42,12 +43,13 @@ formatos (`uuid`, `date-time`), no solo los tipos:
    `dotnet test`), con el mismo contrato:
    - Validador: `com.networknt:json-schema-validator` en Java y `JsonSchema.Net` en .NET.
    - **Productores:** generan sus eventos con el código real, los serializan como viajan y
-     los validan. En Reportes, `ContratoEventosTest`; en Atención, `ContratoEventosPruebas`.
+     los validan. En Reportes, `ContratoEventosTest`; en Identidad,
+     `ContratoAccionAuditadaTest`; en Atención e Indicadores, `ContratoEventosPruebas`.
    - **Consumidores:** procesan los ejemplos completo y mínimo con su código real. En
      Reportes, `ConsumidorEventosCasos`; en Atención, `Datos*`; en Indicadores,
-     `ProyeccionEventos`.
+     `ProyeccionEventos`; en Auditoría, `Clasificador`.
 3. **De punta a punta:** `python3 pruebas/e2e/contrato-eventos.py`.
-   - Escucha todo `servired.eventos` mientras recorre flujos que producen los 6 tipos
+   - Escucha todo `servired.eventos` mientras recorre flujos que producen los 7 tipos
      desde sus servicios reales.
    - Valida cada mensaje capturado contra su esquema y sus propiedades AMQP.
 

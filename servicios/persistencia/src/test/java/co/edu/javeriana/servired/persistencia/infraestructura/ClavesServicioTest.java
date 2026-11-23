@@ -12,7 +12,7 @@ class ClavesServicioTest {
     private final ClavesServicio claves = new ClavesServicio(Map.of(
             ServicioCliente.REPORTES, "clave-reportes-1234567",
             ServicioCliente.ATENCION, "corta",
-            ServicioCliente.INDICADORES, ""));
+            ServicioCliente.AUDITORIA, ""));
 
     @Test
     void identificaAlServicioPorSuClave() {

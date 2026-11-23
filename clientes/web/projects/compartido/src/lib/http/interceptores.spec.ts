@@ -103,8 +103,8 @@ describe('interceptores', () => {
 
   it('un 403 no intenta renovar', () => {
     entrar();
-    http.get('/api/v1/cuentas').subscribe({ error: () => undefined });
-    backend.expectOne('/api/v1/cuentas').flush({}, { status: 403, statusText: 'Prohibido' });
+    http.get('/api/v1/auditoria/integridad').subscribe({ error: () => undefined });
+    backend.expectOne('/api/v1/auditoria/integridad').flush({}, { status: 403, statusText: 'Prohibido' });
     backend.expectNone('/api/v1/auth/refrescar');
     expect(servicio.autenticado()).toBe(true);
   });

@@ -17,6 +17,7 @@ consumidor ──falla transitoria──▶ <cola>.reintento           (TTL 10 s
 | `atencion.eventos-reportes` | reporte.creado, restablecimiento.registrado, validacion.registrada, denuncia.recibida |
 | `reportes.eventos-casos` | caso.actualizado, caso.cerrado |
 | `indicadores.eventos` | reporte.#, restablecimiento.#, validacion.#, caso.# |
+| `auditoria.eventos` | # (todos) |
 
 - Routing key `<agregado>.<evento>.v<N>`; una versión nueva se publica en paralelo.
 - Colas **quorum** (replicables, recomendadas en RabbitMQ 4) y mensajes persistentes.
@@ -36,8 +37,8 @@ consumidor ──falla transitoria──▶ <cola>.reintento           (TTL 10 s
   (`correlationId` del evento, operación) y restricciones de unicidad del
   negocio (p. ej. un caso por reporte).
 - El readiness del servicio incluye que el consumidor esté activo.
-- La cola de Indicadores acumula eventos hasta que su
-  consumidor exista (fase 6). La de Auditoría se retiró ([ADR-33](ADR-33-se-retira-la-auditoria.md)); es intencional: no se pierde historia.
+- Las colas de Indicadores y Auditoría acumulan eventos hasta que sus
+  consumidores existan (fases 6 y 7); es intencional: no se pierde historia.
 
 ## Lección aprendida
 Usar el exchange por defecto (`""`) como `x-dead-letter-exchange` de la cola de

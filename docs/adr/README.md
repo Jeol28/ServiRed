@@ -17,7 +17,7 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-13](ADR-13-evidencias-y-almacenamiento.md) | Evidencias fotográficas y almacenamiento de objetos | Aceptada |
 | [ADR-14](ADR-14-atencion-de-casos.md) | Atención de casos: enrutamiento, prioridad, ciclo de vida y acceso | Aceptada |
 | [ADR-15](ADR-15-indicadores-y-datos-abiertos.md) | Indicadores, mapas y datos abiertos anonimizados | Aceptada |
-| [ADR-16](ADR-16-auditoria-y-alertas.md) | Auditoría a prueba de manipulación y alertas | Reemplazada (ADR-33) |
+| [ADR-16](ADR-16-auditoria-y-alertas.md) | Auditoría a prueba de manipulación y alertas | Aceptada |
 | [ADR-17](ADR-17-portales-web.md) | Portales web: sesión en el navegador, proxy y anonimato | Aceptada |
 | [ADR-18](ADR-18-app-movil-ciudadano.md) | Apps móviles del ciudadano (Android e iOS): sin conexión, sesión segura y mapas | Aceptada |
 | [ADR-19](ADR-19-servidor-de-pruebas.md) | Servidor de pruebas fuera de local, sin costo | Aceptada |
@@ -30,8 +30,8 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-26](ADR-26-revocacion-de-tokens-de-acceso.md) | Revocación de tokens de acceso por jti en el gateway | Aceptada |
 | [ADR-27](ADR-27-municipio-por-poligonos-oficiales.md) | Municipio del reporte por polígonos oficiales (PostGIS) | Aceptada |
 | [ADR-28](ADR-28-privacidad-rural-del-mapa.md) | Privacidad rural del mapa público: celdas y k distintos fuera de las cabeceras | Aceptada |
-| [ADR-29](ADR-29-archivado-de-auditoria.md) | Archivado del registro de auditoría conservando la cadena de huellas | Reemplazada (ADR-33) |
+| [ADR-29](ADR-29-archivado-de-auditoria.md) | Archivado del registro de auditoría conservando la cadena de huellas | Aceptada |
 | [ADR-30](ADR-30-refresco-en-cookie-httponly.md) | Token de refresco de los portales en una cookie HttpOnly | Aceptada |
-| [ADR-31](ADR-31-anclas-externas-de-auditoria.md) | Anclas externas de la cadena de auditoría | Reemplazada (ADR-33) |
+| [ADR-31](ADR-31-anclas-externas-de-auditoria.md) | Anclas externas de la cadena de auditoría | Aceptada |
 | [ADR-32](ADR-32-recalculo-del-municipio-de-reportes-viejos.md) | Recálculo del municipio de los reportes ubicados por centroide | Aceptada |
-| [ADR-33](ADR-33-se-retira-la-auditoria.md) | Se retira la auditoría (no estaba en el enunciado) | Aceptada |
+| [ADR-33](ADR-33-se-retira-la-auditoria.md) | Se retira la auditoría | Revertida (V18 y V19) |

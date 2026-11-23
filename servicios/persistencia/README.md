@@ -1,6 +1,6 @@
 # Persistencia
 
-**Único** servicio con credenciales de Supabase (ADR-02). Expone operaciones de negocio (`guardarReporte`, `actualizarEstadoCaso`…), nunca un CRUD genérico. Gestiona transacciones, migraciones (Flyway), idempotencia por `X-Correlation-Id` y el **outbox** que publica los eventos en RabbitMQ después de confirmar la escritura (ADR-06). Contrato: [`contratos/internos/persistencia.v1.yaml`](../../contratos/internos/persistencia.v1.yaml).
+**Único** servicio con credenciales de Supabase (ADR-02). Expone operaciones de negocio (`guardarReporte`, `actualizarEstadoCaso`, `registrarAuditoria`…), nunca un CRUD genérico. Gestiona transacciones, migraciones (Flyway), idempotencia por `X-Correlation-Id` y el **outbox** que publica los eventos en RabbitMQ después de confirmar la escritura (ADR-06). Contrato: [`contratos/internos/persistencia.v1.yaml`](../../contratos/internos/persistencia.v1.yaml).
 
 | | |
 |---|---|
@@ -28,7 +28,7 @@ Las pruebas de integración usan Testcontainers (ver el README raíz si usa Coli
 Para correrlo junto al resto: `docker compose up -d --build persistencia` desde la raíz.
 
 ## Esquemas por dominio
-`catalogo`, `identidad`, `reportes`, `atencion`, `indicadores` e
+`catalogo`, `identidad`, `reportes`, `atencion`, `indicadores`, `auditoria` e
 `infraestructura` (outbox, idempotencia e historial de Flyway).
 Migraciones en `src/main/resources/db/migracion`.
 
@@ -41,6 +41,7 @@ Migraciones en `src/main/resources/db/migracion`.
 | `abrirCaso`, `consultarCaso`, `listarCasos`, `actualizarCaso`, `buscarCobertura`, `verificarOperador`, `obtenerEvidenciaDeCaso` | `/interno/v1/casos/**`, `/interno/v1/catalogo/cobertura`, `/interno/v1/operadores/{id}` | atencion |
 | `abrirModeracion`, `consultarModeracion`, `decidirModeracion`, `obtenerEvidenciaDenuncia` | `/interno/v1/moderaciones/**`, `/interno/v1/denuncias/{id}/evidencias/{id}` | atencion |
 | `actualizarVistaReporte`, `calcularAgregados`, `listarHechos`, `consultarEstadoVista` | `/interno/v1/indicadores/**` | indicadores |
+| `registrarAuditoria`, `consultarAuditoria`, `verificarIntegridadAuditoria` | `/interno/v1/auditoria/**` | auditoria |
 | `publicarAccionAuditada` | `POST /interno/v1/acciones-auditadas` | identidad, reportes, atencion, indicadores |
 | `aplicarEstadoDeCaso` | `POST /interno/v1/reportes/{id}/estado-por-caso` | reportes |
 | `resolverMunicipio` | `GET /interno/v1/catalogo/municipio-cercano` | reportes, atencion, indicadores |
@@ -81,7 +82,7 @@ no se puede guardar. Readiness incluye el almacén. Ver
 - Fase 1 ✅ esquemas, tablas de outbox e idempotencia, health y métricas.
 - Fase 2 ✅ reportes, casos, catálogo, relay del outbox y datos semilla.
 - Fase 3 ✅ cuentas y sesiones (esquema `identidad`).
-- Fase 7: la auditoría se retiró (ADR-33); la migración V18 borra su esquema.
+- Fase 7 ✅ auditoría de solo inserción con cadena de hashes y accion.auditada en la misma transacción.
 - Fase 6 ✅ vista de lectura de Indicadores y agregados (mediana y p90 en SQL).
 - Fase 5 ✅ casos con versión optimista, historia, moderación y estado del reporte por caso.
 - Fase 4 ✅ restablecimiento, validaciones (concurrencia optimista), evidencias en S3 y denuncias.

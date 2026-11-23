@@ -152,9 +152,11 @@ public class ControladorCasos {
 
     @PostMapping("/moderaciones/{idDenuncia}/decidir")
     public Moderacion decidir(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
+                              @RequestHeader(IdCorrelacion.CABECERA) String correlacion,
                               @PathVariable UUID idDenuncia, @Valid @RequestBody SolicitudDecision d) {
-        return atencion.decidir(s, idDenuncia,
-                new Decision(d.versionEsperada(), d.estado(), d.nota(), d.moderadaPor(), d.fecha()));
+        return atencion.decidir(s, new IdCorrelacion(correlacion), idDenuncia,
+                new Decision(d.versionEsperada(), d.estado(), d.nota(), d.moderadaPor(), d.fecha()),
+                d.eventos() == null ? List.of() : d.eventos().stream().map(solicitudes::evento).toList());
     }
 
     @GetMapping("/denuncias/{idDenuncia}/evidencias/{idEvidencia}")
@@ -190,6 +192,6 @@ public class ControladorCasos {
 
     public record SolicitudDecision(@Min(0) int versionEsperada, @NotNull @Pattern(regexp = "VALIDADA|DESCARTADA") String estado,
                                     @NotNull @Size(min = 5, max = 1000) String nota, @NotNull UUID moderadaPor,
-                                    @NotNull Instant fecha) {
+                                    @NotNull Instant fecha, List<@Valid EventoDto> eventos) {
     }
 }

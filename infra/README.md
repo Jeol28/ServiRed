@@ -17,12 +17,13 @@ TRAZAS_ACTIVAS=true docker compose --profile observabilidad up -d --build --wait
 
 | Herramienta | URL (solo localhost) | Para qué |
 |---|---|---|
-| Prometheus | http://127.0.0.1:9090 | Métricas de los 6 servicios y de RabbitMQ; [reglas](observabilidad/reglas.yml) |
-| Alertmanager | http://127.0.0.1:9093 | Alertas activas (no notifica a nadie; [ADR-33](../docs/adr/ADR-33-se-retira-la-auditoria.md)) |
+| Prometheus | http://127.0.0.1:9090 | Métricas de los 7 servicios y de RabbitMQ; [reglas](observabilidad/reglas.yml) |
+| Alertmanager | http://127.0.0.1:9093 | Envía las alertas al webhook interno de Auditoría |
 | Grafana | http://127.0.0.1:3000 (admin / `GRAFANA_CLAVE`) | Tablero "SERVI-RED · Operación" |
 | Jaeger | http://127.0.0.1:16686 | Trazas distribuidas (OTLP) |
 
-Sin el perfil no hay alertas: los servicios siguen exponiendo sus métricas.
+Sin el perfil, las alertas de seguridad siguen activas dentro de Auditoría
+([ADR-16](../docs/adr/ADR-16-auditoria-y-alertas.md)).
 
 ## Servicios del compose
 
@@ -33,7 +34,7 @@ Sin el perfil no hay alertas: los servicios siguen exponiendo sus métricas.
 | rabbitmq | rabbitmq:4.1-management-alpine | interna, borde | 127.0.0.1:15672 (consola) |
 | rabbitmq-init | curlimages/curl | interna | — (termina al aplicar la topología) |
 | persistencia | `servicios/persistencia` | interna, borde (salida a Supabase) | — |
-| identidad, reportes, atencion, indicadores | `servicios/*` | interna | — |
+| identidad, reportes, atencion, indicadores, auditoria | `servicios/*` | interna | — |
 | prometheus, alertmanager, grafana, jaeger | perfil `observabilidad` | interna, borde | 9090, 9093, 3000, 16686 (127.0.0.1) |
 | gateway | `servicios/gateway` | borde, interna | **8080** (actuator en 8081, solo interno) |
 | portal-publico | `clientes/web` (nginx) | borde | **4300** |

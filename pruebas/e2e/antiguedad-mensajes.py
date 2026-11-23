@@ -6,11 +6,12 @@ Antigüedad de los mensajes (RNF-R3, ADR-21) contra el compose:
   cola   (cota superior con la sonda: cada consumidor mide desde la última sonda consumida)
 
 Verifica:
-  1. Persistencia publica la sonda y cada consumidor (Atención, Reportes, Indicadores)
-     informa la edad del mensaje más viejo de su cola; en reposo, unos segundos.
-  2. Con Atención detenida, su cola envejece: al volver, la sonda que esperó mide la espera
+  1. Persistencia publica la sonda y cada consumidor (Atención, Reportes, Indicadores,
+     Auditoría) informa la edad del mensaje más viejo de su cola; en reposo, unos segundos.
+  2. La sonda no es un evento de negocio: Auditoría no la registra.
+  3. Con Atención detenida, su cola envejece: al volver, la sonda que esperó mide la espera
      (> 10 s) y el reporte llega igual al operador.
-  3. Con RabbitMQ detenido, el evento del reporte espera en el outbox y su edad se mide;
+  4. Con RabbitMQ detenido, el evento del reporte espera en el outbox y su edad se mide;
      al volver RabbitMQ se publica y la edad vuelve a 0.
 
 Detiene contenedores: úsela solo en un entorno de pruebas.
@@ -28,6 +29,7 @@ CONSUMIDORES = {
     "atencion": ("atencion.eventos-reportes", "/metrics"),
     "reportes": ("reportes.eventos-casos", "/actuator/prometheus"),
     "indicadores": ("indicadores.eventos", "/metrics"),
+    "auditoria": ("auditoria.eventos", "/metrics"),
 }
 
 
@@ -83,7 +85,11 @@ for servicio in CONSUMIDORES:
               f"{edad_cola(servicio)} s (en reposo, < 5 s)")
 comprobar((edad_outbox() or 0) < 2, f"outbox al día (edad del más viejo: {edad_outbox()} s)")
 
-print("2. Atención detenida: su cola envejece y se mide al volver")
+print("2. La sonda no es un evento de negocio")
+comprobar(sql("SELECT count(*) FROM auditoria.registros WHERE tipo LIKE 'sonda%'") == "0",
+          "Auditoría no registró ninguna sonda")
+
+print("3. Atención detenida: su cola envejece y se mide al volver")
 sesion, _ = registrar_y_entrar()
 token = sesion["tokenAcceso"]
 cola, ruta = CONSUMIDORES["atencion"]
@@ -106,7 +112,7 @@ comprobar(esperaron_mas_de_10 >= 1, "las sondas que esperaron en la cola midiero
 comprobar(esperar(lambda: (edad_cola("atencion") or 99) < 5, 20),
           f"al vaciarse la cola la edad vuelve a unos segundos ({edad_cola('atencion')} s)")
 
-print("3. RabbitMQ detenido: el evento espera en el outbox y su edad se mide")
+print("4. RabbitMQ detenido: el evento espera en el outbox y su edad se mide")
 compose("stop", "rabbitmq")
 estado, _, r = http("POST", "/api/v1/reportes", nuevo_reporte(), correlacion=str(uuid.uuid4()), token=token)
 comprobar(estado == 201, f"sin RabbitMQ el reporte se acepta igual (outbox) ({estado})")

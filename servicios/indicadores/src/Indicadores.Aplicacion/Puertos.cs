@@ -78,3 +78,12 @@ public interface IVistaLectura
 /// <summary>El mensaje nunca podrá procesarse (va directo a la DLQ).</summary>
 public sealed class FallaPermanente(string mensaje, Exception? causa = null) : Exception(mensaje, causa);
 
+/// <summary>Acción auditable (evento accion.auditada v1, RF-12); sin datos personales.</summary>
+public sealed record AccionAuditada(string Categoria, string Accion, Actor Actor, string RecursoTipo,
+    IReadOnlyDictionary<string, object?> Detalle);
+
+/// <summary>Publica una acción auditable a través del outbox de Persistencia.</summary>
+public interface IRegistroAcciones
+{
+    Task PublicarAsync(AccionAuditada accion, IdCorrelacion correlacion, CancellationToken ct);
+}

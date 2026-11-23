@@ -10,7 +10,7 @@ namespace ServiRed.Atencion.Pruebas;
 /// <summary>
 /// Atención contra el contrato de eventos (contratos/eventos):
 /// <list type="bullet">
-/// <item>como productor, caso.actualizado y caso.cerrado, serializados
+/// <item>como productor, caso.actualizado, caso.cerrado y accion.auditada, serializados
 /// como viajan (las opciones JSON del servicio), cumplen su JSON Schema; también un caso sin
 /// empresa y un cierre sin resolución;</item>
 /// <item>como consumidor, lee los ejemplos del contrato de los eventos de Reportes (Java),
@@ -45,6 +45,8 @@ public class ContratoEventosPruebas
             { "resolver por restablecimiento (automático)", [.. EventosCaso.Para(sinEmpresa,
                 sinEmpresa.ResolverPorRestablecimiento(90, Ahora)!, Correlacion)] },
             { "enrutar a una empresa", [.. EventosCaso.Para(sinEmpresa, sinEmpresa.Enrutar(Admin, Empresa, Ahora), Correlacion)] },
+            { "moderar una denuncia", [EventosCaso.DenunciaModerada(new Actor(Guid.NewGuid(), Rol.OPERADOR, Empresa),
+                Guid.NewGuid(), EstadoModeracion.VALIDADA, Correlacion, Ahora)] },
         };
     }
 

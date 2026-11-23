@@ -6,12 +6,34 @@ using ServiRed.Indicadores.Infraestructura.Persistencia;
 namespace ServiRed.Indicadores.Pruebas;
 
 /// <summary>
-/// Indicadores contra el contrato de eventos (contratos/eventos): como consumidor, la
+/// Indicadores contra el contrato de eventos (contratos/eventos): como productor, el
+/// accion.auditada de la exportación regulatoria cumple su esquema; como consumidor, la
 /// proyección lee los ejemplos del contrato de Reportes (Java) y Atención (.NET), también
 /// los mínimos sin campos opcionales.
 /// </summary>
 public class ContratoEventosPruebas
 {
+    public static TheoryData<string, Dictionary<string, object?>> Exportaciones() => new()
+    {
+        { "con filtros", new() { ["desde"] = "2026-10-01T00:00:00.0000000-05:00", ["hasta"] = "2026-11-18T23:59:59.0000000-05:00",
+            ["tipoServicio"] = "ENERGIA", ["codigoDepartamento"] = "05", ["codigoMunicipio"] = "05001" } },
+        { "sin filtros", new() },
+    };
+
+    [Theory]
+    [MemberData(nameof(Exportaciones))]
+    public void LaAccionAuditadaDeLaExportacionCumpleElContrato(string escenario, Dictionary<string, object?> detalle)
+    {
+        var accion = new AccionAuditada("EXPORTACION", "EXPORTACION_REGULATORIA",
+            new Actor(Guid.NewGuid(), Rol.REGULADOR, null), "EXPORTACION", detalle);
+
+        var comoViaja = JsonSerializer.Serialize(
+            ClienteVistaLectura.SobreAccionAuditada(accion, IdCorrelacion.Nuevo()), ClienteVistaLectura.Json);
+
+        var errores = ContratoEventos.Errores(comoViaja, "accion.auditada.v1");
+        Assert.True(errores.Count == 0, $"{escenario}: {string.Join("; ", errores)}\n{comoViaja}");
+    }
+
     private static (DateTimeOffset fecha, JsonElement datos) Leer(string tipo, string variante)
     {
         var json = ContratoEventos.Ejemplo(tipo, variante);

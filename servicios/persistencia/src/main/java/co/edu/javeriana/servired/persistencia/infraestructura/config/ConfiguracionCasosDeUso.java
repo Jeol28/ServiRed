@@ -1,10 +1,18 @@
 package co.edu.javeriana.servired.persistencia.infraestructura.config;
 
+import co.edu.javeriana.servired.persistencia.infraestructura.anclas.PublicadorAnclasGitHub;
+import co.edu.javeriana.servired.persistencia.infraestructura.anclas.PropiedadesAnclas;
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.PublicadorAnclas;
+import co.edu.javeriana.servired.persistencia.aplicacion.AnclasAuditoria;
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.CodificadorSegmentos;
+import co.edu.javeriana.servired.persistencia.aplicacion.ArchivoAuditoria;
 import co.edu.javeriana.servired.persistencia.aplicacion.AbrirCaso;
 import co.edu.javeriana.servired.persistencia.aplicacion.ConsultarReporte;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionCuentas;
 import co.edu.javeriana.servired.persistencia.aplicacion.GestionEvidencias;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAtencion;
+import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAuditoria;
+import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAuditoria;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesIndicadores;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioIndicadores;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesReporte;
@@ -34,7 +42,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /** Composición: conecta los casos de uso (sin Spring) con sus adaptadores. */
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(ClavesServicio.class)
+@EnableConfigurationProperties({ClavesServicio.class, PropiedadesAnclas.class})
 public class ConfiguracionCasosDeUso {
 
     @Bean
@@ -63,14 +71,33 @@ public class ConfiguracionCasosDeUso {
     }
 
     @Bean
+    ArchivoAuditoria archivoAuditoria(UnidadDeTrabajo t, RepositorioAuditoria r, AlmacenEvidencias a,
+            CodificadorSegmentos c, Clock reloj,
+            @Value("${servired.auditoria.archivo.meses-en-base:12}") int mesesEnBase,
+            @Value("${servired.auditoria.archivo.maximo-por-segmento:50000}") int maximoPorSegmento) {
+        return new ArchivoAuditoria(t, r, a, c, reloj, mesesEnBase, maximoPorSegmento);
+    }
+
+    @Bean
+    PublicadorAnclas publicadorAnclas(PropiedadesAnclas propiedades) {
+        return new PublicadorAnclasGitHub(propiedades);
+    }
+
+    @Bean
+    AnclasAuditoria anclasAuditoria(RepositorioAuditoria r, AlmacenEvidencias a, CodificadorSegmentos c,
+                                    PublicadorAnclas p, Clock reloj) {
+        return new AnclasAuditoria(r, a, c, p, reloj);
+    }
+
+    @Bean
     Clock reloj() {
         return Clock.systemUTC();
     }
 
     @Bean
     GestionCuentas gestionCuentas(UnidadDeTrabajo t, RegistroIdempotencia i, RepositorioCuentas c,
-                                  RepositorioSesiones s) {
-        return new GestionCuentas(t, i, c, s);
+                                  RepositorioSesiones s, Outbox o) {
+        return new GestionCuentas(t, i, c, s, o);
     }
 
     @Bean
@@ -100,6 +127,11 @@ public class ConfiguracionCasosDeUso {
     @Bean
     OperacionesIndicadores operacionesIndicadores(UnidadDeTrabajo t, RepositorioIndicadores r) {
         return new OperacionesIndicadores(t, r);
+    }
+
+    @Bean
+    OperacionesAuditoria operacionesAuditoria(UnidadDeTrabajo t, RepositorioAuditoria r, Outbox o) {
+        return new OperacionesAuditoria(t, r, o);
     }
 
     @Bean

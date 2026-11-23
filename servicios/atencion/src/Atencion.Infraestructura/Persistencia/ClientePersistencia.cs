@@ -116,10 +116,10 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
         return new Pagina<Moderacion>(p!.Elementos, p.Total, p.Pagina, p.Tamano);
     }
 
-    async Task<Moderacion> IRepositorioModeracion.DecidirAsync(Guid idDenuncia, Decision d, IdCorrelacion correlacion,
-        CancellationToken ct) =>
+    async Task<Moderacion> IRepositorioModeracion.DecidirAsync(Guid idDenuncia, Decision d,
+        IReadOnlyList<SobreEventoSaliente> eventos, IdCorrelacion correlacion, CancellationToken ct) =>
         (await EnviarAsync<Moderacion>(HttpMethod.Post, $"/interno/v1/moderaciones/{idDenuncia}/decidir",
-            new { d.VersionEsperada, Estado = d.Estado.ToString(), d.Nota, d.ModeradaPor, d.Fecha },
+            new { d.VersionEsperada, Estado = d.Estado.ToString(), d.Nota, d.ModeradaPor, d.Fecha, Eventos = eventos },
             correlacion, ct))!;
 
     Task<Archivo?> IRepositorioModeracion.EvidenciaAsync(Guid idDenuncia, Guid idEvidencia, IdCorrelacion correlacion,

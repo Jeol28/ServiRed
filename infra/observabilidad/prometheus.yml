@@ -33,6 +33,9 @@ scrape_configs:
   - job_name: indicadores
     metrics_path: /metrics
     dns_sd_configs: [{ names: ["indicadores"], type: A, port: 8080 }]
+  - job_name: auditoria
+    metrics_path: /metrics
+    dns_sd_configs: [{ names: ["auditoria"], type: A, port: 8080 }]
   - job_name: rabbitmq                     # métricas por cola (DLQ, reintentos)
     metrics_path: /metrics/per-object
     static_configs: [{ targets: ["rabbitmq:15692"] }]

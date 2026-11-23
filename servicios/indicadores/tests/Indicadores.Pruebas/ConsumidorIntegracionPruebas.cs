@@ -31,6 +31,7 @@ public class ConsumidorIntegracionPruebas : IAsyncLifetime
             .ConfigureTestServices(s =>
             {
                 s.AddSingleton<IVistaLectura>(_vista);
+                s.AddSingleton<IRegistroAcciones>(_vista);
             }));
         _fabrica.CreateClient();
         _conexion = await new ConnectionFactory { Uri = uri }.CreateConnectionAsync();

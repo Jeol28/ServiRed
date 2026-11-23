@@ -45,7 +45,7 @@ export class ApiIndicadores {
     return this.http.get<PuntoOperativo[]>(`${this.base}/mapas/operativo`, { params: parametros(filtro) });
   }
 
-  /** Exportación regulatoria (regulador y administrador). */
+  /** Exportación regulatoria (regulador y administrador); queda en la auditoría. */
   exportarReportes(filtro: FiltroIndicadores, formato: 'csv' | 'json'): Observable<Blob> {
     return this.http.get(`${this.base}/indicadores/exportaciones/reportes`,
       { params: parametros({ ...filtro, formato }), responseType: 'blob' });

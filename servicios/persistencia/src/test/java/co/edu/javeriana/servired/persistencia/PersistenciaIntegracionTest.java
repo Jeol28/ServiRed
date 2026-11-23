@@ -85,7 +85,7 @@ class PersistenciaIntegracionTest {
                 "SELECT schema_name FROM information_schema.schemata", String.class);
 
         assertThat(esquemas).contains("catalogo", "identidad", "reportes", "atencion",
-                "indicadores", "infraestructura");
+                "indicadores", "auditoria", "infraestructura");
     }
 
     @Test

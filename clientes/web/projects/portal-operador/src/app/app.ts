@@ -13,6 +13,7 @@ const ENLACES: Enlace[] = [
   { ruta: '/mapa', texto: 'Mapa', icono: '🗺️', roles: ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'] },
   { ruta: '/moderacion', texto: 'Denuncias', icono: '🚩', roles: ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'] },
   { ruta: '/exportacion', texto: 'Exportación', icono: '⬇️', roles: ['REGULADOR', 'ADMINISTRADOR'] },
+  { ruta: '/auditoria', texto: 'Auditoría', icono: '🛡️', roles: ['REGULADOR', 'ADMINISTRADOR'] },
   { ruta: '/cuentas', texto: 'Cuentas', icono: '👥', roles: ['ADMINISTRADOR'] },
 ];
 

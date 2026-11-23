@@ -21,8 +21,8 @@ describe('App (menú por rol)', () => {
 
   it('cada rol ve solo sus secciones', () => {
     expect(menu('OPERADOR')).toEqual(['Casos', 'Mapa', 'Denuncias']);
-    expect(menu('REGULADOR')).toEqual(['Casos', 'Mapa', 'Denuncias', 'Exportación']);
-    expect(menu('ADMINISTRADOR')).toEqual(['Casos', 'Mapa', 'Denuncias', 'Exportación', 'Cuentas']);
+    expect(menu('REGULADOR')).toEqual(['Casos', 'Mapa', 'Denuncias', 'Exportación', 'Auditoría']);
+    expect(menu('ADMINISTRADOR')).toEqual(['Casos', 'Mapa', 'Denuncias', 'Exportación', 'Auditoría', 'Cuentas']);
   });
 
   it('sin sesión no muestra el menú', () => {

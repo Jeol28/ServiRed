@@ -1,9 +1,18 @@
 # ADR-33: Se retira la auditoría
 
 ## Estado
-Aceptada. Reemplaza [ADR-16](ADR-16-auditoria-y-alertas.md), [ADR-29](ADR-29-archivado-de-auditoria.md)
-y [ADR-31](ADR-31-anclas-externas-de-auditoria.md). Corrige ADR-05, ADR-10, ADR-11, ADR-20, ADR-21,
-ADR-24 y ADR-32 en lo que tocaban la auditoría.
+**Revertida** (2026-11-22). La auditoría vuelve tal como estaba: ADR-16, ADR-29 y ADR-31 siguen
+vigentes y el SAD conserva RF-12 y RF-13.
+
+- **Lo que queda de esta decisión:** la migración V18, que ya se aplicó y por eso no se borra.
+- **V19** recrea el esquema `auditoria` (registro, segmentos y anclas) **vacío**: lo que borró
+  V18 no se recupera y la cadena de huellas empieza de nuevo. Donde V18 no se llegó a aplicar,
+  V18 borra el esquema y V19 lo crea vacío en el mismo arranque, así que el efecto es el mismo.
+- **Se conserva de V18:** la protección de `reportes.recalculo_municipio` sigue en
+  `reportes.prohibir_cambios()`. V19 devuelve el resumen `accion.auditada` a
+  `reportes.recalcular_municipios`.
+
+El resto de este documento describe la decisión que se revirtió.
 
 ## Contexto
 El enunciado del proyecto no pide auditoría. El SAD de la Entrega 1 la había agregado por su

@@ -124,12 +124,16 @@ services:
       PERSISTENCIA_CLAVE_REPORTES: ${PERSISTENCIA_CLAVE_REPORTES:?definir en .env}
       PERSISTENCIA_CLAVE_ATENCION: ${PERSISTENCIA_CLAVE_ATENCION:?definir en .env}
       PERSISTENCIA_CLAVE_INDICADORES: ${PERSISTENCIA_CLAVE_INDICADORES:?definir en .env}
+      PERSISTENCIA_CLAVE_AUDITORIA: ${PERSISTENCIA_CLAVE_AUDITORIA:?definir en .env}
       ALMACEN_S3_URL: ${ALMACEN_S3_URL:-http://almacen:8333}
       ALMACEN_S3_REGION: ${ALMACEN_S3_REGION:-us-east-1}
       ALMACEN_S3_ACCESO: ${ALMACEN_S3_ACCESO:?definir en .env}
       ALMACEN_S3_SECRETO: ${ALMACEN_S3_SECRETO:?definir en .env}
       ALMACEN_S3_BUCKET: ${ALMACEN_S3_BUCKET:-evidencias}
       ALMACEN_S3_CREAR_BUCKET: ${ALMACEN_S3_CREAR_BUCKET:-true}
+      # Anclas de la cadena de auditoría en GitHub (ADR-31); vacías = solo base y API pública.
+      AUDITORIA_ANCLAS_GITHUB_REPOSITORIO: ${AUDITORIA_ANCLAS_GITHUB_REPOSITORIO:-}
+      AUDITORIA_ANCLAS_GITHUB_TOKEN: ${AUDITORIA_ANCLAS_GITHUB_TOKEN:-}
     depends_on:
       <<: *depende-rabbit
       postgres-local:
@@ -185,6 +189,20 @@ services:
       <<: *entorno-rabbit
       PERSISTENCIA_URL: http://persistencia:8080
       PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_INDICADORES:?definir en .env}
+    depends_on:
+      <<: *depende-rabbit
+      persistencia:
+        condition: service_healthy
+
+  auditoria:
+    <<: *servicio-base
+    build: ../servicios/auditoria
+    environment:
+      <<: *entorno-rabbit
+      PERSISTENCIA_URL: http://persistencia:8080
+      PERSISTENCIA_CLAVE: ${PERSISTENCIA_CLAVE_AUDITORIA:?definir en .env}
+      # Token del webhook interno de Alertmanager (RF-13).
+      ALERTAS_TOKEN: ${ALERTAS_TOKEN:?definir en .env}
     depends_on:
       <<: *depende-rabbit
       persistencia:
@@ -256,6 +274,8 @@ services:
     profiles: [observabilidad]
     restart: unless-stopped
     networks: [interna, borde]
+    environment:
+      ALERTAS_TOKEN: ${ALERTAS_TOKEN:?definir en .env}
     entrypoint: ["/bin/sh", "/iniciar-alertmanager.sh"]
     ports: ["127.0.0.1:9093:9093"]
     volumes:

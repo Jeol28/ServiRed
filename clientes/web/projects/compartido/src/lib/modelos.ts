@@ -198,6 +198,41 @@ export interface CatalogoDatosAbiertos {
   metadatos: Metadatos;
 }
 
+// --------------------------------------------------------------- auditoría
+export type CategoriaAuditoria =
+  | 'ACCESO' | 'ADMINISTRACION' | 'EXPORTACION' | 'MODERACION' | 'SEGURIDAD'
+  | 'CAMBIO_ESTADO' | 'VALIDACION' | 'REPORTE' | 'ALERTA';
+
+export const CATEGORIAS_AUDITORIA: CategoriaAuditoria[] = [
+  'ACCESO', 'ADMINISTRACION', 'EXPORTACION', 'MODERACION', 'SEGURIDAD', 'CAMBIO_ESTADO', 'VALIDACION', 'REPORTE', 'ALERTA',
+];
+
+export interface RegistroAuditoria {
+  secuencia: number;
+  idEvento: string;
+  tipo: string;
+  origen: string;
+  correlationId?: string;
+  categoria: CategoriaAuditoria;
+  accion: string;
+  resultado?: 'EXITO' | 'FALLO';
+  actorId?: string;
+  actorRol?: string;
+  recursoTipo?: string;
+  recursoId?: string;
+  detalle?: Record<string, unknown>;
+  ocurridoEn: string;
+  registradoEn: string;
+  hash: string;
+}
+
+export interface VerificacionAuditoria {
+  registros: number;
+  integra: boolean;
+  primeraRota?: number;
+  ultimoHash?: string;
+}
+
 /** RFC 9457 Problem Details, como lo devuelven el gateway y los servicios. */
 export interface Problema {
   title?: string;

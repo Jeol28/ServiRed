@@ -4,7 +4,7 @@ Plataforma colaborativa de reporte ciudadano y monitoreo de servicios públicos
 domiciliarios en Colombia (energía, gas, acueducto, alcantarillado y aseo).
 Proyecto del curso **Arquitectura de Software**, Pontificia Universidad Javeriana.
 
-- **Arquitectura:** [SAD de la Entrega 1](docs/) (RF-1 a RF-12, RNF, ADR-01 a ADR-04, vistas C4)
+- **Arquitectura:** [SAD de la Entrega 1](docs/) (RF-1 a RF-13, RNF, ADR-01 a ADR-04, vistas C4)
   y [ADR-05 en adelante](docs/adr/README.md) (decisiones de implementación).
 - **Contratos:** [`contratos/`](contratos/README.md) — OpenAPI y eventos.
 
@@ -16,11 +16,11 @@ Proyecto del curso **Arquitectura de Software**, Pontificia Universidad Javerian
                     ┌────▼────┐
                     │ gateway │  JWT · RBAC · rate limit · X-Correlation-Id
                     └────┬────┘
-      ┌──────────┬───────┼──────────┐
- identidad   reportes   atencion   indicadores
-  (Java)      (Java)     (.NET)      (.NET)
-      │          │          │           │
-      └──────────┴────┬─────┴───────────┘
+      ┌──────────┬───────┼──────────┬─────────────┐
+ identidad   reportes   atencion   indicadores    auditoria
+  (Java)      (Java)     (.NET)      (.NET)        (.NET)
+      │          │          │           │             │
+      └──────────┴────┬─────┴───────────┴─────────────┘
                       │ REST interno (operaciones de negocio)
                ┌──────▼───────┐   outbox    ┌──────────┐
                │ persistencia │────────────▶│ RabbitMQ │──▶ consumidores
@@ -43,6 +43,7 @@ Atención nunca se llaman entre sí: se comunican por eventos.
 | [`servicios/persistencia`](servicios/persistencia/README.md) | Único acceso a Supabase; outbox e idempotencia |
 | [`servicios/atencion`](servicios/atencion/README.md) | Casos del operador y moderación (RF-6, RF-7) |
 | [`servicios/indicadores`](servicios/indicadores/README.md) | Vista de lectura, indicadores, mapas y datos abiertos (RF-8 a RF-10) |
+| [`servicios/auditoria`](servicios/auditoria/README.md) | Auditoría y alertas (RF-12, RF-13) |
 | [`clientes/`](clientes/README.md) | Web (Angular), Android (Kotlin) e iOS (Swift) |
 | [`contratos/`](contratos/README.md) | OpenAPI de cada servicio y esquemas de eventos |
 | [`infra/`](infra/README.md) | Docker Compose y topología de RabbitMQ |
@@ -66,7 +67,7 @@ cp .env.ejemplo .env          # una sola vez; cambie las claves
 docker compose up -d --build --wait
 ```
 
-Con eso quedan arriba PostgreSQL local, el almacén de evidencias (SeaweedFS), RabbitMQ (con su topología), los seis
+Con eso quedan arriba PostgreSQL local, el almacén de evidencias (SeaweedFS), RabbitMQ (con su topología), los siete
 microservicios, el gateway en **http://localhost:8080** y los portales web en
 **http://localhost:4300** (el de operación en **/operacion/**, con inicio de sesión).
 
@@ -77,6 +78,7 @@ python3 pruebas/e2e/flujo-reporte.py                 # e2e: reporte de punta a p
 python3 pruebas/e2e/reportes-completo.py             # e2e: fotos, validación, restablecimiento, denuncias
 python3 pruebas/e2e/atencion-casos.py                # e2e: casos, operador, moderación y estado del ciudadano
 python3 pruebas/e2e/indicadores.py                   # e2e: indicadores, mapas, datos abiertos y exportación
+python3 pruebas/e2e/auditoria-alertas.py             # e2e: auditoría, alertas y (con el perfil) observabilidad
 python3 pruebas/e2e/identidad-y-acceso.py            # e2e: cuentas, tokens y RBAC
 python3 pruebas/e2e/portales-web.py                  # e2e: portales (cabeceras, proxy, anonimato)
 python3 pruebas/e2e/antiguedad-mensajes.py           # e2e: edad del mensaje más viejo (RNF-R3); detiene contenedores
@@ -144,6 +146,7 @@ python3 pruebas/e2e/flujo-reporte.py
 python3 pruebas/e2e/reportes-completo.py
 python3 pruebas/e2e/atencion-casos.py
 python3 pruebas/e2e/indicadores.py
+python3 pruebas/e2e/auditoria-alertas.py
 python3 pruebas/e2e/identidad-y-acceso.py
 python3 pruebas/e2e/portales-web.py
 
@@ -195,7 +198,7 @@ export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
 | 4 | Reportes completo: restablecimiento, validación, evidencias, denuncias | ✅ |
 | 5 | Atención: casos, estados, asignación | ✅ |
 | 6 | Indicadores: vista de lectura, indicadores, mapas, exportación | ✅ |
-| 7 | ~~Auditoría y alertas~~ (retirada, [ADR-33](docs/adr/ADR-33-se-retira-la-auditoria.md)) | — |
+| 7 | Auditoría y alertas | ✅ |
 | 8 | Portales Angular | ✅ |
 | 9 | App Android | ✅ |
 | 10 | App iOS | ✅ |

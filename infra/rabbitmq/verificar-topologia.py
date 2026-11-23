@@ -7,8 +7,8 @@ Prueba de humo de la topología de RabbitMQ contra el entorno de Docker Compose.
 2. La mecánica de enrutamiento topic, DLQ y reintento con TTL funciona, probada
    sobre un juego de colas temporales con los mismos argumentos y los mismos
    exchanges de rechazo y reintento (servired.dlx, servired.reintentos). La entrada es
-   un exchange topic temporal, no servired.eventos, para no dejar mensajes de prueba en
-   las colas reales. Al final se eliminan.
+   un exchange topic temporal, no servired.eventos: Auditoría escucha «#» ahí y cada
+   prueba le dejaba un mensaje ilegible en su DLQ. Al final se eliminan.
 
 Uso (desde la raíz, con el compose arriba):
     python3 infra/rabbitmq/verificar-topologia.py
