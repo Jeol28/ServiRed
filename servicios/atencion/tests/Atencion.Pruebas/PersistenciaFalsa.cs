@@ -108,9 +108,18 @@ public sealed class PersistenciaFalsa : IRepositorioCasos, ICatalogoAtencion, IR
         return Task.FromResult(Zonas.GetValueOrDefault($"{consulta.CodigoMunicipio}|{consulta.Servicio}"));
     }
 
-    public Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(IdCorrelacion correlacion, CancellationToken ct) =>
-        Task.FromResult<IReadOnlyList<EmpresaPrestadora>>(
-            [new EmpresaPrestadora(EmpresaA, "800000001", "Empresa A"), new EmpresaPrestadora(EmpresaB, "800000002", "Empresa B")]);
+    public FiltroEmpresas? UltimoFiltroEmpresas;
+
+    public Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(FiltroEmpresas filtro, IdCorrelacion correlacion,
+        CancellationToken ct)
+    {
+        UltimoFiltroEmpresas = filtro;
+        IReadOnlyList<EmpresaPrestadora> todas =
+            [new EmpresaPrestadora(EmpresaA, "800000001", "Empresa A", ["ENERGIA"]),
+             new EmpresaPrestadora(EmpresaB, "800000002", "Empresa B", ["ACUEDUCTO"])];
+        return Task.FromResult<IReadOnlyList<EmpresaPrestadora>>(filtro.TipoServicio is { } s
+            ? todas.Where(e => e.Servicios.Contains(s.ToString())).ToList() : todas);
+    }
 
     public Task<bool> EsOperadorDeAsync(Guid idCuenta, Guid idEmpresa, IdCorrelacion correlacion, CancellationToken ct) =>
         Task.FromResult(Operadores.Contains((idCuenta, idEmpresa)));

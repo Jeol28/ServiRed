@@ -76,8 +76,10 @@ public static class EndpointsAtencion
                 g.EnrutarAsync(ActorActual.De(h), idCaso, dto.IdEmpresa, Correlacion(h), ct));
 
         // Catálogo de empresas prestadoras reales (ADR-35).
-        app.MapGet("/api/v1/empresas", (HttpContext h, GestionCasos g, CancellationToken ct) =>
-                g.EmpresasAsync(ActorActual.De(h), Correlacion(h), ct))
+        app.MapGet("/api/v1/empresas", (HttpContext h, GestionCasos g, CancellationToken ct, TipoServicio? tipoServicio,
+                string? codigoDepartamento, string? codigoMunicipio) =>
+                g.EmpresasAsync(ActorActual.De(h),
+                    new FiltroEmpresas(tipoServicio, Vacio(codigoDepartamento), Vacio(codigoMunicipio)), Correlacion(h), ct))
             .RequireAuthorization(ConfiguracionJwt.PoliticaLeerCasos);
 
         // --------------------------------------------------------- moderación
@@ -105,6 +107,8 @@ public static class EndpointsAtencion
                     g.DecidirAsync(ActorActual.De(h), idDenuncia, dto.Decision, dto.Nota, Correlacion(h), ct))
             .RequireAuthorization(ConfiguracionJwt.PoliticaGestionarCasos);
     }
+
+    private static string? Vacio(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 
     private static IdCorrelacion Correlacion(HttpContext h) =>
         (IdCorrelacion)h.Items[MiddlewareCorrelacion.ClaveItem]!;

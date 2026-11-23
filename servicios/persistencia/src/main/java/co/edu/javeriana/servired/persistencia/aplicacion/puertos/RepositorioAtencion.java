@@ -22,8 +22,8 @@ public interface RepositorioAtencion {
     /** La zona de la consulta y su empresa dueña; vacío si no se puede ubicar. */
     Optional<Cobertura> cobertura(ConsultaCobertura consulta);
 
-    /** Empresas prestadoras del catálogo, por nombre. */
-    List<EmpresaPrestadora> empresas();
+    /** Empresas prestadoras del catálogo, por nombre, con los servicios que prestan. */
+    List<EmpresaPrestadora> empresas(co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroEmpresas filtro);
 
     Optional<CasoGuardado> caso(UUID idCaso);
 

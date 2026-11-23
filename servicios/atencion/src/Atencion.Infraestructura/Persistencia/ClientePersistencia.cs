@@ -94,9 +94,16 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
         return r is null ? null : new Cobertura(r.IdZona, r.NombreZona, r.Empresa?.IdEmpresa, r.Empresa?.Nombre);
     }
 
-    public async Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(IdCorrelacion correlacion, CancellationToken ct) =>
-        (await EnviarAsync<List<EmpresaPrestadora>>(HttpMethod.Get, "/interno/v1/catalogo/empresas", null, correlacion,
-            ct))!;
+    public async Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(FiltroEmpresas f, IdCorrelacion correlacion,
+        CancellationToken ct)
+    {
+        var parametros = new List<string>();
+        if (f.TipoServicio is { } s) parametros.Add($"tipoServicio={s}");
+        if (f.CodigoDepartamento is { } d) parametros.Add($"codigoDepartamento={Uri.EscapeDataString(d)}");
+        if (f.CodigoMunicipio is { } m) parametros.Add($"codigoMunicipio={Uri.EscapeDataString(m)}");
+        var ruta = "/interno/v1/catalogo/empresas" + (parametros.Count == 0 ? "" : "?" + string.Join('&', parametros));
+        return (await EnviarAsync<List<EmpresaPrestadora>>(HttpMethod.Get, ruta, null, correlacion, ct))!;
+    }
 
     public async Task<bool> EsOperadorDeAsync(Guid idCuenta, Guid idEmpresa, IdCorrelacion correlacion, CancellationToken ct)
     {

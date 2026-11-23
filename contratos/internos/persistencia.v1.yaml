@@ -606,11 +606,16 @@ paths:
   /interno/v1/catalogo/empresas:
     get:
       operationId: listarEmpresas
-      description: Solo `atencion`. Empresas prestadoras reales, por nombre.
+      description: |
+        Solo `atencion`. Empresas prestadoras reales, por nombre, con los servicios que prestan. Con
+        filtros, solo las dueñas de al menos una zona con ese servicio, en ese departamento o municipio.
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
+        - { name: tipoServicio, in: query, schema: { type: string } }
+        - { name: codigoDepartamento, in: query, schema: { type: string } }
+        - { name: codigoMunicipio, in: query, schema: { type: string } }
       responses:
-        "200": { description: "[{idEmpresa, nit, nombre}]" }
+        "200": { description: "[{idEmpresa, nit, nombre, servicios[]}]" }
 
   /interno/v1/operadores/{idCuenta}:
     get:

@@ -1,16 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
-  ApiCuentas, Cuenta, FechaCortaPipe, NuevaCuentaPersonal, Pagina, Rol, mensajeDeError,
+  ApiCuentas, ApiEmpresas, Cuenta, EmpresaPrestadora, FechaCortaPipe, FiltroTerritorio, NOMBRE_SERVICIO,
+  NuevaCuentaPersonal, Pagina, Rol, SelectorTerritorio, TIPOS_SERVICIO, TipoServicio, mensajeDeError,
 } from 'compartido';
-import { Empresas } from '../empresas';
+import { Empresas, filtrarPorTexto } from '../empresas';
 
 const ROLES_PERSONAL: Rol[] = ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'];
 
 /** Administración de cuentas (RF-11): solo el administrador crea y desactiva personal. */
 @Component({
   selector: 'app-cuentas',
-  imports: [FormsModule, FechaCortaPipe],
+  imports: [FormsModule, FechaCortaPipe, SelectorTerritorio],
   template: `
     <h1>Cuentas</h1>
     <form class="sr-tarjeta" (ngSubmit)="crear()" #f="ngForm">
@@ -28,18 +29,32 @@ const ROLES_PERSONAL: Rol[] = ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'];
           </select>
         </label>
         @if (nueva.rol === 'OPERADOR') {
-          <label>Buscar empresa
-            <input name="buscarEmpresa" placeholder="Nombre o NIT" [ngModel]="busquedaEmpresa()"
-                   (ngModelChange)="busquedaEmpresa.set($event)" />
-          </label>
-          <label>Empresa
-            <select name="empresa" required [(ngModel)]="nueva.idEmpresa">
-              <option [ngValue]="undefined">Elegir…</option>
-              @for (e of empresasEncontradas(); track e.idEmpresa) {
-                <option [ngValue]="e.idEmpresa">{{ e.nombre }} ({{ e.nit }})</option>
-              }
-            </select>
-          </label>
+          <!-- Encontrar la empresa sin conocer su nombre: por lo que presta y dónde (ADR-35). -->
+          <fieldset class="buscar-empresa">
+            <legend>Empresa del operador</legend>
+            <label>Servicio
+              <select name="servicioEmpresa" [ngModel]="servicioEmpresa()"
+                      (ngModelChange)="servicioEmpresa.set($event); filtrarEmpresas()">
+                <option value="">Todos</option>
+                @for (s of servicios; track s) { <option [value]="s">{{ nombreServicio[s] }}</option> }
+              </select>
+            </label>
+            <sr-selector-territorio [f]="territorioEmpresa" (cambio)="filtrarEmpresas()" />
+            <label>Nombre o NIT
+              <input name="buscarEmpresa" placeholder="Opcional" [ngModel]="busquedaEmpresa()"
+                     (ngModelChange)="busquedaEmpresa.set($event)" />
+            </label>
+            <label>Empresa
+              <select name="empresa" required [(ngModel)]="nueva.idEmpresa">
+                <option [ngValue]="undefined">
+                  {{ buscandoEmpresas() ? 'Buscando…' : empresasEncontradas().length + ' empresa(s): elija una' }}
+                </option>
+                @for (e of empresasEncontradas(); track e.idEmpresa) {
+                  <option [ngValue]="e.idEmpresa">{{ e.nombre }} · NIT {{ e.nit }} · {{ etiquetaServicios(e) }}</option>
+                }
+              </select>
+            </label>
+          </fieldset>
         }
         <button class="sr-primario" type="submit" [disabled]="f.invalid || ocupado()">Crear</button>
       </div>
@@ -93,7 +108,18 @@ const ROLES_PERSONAL: Rol[] = ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'];
       }
     </section>
   `,
-  styles: `.paginacion { align-items: center; margin-top: .75rem; }`,
+  styles: `
+    .paginacion { align-items: center; margin-top: .75rem; }
+    /* Ocupa toda la fila del formulario; adentro, los filtros se acomodan en columnas. */
+    .buscar-empresa {
+      flex: 1 1 100%; display: grid; gap: .5rem .75rem; margin: 0; padding: .75rem;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+      border: 1px solid var(--sr-borde); border-radius: var(--sr-radio);
+    }
+    .buscar-empresa legend { padding: 0 .25rem; font-weight: 600; }
+    .buscar-empresa label:last-child { grid-column: 1 / -1; }
+    .buscar-empresa select { width: 100%; }
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Cuentas {
@@ -101,9 +127,59 @@ export class Cuentas {
   protected readonly roles = ROLES_PERSONAL;
   protected readonly todosLosRoles: Rol[] = ['CIUDADANO', ...ROLES_PERSONAL];
   private readonly empresas = inject(Empresas);
-  /** Hay unas 1800 empresas reales (ADR-35): se elige entre las que coinciden con la búsqueda. */
+  private readonly apiEmpresas = inject(ApiEmpresas);
+  protected readonly servicios = TIPOS_SERVICIO;
+  protected readonly nombreServicio = NOMBRE_SERVICIO;
+  /**
+   * Hay unas 1800 empresas reales (ADR-35). Se filtran por servicio, departamento y municipio
+   * (las dueñas de alguna zona allí) y, encima, por nombre o NIT.
+   */
+  protected readonly servicioEmpresa = signal<TipoServicio | ''>('');
+  protected readonly territorioEmpresa: FiltroTerritorio = { codigoDepartamento: '', codigoMunicipio: '' };
   protected readonly busquedaEmpresa = signal('');
-  protected readonly empresasEncontradas = computed(() => this.empresas.buscar(this.busquedaEmpresa()));
+  protected readonly buscandoEmpresas = signal(false);
+  /** null = sin filtro de servicio ni territorio: todo el catálogo. */
+  private readonly candidatas = signal<EmpresaPrestadora[] | null>(null);
+  private consulta = 0;
+  protected readonly empresasEncontradas = computed(() =>
+    filtrarPorTexto(this.candidatas() ?? this.empresas.todas(), this.busquedaEmpresa(), 100));
+
+  protected filtrarEmpresas(): void {
+    const filtro = {
+      tipoServicio: this.servicioEmpresa() || undefined,
+      codigoDepartamento: this.territorioEmpresa.codigoDepartamento || undefined,
+      codigoMunicipio: this.territorioEmpresa.codigoMunicipio || undefined,
+    };
+    const n = ++this.consulta;
+    if (!filtro.tipoServicio && !filtro.codigoDepartamento && !filtro.codigoMunicipio) {
+      this.candidatas.set(null);
+      this.buscandoEmpresas.set(false);
+      return;
+    }
+    this.buscandoEmpresas.set(true);
+    this.apiEmpresas.listar(filtro).subscribe({
+      // Solo cuenta la respuesta de la última consulta (el usuario puede cambiar rápido).
+      next: (l) => {
+        if (n === this.consulta) {
+          this.candidatas.set(l);
+          this.buscandoEmpresas.set(false);
+          if (this.nueva.idEmpresa && !l.some((e) => e.idEmpresa === this.nueva.idEmpresa)) {
+            this.nueva.idEmpresa = undefined;
+          }
+        }
+      },
+      error: (e: unknown) => {
+        if (n === this.consulta) {
+          this.buscandoEmpresas.set(false);
+          this.error.set(mensajeDeError(e));
+        }
+      },
+    });
+  }
+
+  protected etiquetaServicios(e: EmpresaPrestadora): string {
+    return e.servicios.map((s) => this.nombreServicio[s]).join(', ');
+  }
   protected nueva: NuevaCuentaPersonal = this.vacia();
   protected filtroRol: Rol | undefined = undefined;
   protected filtroCorreo = '';

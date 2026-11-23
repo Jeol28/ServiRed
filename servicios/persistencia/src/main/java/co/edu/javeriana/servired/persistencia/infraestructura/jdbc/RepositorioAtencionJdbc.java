@@ -74,10 +74,25 @@ public class RepositorioAtencionJdbc implements RepositorioAtencion {
     }
 
     @Override
-    public List<EmpresaPrestadora> empresas() {
-        return jdbc.sql("SELECT id, nit, nombre FROM catalogo.empresas ORDER BY nombre, id")
+    public List<EmpresaPrestadora> empresas(co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroEmpresas f) {
+        return jdbc.sql("""
+                        SELECT e.id, e.nit, e.nombre,
+                               array_agg(DISTINCT c.tipo_servicio ORDER BY c.tipo_servicio) AS servicios
+                        FROM catalogo.empresas e
+                        JOIN catalogo.coberturas_zona c ON c.id_empresa = e.id
+                        WHERE EXISTS (
+                            SELECT 1 FROM catalogo.coberturas_zona cf
+                            JOIN catalogo.zonas z ON z.id = cf.id_zona
+                            JOIN catalogo.municipios m ON m.codigo = z.codigo_municipio
+                            WHERE cf.id_empresa = e.id
+                              AND (CAST(:s AS text) IS NULL OR cf.tipo_servicio = :s)
+                              AND (CAST(:d AS text) IS NULL OR m.codigo_departamento = :d)
+                              AND (CAST(:m AS text) IS NULL OR z.codigo_municipio = :m))
+                        GROUP BY e.id, e.nit, e.nombre
+                        ORDER BY e.nombre, e.id""")
+                .param("s", f.tipoServicio()).param("d", f.codigoDepartamento()).param("m", f.codigoMunicipio())
                 .query((rs, n) -> new EmpresaPrestadora(rs.getObject("id", UUID.class), rs.getString("nit"),
-                        rs.getString("nombre")))
+                        rs.getString("nombre"), List.of((String[]) rs.getArray("servicios").getArray())))
                 .list();
     }
 

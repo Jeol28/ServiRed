@@ -189,6 +189,13 @@ public class ApiPruebas : IClassFixture<ApiPruebas.Fabrica>
         var r = await Enviar(HttpMethod.Get, "/api/v1/empresas", Operador());
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Equal(2, (await r.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength());
+        // Filtro por servicio y territorio: llega tal cual a Persistencia; un parámetro vacío no filtra.
+        var filtrada = await Enviar(HttpMethod.Get,
+            "/api/v1/empresas?tipoServicio=ACUEDUCTO&codigoDepartamento=11&codigoMunicipio=", Operador());
+        var lista = await filtrada.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, lista.GetArrayLength());
+        Assert.Equal("Empresa B", lista[0].GetProperty("nombre").GetString());
+        Assert.Equal(new FiltroEmpresas(TipoServicio.ACUEDUCTO, "11", null), _fabrica.Persistencia.UltimoFiltroEmpresas);
         Assert.Equal(HttpStatusCode.Forbidden, (await Enviar(HttpMethod.Get, "/api/v1/empresas",
             Token(Rol.CIUDADANO))).StatusCode);
     }

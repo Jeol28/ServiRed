@@ -189,6 +189,17 @@ class AtencionIntegracionTest {
                 .andExpect(jsonPath("$[?(@.idEmpresa == '%s')].nombre".formatted(ENERGIA_ANDINA))
                         .value("ENEL COLOMBIA S.A. E.S.P."))
                 .andExpect(jsonPath("$[?(@.nombre =~ /.*ejemplo.*/i)]").isEmpty());
+        // Filtros por servicio, departamento y municipio: las dueñas de alguna zona que cumpla.
+        consultar("/interno/v1/catalogo/empresas?tipoServicio=ENERGIA&codigoDepartamento=05")
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].nombre").value("EMPRESAS PÚBLICAS DE MEDELLÍN E.S.P."))
+                .andExpect(jsonPath("$[0].servicios").value(org.hamcrest.Matchers.hasItems("ENERGIA", "GAS")));
+        consultar("/interno/v1/catalogo/empresas?tipoServicio=ASEO&codigoMunicipio=11001")
+                .andExpect(jsonPath("$[?(@.idEmpresa == '%s')]".formatted(LIME)).exists())
+                .andExpect(jsonPath("$[?(@.nombre == 'ÁREA LIMPIA DISTRITO CAPITAL S.A.S. E.S.P.')]").exists())
+                .andExpect(jsonPath("$[?(@.idEmpresa == '%s')]".formatted(ENERGIA_ANDINA)).doesNotExist());
+        consultar("/interno/v1/catalogo/empresas?codigoMunicipio=11001&tipoServicio=")
+                .andExpect(jsonPath("$[?(@.idEmpresa == '%s')]".formatted(ENERGIA_ANDINA)).exists());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM catalogo.empresas", Integer.class)).isGreaterThan(1500);
         assertThat(jdbc.queryForObject("""
                 SELECT count(*) FROM (SELECT id_zona, tipo_servicio FROM catalogo.coberturas_zona

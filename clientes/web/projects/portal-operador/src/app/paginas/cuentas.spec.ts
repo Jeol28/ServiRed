@@ -44,4 +44,47 @@ describe('Cuentas', () => {
     expect(c.empresa('e1')).toBe('ENEL COLOMBIA S.A. E.S.P.');
     expect(c.empresa('desconocida')).toBe('desconocida');
   });
+
+  it('filtra las empresas por servicio, departamento y municipio, y encima por texto', () => {
+    TestBed.configureTestingModule({ imports: [Cuentas], providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const backend = TestBed.inject(HttpTestingController);
+    const f = TestBed.createComponent(Cuentas);
+    f.detectChanges();
+    backend.expectOne((r) => r.url === '/api/v1/cuentas').flush({ elementos: [], total: 0, pagina: 0, tamano: 20 });
+    backend.expectOne((r) => r.url === '/api/v1/empresas' && r.params.keys().length === 0).flush([
+      { idEmpresa: 'e1', nit: '860063875', nombre: 'ENEL COLOMBIA S.A. E.S.P.', servicios: ['ENERGIA'] },
+    ]);
+    const c = f.componentInstance as unknown as {
+      servicioEmpresa: { set(v: string): void }; territorioEmpresa: { codigoDepartamento: string; codigoMunicipio: string };
+      busquedaEmpresa: { set(v: string): void }; filtrarEmpresas(): void;
+      empresasEncontradas(): { idEmpresa: string }[]; etiquetaServicios(e: unknown): string;
+    };
+
+    c.servicioEmpresa.set('ASEO');
+    c.territorioEmpresa.codigoDepartamento = '11';
+    c.territorioEmpresa.codigoMunicipio = '11001';
+    c.filtrarEmpresas();
+    const filtrada = backend.expectOne((r) => r.url === '/api/v1/empresas' && r.params.keys().length > 0);
+    expect(filtrada.request.params.get('tipoServicio')).toBe('ASEO');
+    expect(filtrada.request.params.get('codigoDepartamento')).toBe('11');
+    expect(filtrada.request.params.get('codigoMunicipio')).toBe('11001');
+    const aseo = [
+      { idEmpresa: 'e2', nit: '901146434', nombre: 'ÁREA LIMPIA DISTRITO CAPITAL S.A.S. E.S.P.', servicios: ['ASEO'] },
+      { idEmpresa: 'e3', nit: '830123461', nombre: 'LIMPIEZA METROPOLITANA S.A. E.S.P.', servicios: ['ASEO'] },
+    ];
+    filtrada.flush(aseo);
+    expect(c.empresasEncontradas().map((e) => e.idEmpresa)).toEqual(['e2', 'e3']);
+    expect(c.etiquetaServicios(aseo[0])).toBe('Aseo');
+    c.busquedaEmpresa.set('metropolitana');
+    expect(c.empresasEncontradas().map((e) => e.idEmpresa)).toEqual(['e3']);
+
+    // Sin servicio ni territorio vuelve al catálogo completo, sin otra consulta.
+    c.servicioEmpresa.set('');
+    c.territorioEmpresa.codigoDepartamento = '';
+    c.territorioEmpresa.codigoMunicipio = '';
+    c.busquedaEmpresa.set('');
+    c.filtrarEmpresas();
+    expect(c.empresasEncontradas().map((e) => e.idEmpresa)).toEqual(['e1']);
+    backend.verify();
+  });
 });

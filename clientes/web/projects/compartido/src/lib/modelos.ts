@@ -74,6 +74,15 @@ export interface EmpresaPrestadora {
   idEmpresa: string;
   nit: string;
   nombre: string;
+  /** Servicios que presta en alguna zona. */
+  servicios: TipoServicio[];
+}
+
+/** Filtro del catálogo de empresas: las dueñas de alguna zona con ese servicio y territorio. */
+export interface FiltroEmpresas {
+  tipoServicio?: TipoServicio;
+  codigoDepartamento?: string;
+  codigoMunicipio?: string;
 }
 
 /** Zona de servicio de un caso y su única empresa dueña (ADR-35); sin empresa si nadie presta allí. */

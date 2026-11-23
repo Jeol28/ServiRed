@@ -14,7 +14,14 @@ public final class Atencion {
     }
 
     /** Empresa prestadora real del catálogo (ADR-35). */
-    public record EmpresaPrestadora(UUID idEmpresa, String nit, String nombre) {
+    public record EmpresaPrestadora(UUID idEmpresa, String nit, String nombre, List<String> servicios) {
+    }
+
+    /**
+     * Filtro del catálogo de empresas (null = sin filtro): las dueñas de al menos una zona con ese
+     * servicio, en ese departamento o municipio (ADR-35).
+     */
+    public record FiltroEmpresas(String tipoServicio, String codigoDepartamento, String codigoMunicipio) {
     }
 
     /**

@@ -130,8 +130,16 @@ public class ControladorCasos {
     }
 
     @GetMapping("/catalogo/empresas")
-    public List<EmpresaPrestadora> empresas(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
-        return atencion.empresas(s);
+    public List<EmpresaPrestadora> empresas(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
+                                            @RequestParam(required = false) String tipoServicio,
+                                            @RequestParam(required = false) String codigoDepartamento,
+                                            @RequestParam(required = false) String codigoMunicipio) {
+        return atencion.empresas(s, new co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroEmpresas(
+                vacio(tipoServicio), vacio(codigoDepartamento), vacio(codigoMunicipio)));
+    }
+
+    private static String vacio(String v) {
+        return v == null || v.isBlank() ? null : v.trim();
     }
 
     @GetMapping("/operadores/{idCuenta}")

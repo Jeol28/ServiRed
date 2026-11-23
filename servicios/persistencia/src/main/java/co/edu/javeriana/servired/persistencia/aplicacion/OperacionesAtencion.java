@@ -59,9 +59,10 @@ public class OperacionesAtencion {
         return repositorio.cobertura(consulta);
     }
 
-    public List<EmpresaPrestadora> empresas(ServicioCliente s) {
+    public List<EmpresaPrestadora> empresas(ServicioCliente s,
+                                            co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroEmpresas filtro) {
         OperacionNegocio.LISTAR_EMPRESAS.autorizar(s);
-        return repositorio.empresas();
+        return repositorio.empresas(filtro);
     }
 
     public Optional<CasoGuardado> caso(ServicioCliente s, UUID idCaso) {

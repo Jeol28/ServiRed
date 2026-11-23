@@ -7,8 +7,15 @@ namespace ServiRed.Atencion.Dominio;
 /// </summary>
 public sealed record Cobertura(string IdZona, string NombreZona, Guid? IdEmpresa, string? NombreEmpresa);
 
-/// <summary>Empresa prestadora real del catálogo (ADR-35).</summary>
-public sealed record EmpresaPrestadora(Guid IdEmpresa, string Nit, string Nombre);
+/// <summary>Empresa prestadora real del catálogo (ADR-35), con los servicios que presta.</summary>
+public sealed record EmpresaPrestadora(Guid IdEmpresa, string Nit, string Nombre, IReadOnlyList<string> Servicios);
+
+/// <summary>
+/// Filtro del catálogo de empresas (null = sin filtro): las dueñas de al menos una zona con ese
+/// servicio, en ese departamento o municipio.
+/// </summary>
+public sealed record FiltroEmpresas(TipoServicio? TipoServicio = null, string? CodigoDepartamento = null,
+    string? CodigoMunicipio = null);
 
 /// <summary>
 /// Dónde buscar la cobertura: el punto del reporte si lo hay; si no, la ubicación guardada de

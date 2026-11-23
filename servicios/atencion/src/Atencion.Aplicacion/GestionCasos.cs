@@ -58,12 +58,12 @@ public sealed class GestionCasos(IRepositorioCasos casos, ICatalogoAtencion cata
     }
 
     /// <summary>Catálogo de empresas prestadoras reales (nombres en el portal y alta de operadores).</summary>
-    public Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(Actor actor, IdCorrelacion correlacion,
-        CancellationToken ct)
+    public Task<IReadOnlyList<EmpresaPrestadora>> EmpresasAsync(Actor actor, FiltroEmpresas filtro,
+        IdCorrelacion correlacion, CancellationToken ct)
     {
         if (actor.Rol is not (Rol.OPERADOR or Rol.REGULADOR or Rol.ADMINISTRADOR))
             throw new AccesoDenegado("Rol sin acceso al catálogo de empresas");
-        return catalogo.EmpresasAsync(correlacion, ct);
+        return catalogo.EmpresasAsync(filtro, correlacion, ct);
     }
 
     /// <summary>Asigna a otro operador de la empresa del caso o, si no se indica, a quien lo pide.</summary>

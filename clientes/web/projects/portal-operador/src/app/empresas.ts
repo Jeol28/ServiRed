@@ -38,10 +38,14 @@ export class Empresas {
   /** Hasta `limite` empresas cuyo nombre o NIT contienen el texto (sin tildes ni mayúsculas). */
   buscar(texto: string, limite = 50): EmpresaPrestadora[] {
     this.cargar();
-    const t = normalizar(texto);
-    const lista = t ? this.lista().filter((e) => normalizar(e.nombre).includes(t) || e.nit.includes(t)) : this.lista();
-    return lista.slice(0, limite);
+    return filtrarPorTexto(this.lista(), texto, limite);
   }
+}
+
+/** Las de la lista cuyo nombre o NIT contienen el texto (sin tildes ni mayúsculas), hasta `limite`. */
+export function filtrarPorTexto(lista: EmpresaPrestadora[], texto: string, limite = 50): EmpresaPrestadora[] {
+  const t = normalizar(texto);
+  return (t ? lista.filter((e) => normalizar(e.nombre).includes(t) || e.nit.includes(t)) : lista).slice(0, limite);
 }
 
 function normalizar(s: string): string {
