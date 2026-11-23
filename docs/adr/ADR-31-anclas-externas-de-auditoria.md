@@ -68,3 +68,8 @@ la cadena, el total de registros y los segmentos.
     - con la cadena rota no se ancla.
   - Gateway y Auditoría: la ruta es pública.
   - e2e `anclas-auditoria.py`.
+
+## Actualización: reencadenamientos autorizados ([ADR-36](ADR-36-borrado-del-rastro-de-las-empresas-de-ejemplo.md))
+Un borrado autorizado puede recalcular la cadena desde una secuencia. Queda en
+`auditoria.reencadenamientos`, y la verificación informa como **reemplazadas** (no como distintas)
+las anclas que ese recálculo cubre.

@@ -331,6 +331,17 @@ public class RepositorioAuditoriaJdbc implements RepositorioAuditoria {
     }
 
     @Override
+    public List<co.edu.javeriana.servired.persistencia.dominio.Auditoria.Reencadenamiento> reencadenamientos() {
+        return jdbc.sql("""
+                        SELECT desde_secuencia, registros_borrados, motivo, migracion, realizado_en
+                        FROM auditoria.reencadenamientos ORDER BY id""")
+                .query((rs, n) -> new co.edu.javeriana.servired.persistencia.dominio.Auditoria.Reencadenamiento(
+                        rs.getLong("desde_secuencia"), rs.getInt("registros_borrados"), rs.getString("motivo"),
+                        rs.getString("migracion"), rs.getTimestamp("realizado_en").toInstant()))
+                .list();
+    }
+
+    @Override
     public void insertarAncla(Ancla a) {
         jdbc.sql("""
                         INSERT INTO auditoria.anclas (fecha, secuencia, hash, registros, segmentos)

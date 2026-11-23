@@ -1,5 +1,6 @@
 package co.edu.javeriana.servired.persistencia.aplicacion.puertos;
 
+import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Reencadenamiento;
 import java.util.Map;
 import java.time.LocalDate;
 import co.edu.javeriana.servired.persistencia.dominio.Auditoria.Ancla;
@@ -61,6 +62,9 @@ public interface RepositorioAuditoria {
     Optional<Ancla> ancla(LocalDate fecha);
 
     List<Ancla> anclas();
+
+    /** Reencadenamientos autorizados de la cadena (ADR-36), del más viejo al más reciente. */
+    List<Reencadenamiento> reencadenamientos();
 
     void insertarAncla(Ancla ancla);
 

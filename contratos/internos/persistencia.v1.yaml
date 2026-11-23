@@ -964,7 +964,7 @@ paths:
         hoy tiene cada secuencia, en la base o dentro de su segmento archivado. Solo `auditoria`.
       parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
       responses:
-        "200": { description: "{fuente, anclas, coinciden, distintas[]}" }
+        "200": { description: "{fuente, anclas, coinciden, distintas[], reemplazadas[]}: reemplazadas son las que un reencadenamiento autorizado (auditoria.reencadenamientos, ADR-36) recalculó; no cuentan como distintas" }
 
   /interno/v1/acciones-auditadas:
     post:

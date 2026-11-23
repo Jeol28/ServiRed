@@ -79,7 +79,18 @@ public final class Auditoria {
                                     String ubicacion, boolean coincide) {
     }
 
-    public record VerificacionAnclas(String fuente, int anclas, boolean coinciden, List<ComprobacionAncla> distintas) {
+    /**
+     * Verificación de las anclas. {@code reemplazadas}: las que no coinciden porque un
+     * reencadenamiento autorizado recalculó la cadena desde su secuencia (ADR-36); no cuentan como
+     * reescritura, pero se informan.
+     */
+    public record VerificacionAnclas(String fuente, int anclas, boolean coinciden, List<ComprobacionAncla> distintas,
+                                     List<ComprobacionAncla> reemplazadas) {
+    }
+
+    /** Recálculo de la cadena tras un borrado autorizado (ADR-36). */
+    public record Reencadenamiento(long desdeSecuencia, int registrosBorrados, String motivo, String migracion,
+                                   Instant realizadoEn) {
     }
 
     /** Verificación profunda del archivo: descarga cada segmento, compara su SHA-256 y recalcula las huellas. */

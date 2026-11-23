@@ -105,20 +105,31 @@ public class AnclasAuditoria {
         List<Ancla> anclas = externa ? publicador.publicadas() : repositorio.anclas();
         var segmentos = new HashMap<Long, Map<Long, String>>();
         var distintas = new ArrayList<ComprobacionAncla>();
+        var reemplazadas = new ArrayList<ComprobacionAncla>();
+        var reencadenamientos = repositorio.reencadenamientos();
         for (Ancla a : anclas) {
             var actual = hashActual(a.secuencia(), segmentos);
             boolean coincide = actual.map(h -> h[0].equals(a.hash())).orElse(false);
-            if (!coincide) {
-                distintas.add(new ComprobacionAncla(a.fecha(), a.secuencia(), a.hash(), actual.map(h -> h[0]).orElse(null),
-                        actual.map(h -> h[1]).orElse("no se encontró el registro"), false));
+            if (coincide) {
+                continue;
             }
+            // Un reencadenamiento autorizado, del mismo día del ancla o posterior, que empieza en o
+            // antes de su secuencia la reemplazó (ADR-36): se informa, pero no es una reescritura.
+            var causa = reencadenamientos.stream()
+                    .filter(r -> r.desdeSecuencia() <= a.secuencia()
+                            && !a.fecha().isAfter(r.realizadoEn().atZone(java.time.ZoneOffset.UTC).toLocalDate()))
+                    .findFirst();
+            var comprobacion = new ComprobacionAncla(a.fecha(), a.secuencia(), a.hash(), actual.map(h -> h[0]).orElse(null),
+                    causa.map(r -> "reemplazada por el reencadenamiento " + r.migracion() + ": " + r.motivo())
+                            .orElseGet(() -> actual.map(h -> h[1]).orElse("no se encontró el registro")), false);
+            (causa.isPresent() ? reemplazadas : distintas).add(comprobacion);
         }
         if (!distintas.isEmpty()) {
             log.atError().addKeyValue("distintas", distintas.size())
                     .log("la cadena de auditoría no coincide con anclas publicadas: posible reescritura de la historia");
         }
         return new VerificacionAnclas(externa ? publicador.destino() : "base de datos (sin destino externo configurado)",
-                anclas.size(), distintas.isEmpty(), distintas);
+                anclas.size(), distintas.isEmpty(), distintas, reemplazadas);
     }
 
     /** [hash, ubicación] del registro con esa secuencia: en la base o dentro de su segmento. */

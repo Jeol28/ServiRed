@@ -130,4 +130,5 @@ La llave primaria (zona, servicio) garantiza una sola empresa.
   acueducto. Un administrador ya no puede corregirlo caso a caso, sino solo cambiando la
   cobertura.
 - **Operadores de ejemplo:** el administrador debe crear cuentas nuevas en las empresas reales.
+- **Rastro de las empresas de ejemplo:** se borró después por completo, en [ADR-36](ADR-36-borrado-del-rastro-de-las-empresas-de-ejemplo.md).
 - **Pruebas:** usan las empresas reales; Enel es la de energía en Bogotá y Cundinamarca.

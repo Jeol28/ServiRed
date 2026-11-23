@@ -37,3 +37,4 @@ JEE y .NET), incluidas las que corrigen contradicciones del SAD.
 | [ADR-33](ADR-33-se-retira-la-auditoria.md) | Se retira la auditoría | Revertida (V18 y V19) |
 | [ADR-34](ADR-34-mapa-base-openfreemap.md) | Mapa base vectorial de OpenFreeMap | Aceptada |
 | [ADR-35](ADR-35-empresas-reales-y-zonas-de-servicio.md) | Empresas prestadoras reales y una sola dueña por zona de servicio | Aceptada |
+| [ADR-36](ADR-36-borrado-del-rastro-de-las-empresas-de-ejemplo.md) | Borrado de todo lo relacionado con las empresas de ejemplo | Aceptada |

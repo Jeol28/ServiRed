@@ -36,7 +36,13 @@ fecha, secuencia, hash_ = sql("SELECT fecha || '|' || secuencia || '|' || hash F
                               "ORDER BY fecha DESC LIMIT 1").split("|")
 hash_en_cadena = sql(f"""SELECT coalesce((SELECT hash FROM auditoria.registros WHERE secuencia = {secuencia}),
                          (SELECT hash_final FROM auditoria.segmentos WHERE secuencia_hasta = {secuencia}))""")
-comprobar(hash_ == hash_en_cadena, f"es el hash del registro {secuencia} de la cadena")
+if hash_en_cadena:
+    comprobar(hash_ == hash_en_cadena, f"es el hash del registro {secuencia} de la cadena")
+else:
+    # El registro ya se archivó dentro de un segmento (ADR-29): lo compara la verificación (paso 4),
+    # que descarga el segmento.
+    comprobar(sql(f"SELECT count(*) FROM auditoria.segmentos WHERE {secuencia} BETWEEN secuencia_desde "
+                  "AND secuencia_hasta") == "1", f"el registro {secuencia} está archivado en un segmento")
 
 print("2. Pública, sin token")
 estado, _, anclas = http("GET", "/api/v1/auditoria/anclas")

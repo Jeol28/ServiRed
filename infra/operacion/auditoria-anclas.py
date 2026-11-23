@@ -83,6 +83,9 @@ def anclar(_args):
 def verificar(_args):
     v = llamar("POST", "/interno/v1/auditoria/anclas/verificacion")
     print(f"Fuente: {v['fuente']} ({v['anclas']} ancla(s)).")
+    for d in v.get("reemplazadas", []):
+        # Un reencadenamiento autorizado (ADR-36) recalculó la cadena desde esa secuencia.
+        print(f"  Reemplazada: {d['fecha']}  secuencia {d['secuencia']} ({d['ubicacion']})")
     if v["coinciden"]:
         print("Todas las anclas publicadas coinciden con la cadena actual.")
         return 0
