@@ -507,7 +507,7 @@ paths:
   /interno/v1/casos:
     get:
       operationId: listarCasos
-      description: Bandeja ordenada por prioridad (CRITICA primero) y antigüedad.
+      description: "Bandeja. orden=PRIORIDAD (por omisión): CRITICA primero y, a igual prioridad, lo más antiguo; RECIENTES o ANTIGUOS: por fecha de apertura. Otro valor: 400."
       parameters:
         - $ref: "#/components/parameters/IdCorrelacion"
         - { name: estado, in: query, schema: { type: string } }
@@ -519,6 +519,7 @@ paths:
         - { name: sinEmpresa, in: query, schema: { type: boolean } }
         - { name: asignadoA, in: query, schema: { type: string, format: uuid } }
         - { name: idReporte, in: query, schema: { type: string, format: uuid } }
+        - { name: orden, in: query, schema: { type: string, enum: [PRIORIDAD, RECIENTES, ANTIGUOS], default: PRIORIDAD } }
         - { name: pagina, in: query, schema: { type: integer } }
         - { name: tamano, in: query, schema: { type: integer, maximum: 100 } }
       responses:

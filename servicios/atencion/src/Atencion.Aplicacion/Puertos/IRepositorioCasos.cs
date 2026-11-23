@@ -17,7 +17,11 @@ public sealed record FiltroCasos(
     Guid? IdReporte = null,
     int Pagina = 0,
     int Tamano = 20,
-    string? CodigoDepartamento = null);
+    string? CodigoDepartamento = null,
+    OrdenCasos Orden = OrdenCasos.PRIORIDAD);
+
+/// <summary>Orden de la bandeja: por prioridad (lo urgente primero) o por fecha de apertura.</summary>
+public enum OrdenCasos { PRIORIDAD, RECIENTES, ANTIGUOS }
 
 /// <summary>Página de resultados; se serializa como {elementos, total, pagina, tamano}, igual que los servicios Java.</summary>
 public sealed record Pagina<T>(IReadOnlyList<T> Elementos, long Total,

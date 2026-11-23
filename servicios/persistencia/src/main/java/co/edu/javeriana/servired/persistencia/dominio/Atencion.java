@@ -43,8 +43,11 @@ public final class Atencion {
     public record FiltroCasos(String estado, String tipoServicio, String codigoMunicipio, String codigoDepartamento,
                               String prioridad,
                               UUID idEmpresa, boolean soloSinEmpresa, UUID asignadoA, UUID idReporte, int pagina,
-                              int tamano) {
+                              int tamano, OrdenCasos orden) {
     }
+
+    /** Orden de la bandeja: por prioridad (lo urgente primero) o por fecha de apertura. */
+    public enum OrdenCasos { PRIORIDAD, RECIENTES, ANTIGUOS }
 
     public record PaginaCasos(List<CasoGuardado> elementos, long total, int pagina, int tamano) {
     }

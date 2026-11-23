@@ -4,6 +4,7 @@ import static co.edu.javeriana.servired.persistencia.infraestructura.jdbc.Reposi
 
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAtencion;
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioFase4.EvidenciaReferencia;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.OrdenCasos;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.CambiosCaso;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Decision;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Cobertura;
@@ -158,8 +159,14 @@ public class RepositorioAtencionJdbc implements RepositorioAtencion {
         int pagina = Math.max(0, f.pagina());
         long total = parametros(jdbc.sql("SELECT count(*) FROM atencion.casos c" + donde), f)
                 .query(Long.class).single();
-        var elementos = parametros(jdbc.sql(CONSULTA + donde + " ORDER BY " + RANGO_PRIORIDAD
-                        + " DESC, c.abierto_en, c.id LIMIT :limite OFFSET :desde"), f)
+        // El orden sale de un enum, nunca del texto de la solicitud.
+        String orden = switch (f.orden() == null ? OrdenCasos.PRIORIDAD : f.orden()) {
+            case PRIORIDAD -> RANGO_PRIORIDAD + " DESC, c.abierto_en, c.id";
+            case RECIENTES -> "c.abierto_en DESC, c.id";
+            case ANTIGUOS -> "c.abierto_en, c.id";
+        };
+        var elementos = parametros(jdbc.sql(CONSULTA + donde + " ORDER BY " + orden
+                        + " LIMIT :limite OFFSET :desde"), f)
                 .param("limite", tamano).param("desde", (long) pagina * tamano)
                 .query((rs, n) -> mapear(rs, List.of(), List.of()))
                 .list();

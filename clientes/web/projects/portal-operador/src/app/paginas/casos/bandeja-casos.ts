@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import {
   ApiCasos, COLOR_PRIORIDAD, Caso, ESTADOS_CASO, FechaCortaPipe, FiltroCasos, NOMBRE_ESTADO, NOMBRE_MAGNITUD,
   NOMBRE_PRIORIDAD, NOMBRE_SERVICIO, PRIORIDADES, Pagina, SelectorTerritorio, ServicioSesion, TIPOS_SERVICIO,
-  mensajeDeError,
+  ORDENES_CASOS, OrdenCasos, mensajeDeError,
 } from 'compartido';
 import { Empresas } from '../../empresas';
 
@@ -36,6 +36,11 @@ const TAMANO = 20;
         </select>
       </label>
       <sr-selector-territorio [f]="territorio" />
+      <label>Ordenar por
+        <select name="orden" [ngModel]="filtro.orden ?? 'PRIORIDAD'" (ngModelChange)="ordenar($event)">
+          @for (o of ordenes; track o.valor) { <option [ngValue]="o.valor">{{ o.nombre }}</option> }
+        </select>
+      </label>
       @if (esOperador()) {
         <label class="sr-en-linea"><input type="checkbox" name="mios" [(ngModel)]="filtro.mios" /> Solo los míos</label>
       }
@@ -113,6 +118,13 @@ export class BandejaCasos {
   protected readonly esAdmin = computed(() => this.sesion.rol() === 'ADMINISTRADOR');
 
   protected filtro: FiltroCasos = {};
+  protected readonly ordenes = ORDENES_CASOS;
+
+  /** Cambiar el orden reordena al instante, desde la primera página. */
+  protected ordenar(orden: OrdenCasos): void {
+    this.filtro.orden = orden === 'PRIORIDAD' ? undefined : orden;
+    this.buscar(0);
+  }
   /** Departamento y municipio elegidos en las listas ('' = todos). */
   protected territorio = { codigoDepartamento: '', codigoMunicipio: '' };
   protected readonly pagina = signal<Pagina<Caso> | null>(null);

@@ -56,12 +56,17 @@ public sealed class PersistenciaFalsa : IRepositorioCasos, ICatalogoAtencion, IR
 
     public Task<Pagina<Caso>> ListarAsync(FiltroCasos f, IdCorrelacion correlacion, CancellationToken ct)
     {
-        var lista = Casos.Values
+        var filtrados = Casos.Values
             .Where(c => f.IdEmpresa is null || c.IdEmpresa == f.IdEmpresa)
             .Where(c => !f.SoloSinEmpresa || c.IdEmpresa is null)
             .Where(c => f.Estado is null || c.Estado == f.Estado)
-            .Where(c => f.AsignadoA is null || c.AsignadoA == f.AsignadoA)
-            .OrderByDescending(c => c.Prioridad).ThenBy(c => c.AbiertoEn).ToList();
+            .Where(c => f.AsignadoA is null || c.AsignadoA == f.AsignadoA);
+        var lista = (f.Orden switch
+        {
+            OrdenCasos.RECIENTES => filtrados.OrderByDescending(c => c.AbiertoEn),
+            OrdenCasos.ANTIGUOS => filtrados.OrderBy(c => c.AbiertoEn),
+            _ => filtrados.OrderByDescending(c => c.Prioridad).ThenBy(c => c.AbiertoEn),
+        }).ToList();
         return Task.FromResult(new Pagina<Caso>(lista, lista.Count, f.Pagina, f.Tamano));
     }
 

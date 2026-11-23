@@ -128,9 +128,19 @@ export interface FiltroCasos {
   codigoDepartamento?: string;
   sinEmpresa?: boolean;
   mios?: boolean;
+  /** Sin valor = por prioridad (lo urgente primero). */
+  orden?: OrdenCasos;
   pagina?: number;
   tamano?: number;
 }
+
+/** Orden de la bandeja de casos. */
+export type OrdenCasos = 'PRIORIDAD' | 'RECIENTES' | 'ANTIGUOS';
+export const ORDENES_CASOS: { valor: OrdenCasos; nombre: string }[] = [
+  { valor: 'PRIORIDAD', nombre: 'Prioridad (lo urgente primero)' },
+  { valor: 'RECIENTES', nombre: 'Más recientes primero' },
+  { valor: 'ANTIGUOS', nombre: 'Más antiguos primero' },
+];
 
 export interface Moderacion {
   idDenuncia: string;

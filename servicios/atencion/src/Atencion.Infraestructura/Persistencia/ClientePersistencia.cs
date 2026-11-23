@@ -61,6 +61,7 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioCasos, IC
         Agregar("asignadoA", f.AsignadoA);
         Agregar("idReporte", f.IdReporte);
         if (f.SoloSinEmpresa) parametros.Add("sinEmpresa=true");
+        if (f.Orden != OrdenCasos.PRIORIDAD) parametros.Add($"orden={f.Orden}");
         var p = await EnviarAsync<PaginaDto<Caso>>(HttpMethod.Get, "/interno/v1/casos?" + string.Join('&', parametros),
             null, correlacion, ct);
         return new Pagina<Caso>(p!.Elementos, p.Total, p.Pagina, p.Tamano);

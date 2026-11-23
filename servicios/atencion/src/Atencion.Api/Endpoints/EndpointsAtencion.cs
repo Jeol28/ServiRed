@@ -25,12 +25,13 @@ public static class EndpointsAtencion
 
         casos.MapGet("", (HttpContext h, GestionCasos g, CancellationToken ct, EstadoCaso? estado,
                 TipoServicio? tipoServicio, string? codigoMunicipio, Prioridad? prioridad, Guid? idEmpresa,
-                bool? sinEmpresa, Guid? asignadoA, bool? mios, int? pagina, int? tamano, string? codigoDepartamento) =>
+                bool? sinEmpresa, Guid? asignadoA, bool? mios, int? pagina, int? tamano, string? codigoDepartamento,
+                OrdenCasos? orden) =>
             {
                 var actor = ActorActual.De(h);
                 return g.ListarAsync(actor, new FiltroCasos(estado, tipoServicio, codigoMunicipio, prioridad, idEmpresa,
                     sinEmpresa ?? false, mios == true ? actor.IdCuenta : asignadoA, null, pagina ?? 0, tamano ?? 20,
-                    codigoDepartamento),
+                    codigoDepartamento, orden ?? OrdenCasos.PRIORIDAD),
                     Correlacion(h), ct);
             });
 

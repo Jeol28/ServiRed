@@ -92,9 +92,16 @@ public class ControladorCasos {
                               @RequestParam(required = false) UUID asignadoA,
                               @RequestParam(required = false) UUID idReporte,
                               @RequestParam(defaultValue = "0") int pagina,
-                              @RequestParam(defaultValue = "20") int tamano) {
+                              @RequestParam(defaultValue = "20") int tamano,
+                              @RequestParam(defaultValue = "PRIORIDAD") String orden) {
+        co.edu.javeriana.servired.persistencia.dominio.Atencion.OrdenCasos o;
+        try {
+            o = co.edu.javeriana.servired.persistencia.dominio.Atencion.OrdenCasos.valueOf(orden.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("orden debe ser PRIORIDAD, RECIENTES o ANTIGUOS");
+        }
         return atencion.listar(s, new FiltroCasos(estado, tipoServicio, codigoMunicipio, codigoDepartamento, prioridad, idEmpresa,
-                sinEmpresa, asignadoA, idReporte, pagina, tamano));
+                sinEmpresa, asignadoA, idReporte, pagina, tamano, o));
     }
 
     @PostMapping("/casos/{idCaso}/actualizar")

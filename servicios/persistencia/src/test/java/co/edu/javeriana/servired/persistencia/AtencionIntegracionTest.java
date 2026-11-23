@@ -229,6 +229,20 @@ class AtencionIntegracionTest {
         consultar("/interno/v1/casos?idEmpresa=" + empresa)
                 .andExpect(jsonPath("$.elementos[0].idCaso").value(critica.toString()))
                 .andExpect(jsonPath("$.elementos[1].idCaso").value(baja.toString()));
+
+        // Orden por fecha de apertura: un caso más reciente pero menos urgente.
+        UUID media = abrirCaso("MEDIA", empresa.toString());
+        jdbc.update("UPDATE atencion.casos SET abierto_en = ?::timestamptz WHERE id = ?", "2026-11-17T10:00:00Z", baja);
+        jdbc.update("UPDATE atencion.casos SET abierto_en = ?::timestamptz WHERE id = ?", "2026-11-17T11:00:00Z", critica);
+        jdbc.update("UPDATE atencion.casos SET abierto_en = ?::timestamptz WHERE id = ?", "2026-11-17T12:00:00Z", media);
+        String base = "/interno/v1/casos?idEmpresa=" + empresa;
+        consultar(base).andExpect(jsonPath("$.elementos[*].idCaso").value(
+                org.hamcrest.Matchers.contains(critica.toString(), media.toString(), baja.toString())));
+        consultar(base + "&orden=RECIENTES").andExpect(jsonPath("$.elementos[*].idCaso").value(
+                org.hamcrest.Matchers.contains(media.toString(), critica.toString(), baja.toString())));
+        consultar(base + "&orden=antiguos").andExpect(jsonPath("$.elementos[*].idCaso").value(
+                org.hamcrest.Matchers.contains(baja.toString(), critica.toString(), media.toString())));
+        consultar(base + "&orden=ALFABETICO").andExpect(status().isBadRequest());
         UUID sinEmpresa = abrirCaso("MEDIA", null);
         String r = consultar("/interno/v1/casos?sinEmpresa=true&tamano=100").andReturn().getResponse().getContentAsString();
         assertThat(r).contains(sinEmpresa.toString()).doesNotContain(critica.toString());

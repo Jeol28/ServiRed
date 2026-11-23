@@ -184,6 +184,32 @@ public class ApiPruebas : IClassFixture<ApiPruebas.Fabrica>
     }
 
     [Fact]
+    public async Task LaBandejaSeOrdenaPorPrioridadOPorLoMasReciente()
+    {
+        var empresa = Guid.NewGuid();
+        var vieja = _fabrica.Persistencia.Sembrar(empresa, magnitud: Magnitud.SECTOR) with
+            { AbiertoEn = DateTimeOffset.Parse("2026-11-17T10:00:00Z") };
+        var nueva = _fabrica.Persistencia.Sembrar(empresa, magnitud: Magnitud.VIVIENDA) with
+            { AbiertoEn = DateTimeOffset.Parse("2026-11-17T12:00:00Z") };
+        _fabrica.Persistencia.Casos[vieja.IdCaso] = vieja with { Prioridad = Prioridad.CRITICA };
+        _fabrica.Persistencia.Casos[nueva.IdCaso] = nueva with { Prioridad = Prioridad.BAJA };
+        var operador = Token(Rol.OPERADOR, empresa);
+
+        async Task<Guid[]> Orden(string consulta)
+        {
+            var r = await Enviar(HttpMethod.Get, "/api/v1/casos" + consulta, operador);
+            var json = await r.Content.ReadFromJsonAsync<JsonElement>();
+            return json.GetProperty("elementos").EnumerateArray().Select(e => e.GetProperty("idCaso").GetGuid()).ToArray();
+        }
+
+        Assert.Equal([vieja.IdCaso, nueva.IdCaso], await Orden(""));
+        Assert.Equal([nueva.IdCaso, vieja.IdCaso], await Orden("?orden=RECIENTES"));
+        Assert.Equal([vieja.IdCaso, nueva.IdCaso], await Orden("?orden=ANTIGUOS"));
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await Enviar(HttpMethod.Get, "/api/v1/casos?orden=ALFABETICO", operador)).StatusCode);
+    }
+
+    [Fact]
     public async Task ElPersonalConsultaElCatalogoDeEmpresas()
     {
         var r = await Enviar(HttpMethod.Get, "/api/v1/empresas", Operador());
