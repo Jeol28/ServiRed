@@ -27,8 +27,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 class RecalculoMunicipioIntegracionTest {
 
-    static final String ENERGIA_ANDINA = "a0000000-0000-4000-8000-000000000001";   // cubre ENERGIA en Bogotá
-    static final String AGUAS = "a0000000-0000-4000-8000-000000000002";
+    // Aseo (ADR-35): Bogotá (cabecera) es de LIME y Soacha de Nuevo Mondoñedo, así que un reporte de
+    // Soacha que en realidad está en Bogotá cambia de dueña. EAAB hace de empresa elegida a mano.
+    static final String BOGOTA_ASEO = "2b79de38-edb8-5beb-a47c-0d690ca57020";   // Limpieza Metropolitana
+    static final String SOACHA_ASEO = "bfb2d152-32c7-5237-a71b-2a912a2147ed";   // Nuevo Mondoñedo
+    static final String OTRA = "ece4de53-d488-5b2b-b56d-f1f115e7a882";          // Acueducto de Bogotá
 
     @Container
     @ServiceConnection
@@ -54,12 +57,12 @@ class RecalculoMunicipioIntegracionTest {
         jdbc.update("""
                 INSERT INTO reportes.reportes (id, id_ciudadano, tipo_servicio, latitud, longitud, codigo_municipio,
                     inicio_estimado, magnitud, estado, fecha_registro)
-                VALUES (?, ?, 'ENERGIA', ?, ?, ?, '2026-11-10T08:00:00Z', 'CUADRA', 'RECIBIDO', '2026-11-10T09:00:00Z')""",
+                VALUES (?, ?, 'ASEO', ?, ?, ?, '2026-11-10T08:00:00Z', 'CUADRA', 'RECIBIDO', '2026-11-10T09:00:00Z')""",
                 id, UUID.randomUUID(), lat, lon, municipioGuardado);
         jdbc.update("""
                 INSERT INTO indicadores.vista_reportes (id_reporte, tipo_servicio, codigo_municipio, latitud, longitud,
                     fecha_registro, id_empresa)
-                VALUES (?, 'ENERGIA', ?, ?, ?, '2026-11-10T09:00:00Z', NULL)""", id, municipioGuardado, lat, lon);
+                VALUES (?, 'ASEO', ?, ?, ?, '2026-11-10T09:00:00Z', NULL)""", id, municipioGuardado, lat, lon);
         return id;
     }
 
@@ -68,7 +71,7 @@ class RecalculoMunicipioIntegracionTest {
         jdbc.update("""
                 INSERT INTO atencion.casos (id, id_reporte, tipo_servicio, codigo_municipio, magnitud, estado, abierto_en,
                     id_empresa, prioridad, asignado_a)
-                VALUES (?, ?, 'ENERGIA', ?, 'CUADRA', ?, '2026-11-10T09:00:01Z', ?::uuid, 'MEDIA', ?)""",
+                VALUES (?, ?, 'ASEO', ?, 'CUADRA', ?, '2026-11-10T09:00:01Z', ?::uuid, 'MEDIA', ?)""",
                 id, reporte, municipio, estado, empresa, asignadoA);
         jdbc.update("UPDATE indicadores.vista_reportes SET id_empresa = ?::uuid WHERE id_reporte = ?", empresa, reporte);
         return id;
@@ -86,15 +89,15 @@ class RecalculoMunicipioIntegracionTest {
     @Test
     void corrigeElMunicipioReenrutaSoloLosCasosIntactosYDejaRegistro() {
         // Bosa (Bogotá) guardado en Soacha: caso RECIBIDO, sin asignar y con el enrutamiento automático
-        // de Soacha (ninguna empresa cubre ENERGIA allá) → se reenruta a la empresa de Bogotá.
+        // de Soacha → se reenruta a la empresa de Bogotá.
         UUID intacto = reporte(4.60334, -74.20528, "25754");
-        UUID casoIntacto = caso(intacto, "25754", "RECIBIDO", null, null);
+        UUID casoIntacto = caso(intacto, "25754", "RECIBIDO", SOACHA_ASEO, null);
         // Norte de Bogotá guardado en Chía, ya EN_ATENCION: cambia el municipio, no la empresa.
         UUID enAtencion = reporte(4.82219, -74.03851, "25175");
-        UUID casoEnAtencion = caso(enAtencion, "25175", "EN_ATENCION", AGUAS, UUID.randomUUID());
+        UUID casoEnAtencion = caso(enAtencion, "25175", "EN_ATENCION", OTRA, UUID.randomUUID());
         // RECIBIDO y sin asignar, pero enrutado A MANO (no es el automático): no se toca la empresa.
         UUID manual = reporte(4.60334, -74.20530, "25754");
-        UUID casoManual = caso(manual, "25754", "RECIBIDO", AGUAS, null);
+        UUID casoManual = caso(manual, "25754", "RECIBIDO", OTRA, null);
         // Soacha bien ubicado: no cambia nada.
         UUID correcto = reporte(4.5793, -74.2168, "25754");
         // Sin caso todavía.
@@ -111,25 +114,25 @@ class RecalculoMunicipioIntegracionTest {
         assertThat(municipio(sinCaso)).isEqualTo("11001");
 
         assertThat(casoActual(casoIntacto)).containsEntry("codigo_municipio", "11001")
-                .containsEntry("empresa", ENERGIA_ANDINA);
-        assertThat(casoActual(casoEnAtencion)).containsEntry("codigo_municipio", "11001").containsEntry("empresa", AGUAS)
+                .containsEntry("empresa", BOGOTA_ASEO);
+        assertThat(casoActual(casoEnAtencion)).containsEntry("codigo_municipio", "11001").containsEntry("empresa", OTRA)
                 .containsEntry("version", (int) versionAntes + 1);
-        assertThat(casoActual(casoManual)).containsEntry("empresa", AGUAS);
+        assertThat(casoActual(casoManual)).containsEntry("empresa", OTRA);
 
         assertThat(jdbc.queryForObject("SELECT detalle FROM atencion.historia_caso WHERE id_caso = ? ORDER BY id DESC "
                 + "LIMIT 1", String.class, casoIntacto))
                 .contains("Municipio corregido de 25754 a 11001").contains("reenrutado");
         assertThat(jdbc.queryForObject("SELECT codigo_municipio || '|' || id_empresa FROM indicadores.vista_reportes "
-                + "WHERE id_reporte = ?", String.class, intacto)).isEqualTo("11001|" + ENERGIA_ANDINA);
+                + "WHERE id_reporte = ?", String.class, intacto)).isEqualTo("11001|" + BOGOTA_ASEO);
 
         // El registro de qué cambió.
         var registro = jdbc.queryForMap("SELECT municipio_anterior, municipio_nuevo, empresa_anterior::text AS antes, "
                 + "empresa_nueva::text AS despues, caso_reenrutado, migracion FROM reportes.recalculo_municipio "
                 + "WHERE id_reporte = ?", intacto);
         assertThat(registro).containsEntry("municipio_anterior", "25754").containsEntry("municipio_nuevo", "11001")
-                .containsEntry("despues", ENERGIA_ANDINA).containsEntry("caso_reenrutado", true)
+                .containsEntry("despues", BOGOTA_ASEO).containsEntry("caso_reenrutado", true)
                 .containsEntry("migracion", "PRUEBA");
-        assertThat(registro.get("antes")).isNull();
+        assertThat(registro.get("antes")).isEqualTo(SOACHA_ASEO);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM reportes.recalculo_municipio WHERE migracion = 'PRUEBA'",
                 Integer.class)).isEqualTo(4);
         assertThatThrownBy(() -> jdbc.update("UPDATE reportes.recalculo_municipio SET municipio_nuevo = '05001'"))

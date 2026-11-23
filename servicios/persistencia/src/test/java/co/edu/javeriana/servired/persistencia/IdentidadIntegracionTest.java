@@ -36,7 +36,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class IdentidadIntegracionTest {
 
     static final String CLAVE = "clave-identidad-de-prueba";
-    static final String EMPRESA = "a0000000-0000-4000-8000-000000000001";
+    static final String EMPRESA = "619a2e48-402d-5782-9daf-57f16169b157";   // Enel Colombia (ADR-35)
 
     @Container
     @ServiceConnection

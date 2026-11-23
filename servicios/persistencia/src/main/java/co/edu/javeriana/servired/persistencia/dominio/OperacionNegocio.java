@@ -21,6 +21,7 @@ public enum OperacionNegocio {
     GUARDAR_DENUNCIA("guardarDenuncia", EnumSet.of(ServicioCliente.REPORTES)),
     ABRIR_CASO("abrirCaso", EnumSet.of(ServicioCliente.ATENCION)),
     BUSCAR_COBERTURA("buscarCobertura", EnumSet.of(ServicioCliente.ATENCION)),
+    LISTAR_EMPRESAS("listarEmpresas", EnumSet.of(ServicioCliente.ATENCION)),
     CONSULTAR_CASO("consultarCaso", EnumSet.of(ServicioCliente.ATENCION)),
     LISTAR_CASOS("listarCasos", EnumSet.of(ServicioCliente.ATENCION)),
     ACTUALIZAR_CASO("actualizarCaso", EnumSet.of(ServicioCliente.ATENCION)),

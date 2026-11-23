@@ -13,6 +13,22 @@ public final class Atencion {
     public record Empresa(UUID idEmpresa, String nombre) {
     }
 
+    /** Empresa prestadora real del catálogo (ADR-35). */
+    public record EmpresaPrestadora(UUID idEmpresa, String nit, String nombre) {
+    }
+
+    /**
+     * Zona de servicio de un punto y su única empresa dueña para un servicio (ADR-35).
+     * {@code empresa} es null si nadie presta ese servicio allí.
+     */
+    public record Cobertura(String idZona, String nombreZona, Empresa empresa) {
+    }
+
+    /** Dónde buscar la cobertura: un punto, la ubicación guardada de una denuncia o un municipio. */
+    public record ConsultaCobertura(Double latitud, Double longitud, UUID idDenuncia, String codigoMunicipio,
+                                    String tipoServicio) {
+    }
+
     /**
      * Filtros de la bandeja de casos; null = sin filtro. El departamento son los dos
      * primeros dígitos del código DIVIPOLA del municipio.

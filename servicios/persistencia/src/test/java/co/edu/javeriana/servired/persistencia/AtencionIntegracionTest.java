@@ -36,7 +36,9 @@ class AtencionIntegracionTest {
 
     static final String ATENCION = "clave-atencion-de-prueba";
     static final String REPORTES = "clave-reportes-de-prueba";
-    static final String ENERGIA_ANDINA = "a0000000-0000-4000-8000-000000000001";
+    static final String ENERGIA_ANDINA = "619a2e48-402d-5782-9daf-57f16169b157";   // Enel Colombia: energía en Bogotá (ADR-35)
+    static final String EAAB = "ece4de53-d488-5b2b-b56d-f1f115e7a882";             // Acueducto de Bogotá
+    static final String LIME = "2b79de38-edb8-5beb-a47c-0d690ca57020";             // Limpieza Metropolitana: aseo de Bosa y otras
 
     @Container
     @ServiceConnection
@@ -151,17 +153,52 @@ class AtencionIntegracionTest {
     }
 
     @Test
-    void resuelveLaEmpresaConCobertura() throws Exception {
+    void resuelveLaUnicaEmpresaDuenaDeLaZona() throws Exception {
+        // Sin ubicación (denuncias por municipio): la de la cabecera.
         consultar("/interno/v1/catalogo/cobertura?codigoMunicipio=11001&tipoServicio=ENERGIA")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].idEmpresa").value(ENERGIA_ANDINA));
-        consultar("/interno/v1/catalogo/cobertura?codigoMunicipio=91001&tipoServicio=ENERGIA")
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.idZona").value("11001-U"))
+                .andExpect(jsonPath("$.empresa.idEmpresa").value(ENERGIA_ANDINA));
+        // Aseo de Bogotá por Áreas de Servicio Exclusivo: Suba es de Área Limpia, Bosa de LIME.
+        consultar("/interno/v1/catalogo/cobertura?latitud=4.7417&longitud=-74.0839&tipoServicio=ASEO")
+                .andExpect(jsonPath("$.idZona").value("11001-L11"))
+                .andExpect(jsonPath("$.nombreZona").value("Suba"))
+                .andExpect(jsonPath("$.empresa.nombre").value("ÁREA LIMPIA DISTRITO CAPITAL S.A.S. E.S.P."));
+        consultar("/interno/v1/catalogo/cobertura?latitud=4.6185&longitud=-74.1900&tipoServicio=ASEO")
+                .andExpect(jsonPath("$.idZona").value("11001-L07"))
+                .andExpect(jsonPath("$.empresa.idEmpresa").value(LIME));
+        // Una localidad sin dueño propio hereda el de la ciudad: la energía de Suba es de Enel.
+        consultar("/interno/v1/catalogo/cobertura?latitud=4.7417&longitud=-74.0839&tipoServicio=ENERGIA")
+                .andExpect(jsonPath("$.idZona").value("11001-L11"))
+                .andExpect(jsonPath("$.empresa.idEmpresa").value(ENERGIA_ANDINA));
+        // Fuera de las cabeceras: la zona rural del municipio (Guasca, Cundinamarca).
+        consultar("/interno/v1/catalogo/cobertura?latitud=4.8300&longitud=-73.8300&tipoServicio=ENERGIA")
+                .andExpect(jsonPath("$.idZona").value("25322-R"))
+                .andExpect(jsonPath("$.empresa.idEmpresa").value(ENERGIA_ANDINA));
+        // Nadie presta gas natural en Leticia: la zona existe, sin empresa.
+        consultar("/interno/v1/catalogo/cobertura?codigoMunicipio=91001&tipoServicio=GAS")
+                .andExpect(jsonPath("$.idZona").value("91001-U"))
+                .andExpect(jsonPath("$.empresa").doesNotExist());
+        consultar("/interno/v1/catalogo/cobertura?tipoServicio=GAS").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listaLasEmpresasRealesSinLasDeEjemplo() throws Exception {
+        consultar("/interno/v1/catalogo/empresas")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.idEmpresa == '%s')].nombre".formatted(ENERGIA_ANDINA))
+                        .value("ENEL COLOMBIA S.A. E.S.P."))
+                .andExpect(jsonPath("$[?(@.nombre =~ /.*ejemplo.*/i)]").isEmpty());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM catalogo.empresas", Integer.class)).isGreaterThan(1500);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM (SELECT id_zona, tipo_servicio FROM catalogo.coberturas_zona
+                                      GROUP BY 1, 2 HAVING count(*) > 1) d""", Integer.class))
+                .as("una sola empresa por zona y servicio").isZero();
     }
 
     @Test
     void abreElCasoConHistoriaYLoListaPorPrioridad() throws Exception {
-        UUID empresa = UUID.fromString("a0000000-0000-4000-8000-000000000005");
+        UUID empresa = UUID.fromString(LIME);
         UUID baja = abrirCaso("BAJA", empresa.toString());
         UUID critica = abrirCaso("CRITICA", empresa.toString());
 
@@ -224,7 +261,7 @@ class AtencionIntegracionTest {
 
         consultar("/interno/v1/operadores/" + operador + "?idEmpresa=" + ENERGIA_ANDINA)
                 .andExpect(jsonPath("$.operadorDeLaEmpresa").value(true));
-        consultar("/interno/v1/operadores/" + operador + "?idEmpresa=a0000000-0000-4000-8000-000000000002")
+        consultar("/interno/v1/operadores/" + operador + "?idEmpresa=" + EAAB)
                 .andExpect(jsonPath("$.operadorDeLaEmpresa").value(false));
     }
 

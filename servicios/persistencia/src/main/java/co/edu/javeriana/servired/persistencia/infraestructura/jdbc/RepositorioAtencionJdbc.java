@@ -6,7 +6,10 @@ import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAten
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioFase4.EvidenciaReferencia;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.CambiosCaso;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Decision;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.Cobertura;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.ConsultaCobertura;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Empresa;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.EmpresaPrestadora;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroCasos;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Moderacion;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.ModeracionNueva;
@@ -38,15 +41,43 @@ public class RepositorioAtencionJdbc implements RepositorioAtencion {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Cobertura por zona (ADR-35): por el punto si lo hay; si no, por la ubicación guardada de la
+     * denuncia; si no, la de la cabecera del municipio.
+     */
     @Override
-    public List<Empresa> empresasConCobertura(String codigoMunicipio, String tipoServicio) {
+    public Optional<Cobertura> cobertura(ConsultaCobertura q) {
+        String origen;
+        if (q.latitud() != null && q.longitud() != null) {
+            origen = "SELECT * FROM catalogo.empresa_en(:lat, :lon, :s)";
+        } else if (q.idDenuncia() != null) {
+            origen = """
+                    SELECT ce.* FROM reportes.denuncias d
+                    CROSS JOIN LATERAL catalogo.empresa_en(d.latitud, d.longitud, :s) ce WHERE d.id = :den""";
+        } else {
+            origen = "SELECT * FROM catalogo.empresa_de_municipio(CAST(:m AS char(5)), :s)";
+        }
         return jdbc.sql("""
-                        SELECT e.id, e.nombre FROM catalogo.coberturas c
-                        JOIN catalogo.empresas e ON e.id = c.id_empresa
-                        WHERE c.codigo_municipio = :m AND c.tipo_servicio = :s ORDER BY e.id
-                        """)
-                .param("m", codigoMunicipio).param("s", tipoServicio)
-                .query((rs, n) -> new Empresa(rs.getObject("id", UUID.class), rs.getString("nombre")))
+                        SELECT c.id_zona, z.nombre AS zona, e.id, e.nombre
+                        FROM (%s) c
+                        JOIN catalogo.zonas z ON z.id = c.id_zona
+                        LEFT JOIN catalogo.empresas e ON e.id = c.id_empresa
+                        """.formatted(origen))
+                .param("lat", q.latitud()).param("lon", q.longitud()).param("den", q.idDenuncia())
+                .param("m", q.codigoMunicipio()).param("s", q.tipoServicio())
+                .query((rs, n) -> {
+                    UUID id = rs.getObject("id", UUID.class);
+                    return new Cobertura(rs.getString("id_zona"), rs.getString("zona"),
+                            id == null ? null : new Empresa(id, rs.getString("nombre")));
+                })
+                .optional();
+    }
+
+    @Override
+    public List<EmpresaPrestadora> empresas() {
+        return jdbc.sql("SELECT id, nit, nombre FROM catalogo.empresas ORDER BY nombre, id")
+                .query((rs, n) -> new EmpresaPrestadora(rs.getObject("id", UUID.class), rs.getString("nit"),
+                        rs.getString("nombre")))
                 .list();
     }
 

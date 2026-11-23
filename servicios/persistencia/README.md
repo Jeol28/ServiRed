@@ -38,7 +38,7 @@ Migraciones en `src/main/resources/db/migracion`.
 |---|---|---|
 | `guardarReporte` | `POST /interno/v1/reportes/guardar` | reportes |
 | `consultarReporte` | `GET /interno/v1/reportes/{id}` | reportes |
-| `abrirCaso`, `consultarCaso`, `listarCasos`, `actualizarCaso`, `buscarCobertura`, `verificarOperador`, `obtenerEvidenciaDeCaso` | `/interno/v1/casos/**`, `/interno/v1/catalogo/cobertura`, `/interno/v1/operadores/{id}` | atencion |
+| `abrirCaso`, `consultarCaso`, `listarCasos`, `actualizarCaso`, `buscarCobertura`, `listarEmpresas`, `verificarOperador`, `obtenerEvidenciaDeCaso` | `/interno/v1/casos/**`, `/interno/v1/catalogo/cobertura`, `/interno/v1/catalogo/empresas`, `/interno/v1/operadores/{id}` | atencion |
 | `abrirModeracion`, `consultarModeracion`, `decidirModeracion`, `obtenerEvidenciaDenuncia` | `/interno/v1/moderaciones/**`, `/interno/v1/denuncias/{id}/evidencias/{id}` | atencion |
 | `actualizarVistaReporte`, `calcularAgregados`, `listarHechos`, `consultarEstadoVista` | `/interno/v1/indicadores/**` | indicadores |
 | `registrarAuditoria`, `consultarAuditoria`, `verificarIntegridadAuditoria` | `/interno/v1/auditoria/**` | auditoria |
@@ -71,8 +71,12 @@ no se puede guardar. Readiness incluye el almacén. Ver
   1.122 municipios y áreas no municipalizadas con su centroide. La migración
   `V3__semilla_divipola.sql` se regenera con
   `python3 herramientas/generar-semilla-divipola.py divipola.csv`.
-- Tipos de servicio y **empresas de ejemplo ficticias** con cobertura en seis
-  ciudades (`V4__semilla_servicios_empresas.sql`).
+- Tipos de servicio (`V4`). Las empresas de ejemplo de V4 se retiraron (ADR-35).
+- **Empresas prestadoras reales y zonas de servicio** (ADR-35): V20 crea las zonas (cabecera,
+  resto rural y localidades o comunas de `db/datos/zonas-comunas.tsv.gz`), V21 carga 1 803
+  empresas con una sola dueña por zona y servicio, y V22 reasigna lo existente. Se regeneran con
+  `python3 herramientas/generar-zonas-comunas.py` y
+  `python3 herramientas/generar-prestadores.py > src/main/resources/db/migracion/V21__prestadores_reales.sql`.
 
 ## Variables
 `PERSISTENCIA_DB_URL`, `PERSISTENCIA_DB_USUARIO`, `PERSISTENCIA_DB_CLAVE`,

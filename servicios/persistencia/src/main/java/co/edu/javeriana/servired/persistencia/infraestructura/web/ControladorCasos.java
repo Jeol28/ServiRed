@@ -5,7 +5,9 @@ import co.edu.javeriana.servired.persistencia.aplicacion.GestionEvidencias;
 import co.edu.javeriana.servired.persistencia.aplicacion.OperacionesAtencion;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.CambiosCaso;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Decision;
-import co.edu.javeriana.servired.persistencia.dominio.Atencion.Empresa;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.Cobertura;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.ConsultaCobertura;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.EmpresaPrestadora;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroCasos;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Moderacion;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.ModeracionNueva;
@@ -116,10 +118,20 @@ public class ControladorCasos {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** Zona y empresa dueña (ADR-35): por punto, por la ubicación de una denuncia o por municipio. */
     @GetMapping("/catalogo/cobertura")
-    public List<Empresa> cobertura(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
-                                   @RequestParam String codigoMunicipio, @RequestParam String tipoServicio) {
-        return atencion.cobertura(s, codigoMunicipio, tipoServicio);
+    public ResponseEntity<Cobertura> cobertura(
+            @RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s,
+            @RequestParam String tipoServicio, @RequestParam(required = false) Double latitud,
+            @RequestParam(required = false) Double longitud, @RequestParam(required = false) UUID idDenuncia,
+            @RequestParam(required = false) String codigoMunicipio) {
+        return ResponseEntity.of(atencion.cobertura(s,
+                new ConsultaCobertura(latitud, longitud, idDenuncia, codigoMunicipio, tipoServicio)));
+    }
+
+    @GetMapping("/catalogo/empresas")
+    public List<EmpresaPrestadora> empresas(@RequestAttribute(FiltroClaveServicio.ATRIBUTO_SERVICIO) ServicioCliente s) {
+        return atencion.empresas(s);
     }
 
     @GetMapping("/operadores/{idCuenta}")

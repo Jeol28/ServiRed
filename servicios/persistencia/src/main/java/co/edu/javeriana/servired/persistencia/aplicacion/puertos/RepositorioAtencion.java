@@ -2,7 +2,9 @@ package co.edu.javeriana.servired.persistencia.aplicacion.puertos;
 
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.CambiosCaso;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Decision;
-import co.edu.javeriana.servired.persistencia.dominio.Atencion.Empresa;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.Cobertura;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.ConsultaCobertura;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.EmpresaPrestadora;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroCasos;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Moderacion;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.ModeracionNueva;
@@ -17,7 +19,11 @@ import java.util.UUID;
 /** Esquema atencion (y lecturas de catálogo, cuentas y denuncias que Atención necesita). */
 public interface RepositorioAtencion {
 
-    List<Empresa> empresasConCobertura(String codigoMunicipio, String tipoServicio);
+    /** La zona de la consulta y su empresa dueña; vacío si no se puede ubicar. */
+    Optional<Cobertura> cobertura(ConsultaCobertura consulta);
+
+    /** Empresas prestadoras del catálogo, por nombre. */
+    List<EmpresaPrestadora> empresas();
 
     Optional<CasoGuardado> caso(UUID idCaso);
 

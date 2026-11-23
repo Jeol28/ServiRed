@@ -7,7 +7,9 @@ import co.edu.javeriana.servired.persistencia.aplicacion.puertos.RepositorioAten
 import co.edu.javeriana.servired.persistencia.aplicacion.puertos.UnidadDeTrabajo;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.CambiosCaso;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Decision;
-import co.edu.javeriana.servired.persistencia.dominio.Atencion.Empresa;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.Cobertura;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.ConsultaCobertura;
+import co.edu.javeriana.servired.persistencia.dominio.Atencion.EmpresaPrestadora;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.FiltroCasos;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.Moderacion;
 import co.edu.javeriana.servired.persistencia.dominio.Atencion.ModeracionNueva;
@@ -48,9 +50,18 @@ public class OperacionesAtencion {
         this.outbox = outbox;
     }
 
-    public List<Empresa> cobertura(ServicioCliente s, String codigoMunicipio, String tipoServicio) {
+    public Optional<Cobertura> cobertura(ServicioCliente s, ConsultaCobertura consulta) {
         OperacionNegocio.BUSCAR_COBERTURA.autorizar(s);
-        return repositorio.empresasConCobertura(codigoMunicipio, tipoServicio);
+        boolean conPunto = consulta.latitud() != null && consulta.longitud() != null;
+        if (!conPunto && consulta.idDenuncia() == null && consulta.codigoMunicipio() == null) {
+            throw new IllegalArgumentException("Indique latitud y longitud, idDenuncia o codigoMunicipio");
+        }
+        return repositorio.cobertura(consulta);
+    }
+
+    public List<EmpresaPrestadora> empresas(ServicioCliente s) {
+        OperacionNegocio.LISTAR_EMPRESAS.autorizar(s);
+        return repositorio.empresas();
     }
 
     public Optional<CasoGuardado> caso(ServicioCliente s, UUID idCaso) {
