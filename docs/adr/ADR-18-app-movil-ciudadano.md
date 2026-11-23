@@ -49,7 +49,8 @@ fotos que pueden llevar la ubicación de la casa del ciudadano.
   - Fused Location puntual, sin rastreo en segundo plano.
   - Al validar un reporte cercano se envía la ubicación solo para comprobar la
     distancia; el servidor no la guarda.
-- **Mapas:** MapLibre con teselas raster de OpenStreetMap. Se usa la variante
+- **Mapas:** MapLibre con el estilo vectorial Positron de OpenFreeMap
+  ([ADR-34](ADR-34-mapa-base-openfreemap.md); antes, teselas raster de OpenStreetMap). Se usa la variante
   **OpenGL ES** (`android-sdk-opengl`), porque la de Vulkan cierra la app en
   dispositivos y emuladores sin Vulkan.
 - **Red:**
@@ -100,7 +101,8 @@ pantalla principal y reportar lleva tres toques. Es un diseño visual propio de 
 - **Menú lateral** con Mis reportes, Denuncia anónima y Mi cuenta. Se retiran las pestañas,
   la pantalla de cercanos y el formulario de reporte anterior.
 - Los íconos se dibujan como imágenes (círculo del color del servicio y su emoji) en una
-  capa de símbolos de MapLibre; el estilo raster de OpenStreetMap no tiene tipografías.
+  capa de símbolos de MapLibre; el estilo raster de OpenStreetMap no tenía tipografías
+  (se mantiene con OpenFreeMap, ADR-34).
 
 ## Actualización: explorar sin cuenta
 La app ya no empieza en el ingreso: abre siempre en el mapa. Sin cuenta:

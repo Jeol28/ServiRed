@@ -25,8 +25,8 @@ límite de abuso por cliente detrás de un proxy.
   el gateway y en cada servicio. El regulador ve casos y denuncias sin acciones.
 - **Mismo origen:** cada portal es una imagen nginx (sin privilegios) que sirve
   la SPA y hace de proxy de `/api/` al gateway. No hay CORS ni otro servicio
-  expuesto. CSP estricta (`script-src 'self'`, sin marcos; imágenes solo de
-  `tile.openstreetmap.org`), por eso se desactiva el CSS crítico en línea.
+  expuesto. CSP estricta (`script-src 'self'`, sin marcos; mapa base solo de
+  `tiles.openfreemap.org`, [ADR-34](ADR-34-mapa-base-openfreemap.md)), por eso se desactiva el CSS crítico en línea.
 - **Denuncias anónimas (RNF-SEG4): solo en las apps móviles** (ADR-18), igual que los
   reportes. El portal público no tiene formulario de denuncia ni pide la ubicación del
   navegador. En el portal de operación, la moderación se hace por la API autenticada.

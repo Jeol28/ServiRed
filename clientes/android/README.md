@@ -1,7 +1,7 @@
 # App Android del ciudadano
 
 Kotlin 2.4, Jetpack Compose (Material 3), MVVM, Retrofit + kotlinx.serialization, Room,
-WorkManager, CameraX, Fused Location y MapLibre (OpenStreetMap). Usa solo el gateway y
+WorkManager, CameraX, Fused Location y MapLibre (OpenFreeMap). Usa solo el gateway y
 el contrato [`servired-api.v1.yaml`](../../contratos/api-publica/servired-api.v1.yaml).
 Las decisiones están en [ADR-18](../../docs/adr/ADR-18-app-movil-ciudadano.md).
 

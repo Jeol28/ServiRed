@@ -10,23 +10,14 @@ struct MarcaMapa: Equatable, Identifiable {
     var propio = false
 }
 
-/// Estilo con teselas raster de OpenStreetMap y su atribución.
-enum EstiloOSM {
-    static let url: URL = {
-        let json = """
-        {"version":8,
-         "sources":{"osm":{"type":"raster","tiles":["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-           "tileSize":256,"maxzoom":19,"attribution":"© colaboradores de OpenStreetMap"}},
-         "layers":[{"id":"osm","type":"raster","source":"osm"}]}
-        """
-        let u = URL.cachesDirectory.appending(path: "estilo-osm.json")
-        try? Data(json.utf8).write(to: u)
-        return u
-    }()
+/// Mapa base vectorial de OpenFreeMap, estilo Positron (claro, para que resalten las marcas).
+/// Sin clave ni cuenta; el estilo trae su atribución (OpenFreeMap, OpenMapTiles, OpenStreetMap).
+enum EstiloMapa {
+    static let url = URL(string: "https://tiles.openfreemap.org/styles/positron")!
 }
 
 /**
- Mapa MapLibre con OpenStreetMap (igual que en Android):
+ Mapa MapLibre con el mapa base de OpenFreeMap (igual que en Android):
  - `zonas`: capa nacional anónima, visible solo con el mapa alejado.
  - `marcas`: íconos tocables (`alTocarMarca`).
  - `usuario`: punto azul de la ubicación del ciudadano.
@@ -49,7 +40,7 @@ struct MapaOSM: UIViewRepresentable {
     func makeCoordinator() -> Coordinador { Coordinador(self) }
 
     func makeUIView(context: Context) -> MLNMapView {
-        let mapa = MLNMapView(frame: .zero, styleURL: EstiloOSM.url)
+        let mapa = MLNMapView(frame: .zero, styleURL: EstiloMapa.url)
         mapa.delegate = context.coordinator
         mapa.allowsRotating = false
         mapa.allowsTilting = false

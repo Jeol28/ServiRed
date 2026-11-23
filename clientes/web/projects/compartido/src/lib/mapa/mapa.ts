@@ -2,6 +2,7 @@ import {
   AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, effect, input, output, viewChild,
 } from '@angular/core';
 import * as L from 'leaflet';
+import { maplibreGL } from '@maplibre/maplibre-gl-leaflet';
 
 /** Un elemento dibujable: un círculo (punto o celda) con color, radio y texto emergente. */
 export interface MarcaMapa {
@@ -26,7 +27,17 @@ export interface MarcaMapa {
 const COLOMBIA: [number, number] = [4.6, -74.1];
 
 /**
- * Mapa base de OpenStreetMap con Leaflet. Dibuja marcas circulares o íconos
+ * Mapa base vectorial de OpenFreeMap, estilo Positron: claro y sobrio, para que resalten
+ * los puntos. Sin clave ni cuenta; los mosaicos, fuentes e íconos salen de este dominio
+ * (CSP de los portales: connect-src y worker-src blob:).
+ */
+export const ESTILO_MAPA = 'https://tiles.openfreemap.org/styles/positron';
+const ATRIBUCION = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> '
+  + '&copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> '
+  + 'Datos de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+
+/**
+ * Mapa base vectorial de OpenFreeMap (MapLibre bajo Leaflet). Dibuja marcas circulares o íconos
  * redondos con un emoji (sin imágenes de marcador, que exigen recursos externos)
  * y opcionalmente permite elegir una ubicación con un clic.
  */
@@ -68,10 +79,7 @@ export class Mapa implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.mapa = L.map(this.contenedor().nativeElement, { center: this.centro(), zoom: this.zoom(), zoomControl: false });
     L.control.zoom({ position: this.posicionZoom(), zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar' }).addTo(this.mapa);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(this.mapa);
+    maplibreGL({ style: ESTILO_MAPA, attributionControl: { customAttribution: ATRIBUCION } }).addTo(this.mapa);
     this.capa.addTo(this.mapa);
     this.mapa.on('click', (e: L.LeafletMouseEvent) => {
       this.fondoElegido.emit();

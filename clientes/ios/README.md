@@ -1,7 +1,7 @@
 # App iOS del ciudadano
 
 SwiftUI (Swift 6 con concurrencia estricta), MVVM con `@Observable`, URLSession async/await,
-SwiftData, Keychain, CoreLocation, PhotosUI más la cámara del sistema y MapLibre (OpenStreetMap).
+SwiftData, Keychain, CoreLocation, PhotosUI más la cámara del sistema y MapLibre (OpenFreeMap).
 Tiene **las mismas pantallas y el mismo flujo que la [app Android](../android/README.md)**.
 Usa solo el gateway y el contrato [`servired-api.v1.yaml`](../../contratos/api-publica/servired-api.v1.yaml).
 Las decisiones están en [ADR-18](../../docs/adr/ADR-18-app-movil-ciudadano.md).

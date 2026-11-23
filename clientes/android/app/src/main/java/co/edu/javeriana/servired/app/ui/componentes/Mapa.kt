@@ -55,13 +55,11 @@ data class MarcaMapa(
     val propio: Boolean = false,
 )
 
-/** Teselas raster de OpenStreetMap, con su atribución. */
-private const val ESTILO_OSM = """
-{"version":8,
- "sources":{"osm":{"type":"raster","tiles":["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-   "tileSize":256,"maxzoom":19,"attribution":"© colaboradores de OpenStreetMap"}},
- "layers":[{"id":"osm","type":"raster","source":"osm"}]}
-"""
+/**
+ * Mapa base vectorial de OpenFreeMap, estilo Positron (claro, para que resalten las marcas).
+ * Sin clave ni cuenta; el estilo trae su atribución (OpenFreeMap, OpenMapTiles, OpenStreetMap).
+ */
+private const val ESTILO_MAPA = "https://tiles.openfreemap.org/styles/positron"
 private const val FUENTE_ZONAS = "zonas"
 private const val FUENTE_MARCAS = "marcas"
 private const val FUENTE_USUARIO = "usuario"
@@ -69,7 +67,7 @@ private const val FUENTE_SELECCION = "seleccion"
 private const val CAPA_MARCAS = "capa-marcas"
 
 /**
- * Mapa MapLibre con OpenStreetMap:
+ * Mapa MapLibre con el mapa base de OpenFreeMap:
  * - `zonas`: capa nacional anónima, visible solo con el mapa alejado.
  * - `marcas`: íconos tocables (`alTocarMarca`).
  * - `usuario`: punto azul de la ubicación del ciudadano.
@@ -135,7 +133,7 @@ fun MapaOsm(
             m.cameraPosition = CameraPosition.Builder().target(LatLng(4.6, -74.1)).zoom(5.0).build()
             m.uiSettings.isRotateGesturesEnabled = false
             m.uiSettings.isTiltGesturesEnabled = false
-            m.setStyle(Style.Builder().fromJson(ESTILO_OSM)) { s ->
+            m.setStyle(Style.Builder().fromUri(ESTILO_MAPA)) { s ->
                 // Zonas nacionales: solo con el mapa alejado (en el barrio estorbarían).
                 s.addSource(GeoJsonSource(FUENTE_ZONAS))
                 s.addLayer(
