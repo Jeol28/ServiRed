@@ -120,14 +120,13 @@ print("5) Segregación de roles, enrutamiento y asignación")
 comprobar(http("GET", f"/api/v1/casos/{id_caso}", token=regulador)[0] == 200, "el regulador consulta")
 comprobar(http("POST", f"/api/v1/casos/{id_caso}/atender", token=regulador)[0] == 403, "el regulador no gestiona")
 comprobar(http("GET", "/api/v1/casos", token=ciudadano)[0] == 403, "el ciudadano no ve casos")
-id_reporte_sin = reporte(ciudadano, "GAS", LETICIA, "VIVIENDA")
-comprobar(esperar(lambda: caso_de(admin, id_reporte_sin, "&sinEmpresa=true") is not None),
-          "donde nadie presta el servicio el caso queda sin empresa (bandeja del administrador)")
-id_caso_sin = caso_de(admin, id_reporte_sin, "&sinEmpresa=true")["idCaso"]
-comprobar(http("PUT", f"/api/v1/casos/{id_caso_sin}/empresa", {"idEmpresa": ENERGIA_ANDINA}, token=operador)[0] == 404,
-          "un operador no ve ni enruta casos sin empresa (404)")
-estado, _, p = http("PUT", f"/api/v1/casos/{id_caso_sin}/empresa", {"idEmpresa": ENERGIA_ANDINA}, token=admin)
-comprobar(estado == 409 and p["motivo"] == "SIN_EMPRESA_EN_ZONA", "ni el administrador lo da a una empresa de otra zona")
+# Sin red de gas natural en Leticia: el caso va a la distribuidora de GLP dueña de la zona (ADR-37).
+id_reporte_glp = reporte(ciudadano, "GAS", LETICIA, "VIVIENDA")
+comprobar(esperar(lambda: caso_de(admin, id_reporte_glp) is not None), "caso de gas en Leticia")
+caso_glp = caso_de(admin, id_reporte_glp)
+comprobar(caso_glp["idEmpresa"] is not None, "todo rincón tiene empresa: el gas de Leticia lo atiende una de GLP")
+comprobar(http("PUT", f"/api/v1/casos/{caso_glp['idCaso']}/empresa", {"idEmpresa": ENERGIA_ANDINA}, token=operador)[0] == 404,
+          "un operador no ve ni enruta casos de otra empresa (404)")
 
 print("5b) Solo la empresa dueña de la zona (ADR-35)")
 id_reporte_3 = reporte(ciudadano, "ENERGIA", BOGOTA, "VIVIENDA")

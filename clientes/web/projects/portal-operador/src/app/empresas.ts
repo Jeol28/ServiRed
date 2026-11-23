@@ -45,7 +45,7 @@ export class Empresas {
 /** Las de la lista cuyo nombre o NIT contienen el texto (sin tildes ni mayúsculas), hasta `limite`. */
 export function filtrarPorTexto(lista: EmpresaPrestadora[], texto: string, limite = 50): EmpresaPrestadora[] {
   const t = normalizar(texto);
-  return (t ? lista.filter((e) => normalizar(e.nombre).includes(t) || e.nit.includes(t)) : lista).slice(0, limite);
+  return (t ? lista.filter((e) => normalizar(e.nombre).includes(t) || (e.nit ?? '').includes(t)) : lista).slice(0, limite);
 }
 
 function normalizar(s: string): string {

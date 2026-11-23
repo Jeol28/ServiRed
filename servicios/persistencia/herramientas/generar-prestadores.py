@@ -360,9 +360,120 @@ def main():
         for zona in (f"{cod}-U", f"{cod}-R"):
             fuentes[(zona, "ENERGIA")] = (nit, f)
 
+    if "--complemento" in sys.argv:
+        complemento(rups, fuentes, empresas, deptos, munis, municipio)
+        return
     imprimir(empresas, fuentes, comunas)
     resumen = collections.Counter(s for (_, s) in fuentes)
     print(f"-- {len(empresas)} empresas, coberturas por servicio: {dict(resumen)}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------- complemento (V24, ADR-37)
+SERVICIOS = ["ENERGIA", "GAS", "ACUEDUCTO", "ALCANTARILLADO", "ASEO"]
+
+
+def centroides():
+    sql = (MIGRACIONES / "V3__semilla_divipola.sql").read_text(encoding="utf-8")
+    return {cod: (tipo, float(lat), float(lon)) for cod, tipo, lat, lon in re.findall(
+        r"\('(\d{5})', '\d{2}', '(?:[^']|'')+', '([A-Z_]+)', (-?[\d.]+), (-?[\d.]+)\)", sql)}
+
+
+def distancia(a, b):
+    import math
+    (la1, lo1), (la2, lo2) = a, b
+    x = math.radians(lo2 - lo1) * math.cos(math.radians((la1 + la2) / 2))
+    return math.hypot(x, math.radians(la2 - la1)) * 6371
+
+
+def complemento(rups, fuentes, empresas, deptos, munis, municipio):
+    """
+    Que cada municipio tenga dueño en los 5 servicios (ADR-37). Para cada (municipio, servicio)
+    sin ninguna empresa en V21:
+      * GAS: la distribuidora de GLP del RUPS con domicilio más cercano (centroide DIVIPOLA),
+        primero entre las del mismo departamento. El RUPS no dice dónde venden: es aproximado.
+      * Los demás: el municipio en prestación directa (Ley 142 de 1994, art. 6) o, en las áreas no
+        municipalizadas, su departamento. Con el NIT del RUPS si el municipio o el departamento
+        figura allí como prestador; si no, sin NIT (identificado por su código DIVIPOLA).
+    Imprime V24: solo agrega empresas y coberturas; no cambia nada de V21.
+    """
+    geo = centroides()
+    cubiertos = {(z[:5], s) for (z, s) in fuentes}
+    huecos = [(cod, s) for cod in sorted(munis) for s in SERVICIOS if (cod, s) not in cubiertos]
+
+    glp = []
+    for x in rups:
+        if x.get("servicio") != "GAS LICUADO DEL PETROLEO" or x.get("estado") != "OPERATIVA":
+            continue
+        cod = municipio(x.get("departamento_domicilio"), x.get("municipio_domicilio"))
+        nit = nit_base(x.get("nit"))
+        if cod and nit and cod in geo:
+            glp.append((nit, x["nombre"].strip(), cod))
+    glp = sorted({g[0]: g for g in glp}.values())
+    print(f"-- GLP con domicilio ubicable: {len(glp)}", file=sys.stderr)
+
+    directos = {}       # (tipo, código) -> (nit o None, nombre)
+    for x in rups:
+        n = normal(x.get("nombre"))
+        nit = nit_base(x.get("nit"))
+        if x.get("estado") != "OPERATIVA" or not nit:
+            continue
+        if re.match(r"(MUNICIPIO|ALCALDIA)( MUNICIPAL)? DE ", n):
+            cod = municipio(x.get("departamento_domicilio"), x.get("municipio_domicilio"))
+            if cod and normal(munis[cod][1]).split(" ")[0] in n:
+                directos.setdefault(("M", cod), (nit, x["nombre"].strip()))
+        elif re.match(r"(DEPARTAMENTO|GOBERNACION) DE(L)? ", n):
+            for dep, nombre in deptos.items():
+                if normal(nombre) in n:
+                    directos.setdefault(("D", dep), (nit, x["nombre"].strip()))
+
+    nuevas, cob = {}, {}
+    for cod, s in huecos:
+        dep, nombre = munis[cod]
+        if s == "GAS":
+            propios = [g for g in glp if munis[g[2]][0] == dep] or glp
+            nit, nom, _ = min(propios, key=lambda g: (distancia(geo[g[2]][1:], geo[cod][1:]), g[0]))
+            clave, fuente = nit, ("RUPS: distribuidora de GLP con domicilio más cercano"
+                                  + (" en el departamento" if propios is not glp else " (no hay en el departamento)"))
+            nuevas[clave] = (nit, nom)
+        else:
+            area = geo[cod][0] == "AREA_NO_MUNICIPALIZADA"
+            llave = ("D", dep) if area else ("M", cod)
+            nit, nom = directos.get(llave, (None, None))
+            if nom is None:
+                nom = (f"DEPARTAMENTO DE {deptos[dep]}" if area else f"MUNICIPIO DE {nombre} ({deptos[dep]})")
+            nom += " (PRESTACIÓN DIRECTA)"
+            clave = nit or ("divipola:" + (dep if area else cod))
+            fuente = ("Ley 142 de 1994, art. 6: prestación directa "
+                      + ("del departamento (área no municipalizada)" if area else "del municipio")
+                      + "; ningún prestador registrado en el RUPS")
+            nuevas[clave] = (nit, nom)
+        for zona in (f"{cod}-U", f"{cod}-R"):
+            cob[(zona, s)] = (clave, fuente)
+
+    print("-- =====================================================================")
+    print("-- Una empresa dueña en cada municipio y servicio (ADR-37): completa V21 donde ningún")
+    print("-- prestador estaba registrado. Gas: distribuidora de GLP más cercana; los demás: el")
+    print("-- municipio en prestación directa (Ley 142, art. 6) o, en áreas no municipalizadas, el")
+    print("-- departamento. Generado por herramientas/generar-prestadores.py --complemento.")
+    print("-- =====================================================================\n")
+    print("-- Un municipio o departamento sin NIT conocido queda sin NIT (lo identifica su DIVIPOLA).")
+    print("ALTER TABLE catalogo.empresas ALTER COLUMN nit DROP NOT NULL;\n")
+    print("INSERT INTO catalogo.empresas (id, nit, nombre) VALUES")
+    print(",\n".join(f"  ({texto(uuid.uuid5(ESPACIO, clave))}, {'NULL' if nit is None else texto(nit)}, {texto(nom)})"
+                     for clave, (nit, nom) in sorted(nuevas.items())))
+    print("ON CONFLICT DO NOTHING;\n")
+    print("INSERT INTO catalogo.coberturas_zona (id_zona, tipo_servicio, id_empresa, fuente)")
+    print("SELECT v.zona, v.servicio, v.empresa::uuid, v.fuente")
+    print("FROM (VALUES")
+    print(",\n".join(f"  ({texto(z)}, {texto(s)}, {texto(uuid.uuid5(ESPACIO, clave))}, {texto(f)})"
+                     for (z, s), (clave, f) in sorted(cob.items())))
+    print(") AS v (zona, servicio, empresa, fuente)")
+    print("JOIN catalogo.zonas z ON z.id = v.zona")
+    print("ON CONFLICT (id_zona, tipo_servicio) DO NOTHING;")
+    por = collections.Counter(s for (_, s) in huecos)
+    sin_nit = sum(1 for n, _ in nuevas.values() if n is None)
+    print(f"-- huecos: {dict(por)}; empresas nuevas o reutilizadas: {len(nuevas)} ({sin_nit} sin NIT)",
+          file=sys.stderr)
 
 
 def leer_comunas():

@@ -1359,10 +1359,10 @@ components:
 
     EmpresaPrestadora:
       type: object
-      required: [idEmpresa, nit, nombre, servicios]
+      required: [idEmpresa, nombre, servicios]
       properties:
-        idEmpresa: { type: string, format: uuid, description: UUID v5 de su NIT (estable) }
-        nit: { type: string, description: Sin dígito de verificación }
+        idEmpresa: { type: string, format: uuid, description: UUID v5 de su NIT o, sin NIT, de su código DIVIPOLA (estable) }
+        nit: { type: [string, "null"], description: "Sin dígito de verificación; null para un municipio o departamento en prestación directa sin NIT conocido (ADR-37)" }
         nombre: { type: string }
         servicios:
           type: array

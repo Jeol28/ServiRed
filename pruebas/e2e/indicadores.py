@@ -30,7 +30,6 @@ codigo, lat, lon = sql("""
     SELECT codigo || '|' || latitud || '|' || longitud FROM catalogo.municipios
     WHERE tipo = 'MUNICIPIO' AND codigo NOT IN (SELECT codigo_municipio FROM indicadores.vista_reportes
                                                 WHERE codigo_municipio IS NOT NULL)
-      AND codigo NOT IN (SELECT codigo_municipio FROM catalogo.coberturas WHERE tipo_servicio = 'ACUEDUCTO')
     ORDER BY random() LIMIT 1""").split("|")
 lat, lon = float(lat), float(lon)
 print(f"Municipio de la corrida: {codigo}")

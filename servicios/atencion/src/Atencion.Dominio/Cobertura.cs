@@ -8,7 +8,8 @@ namespace ServiRed.Atencion.Dominio;
 public sealed record Cobertura(string IdZona, string NombreZona, Guid? IdEmpresa, string? NombreEmpresa);
 
 /// <summary>Empresa prestadora real del catálogo (ADR-35), con los servicios que presta.</summary>
-public sealed record EmpresaPrestadora(Guid IdEmpresa, string Nit, string Nombre, IReadOnlyList<string> Servicios);
+/// Un municipio o departamento en prestación directa puede no tener NIT conocido (ADR-37).
+public sealed record EmpresaPrestadora(Guid IdEmpresa, string? Nit, string Nombre, IReadOnlyList<string> Servicios);
 
 /// <summary>
 /// Filtro del catálogo de empresas (null = sin filtro): las dueñas de al menos una zona con ese

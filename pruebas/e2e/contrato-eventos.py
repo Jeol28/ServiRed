@@ -31,7 +31,6 @@ from comun import (ENV, RABBIT_API, RAIZ, buscar_caso, comprobar, correo_nuevo, 
 
 ENERGIA_ANDINA = "619a2e48-402d-5782-9daf-57f16169b157"   # Enel Colombia (ADR-35)
 BOGOTA = {"latitud": 4.6287, "longitud": -74.0648}
-LETICIA = {"latitud": -4.2153, "longitud": -69.9406}         # sin red de gas natural: sin empresa (ADR-35)
 CERCA = {"latitud": 4.6300, "longitud": -74.0650}
 COLOMBIA = timezone(timedelta(hours=-5))
 CLAVE = "una clave larga de prueba"
@@ -126,17 +125,9 @@ try:
     comprobar(http("POST", f"/api/v1/casos/{id_caso}/cerrar", {}, token=operador)[0] == 200,
               "el operador cierra el caso")                                         # caso.cerrado
 
-    # Un caso SIN empresa: su caso.actualizado no lleva idEmpresaOperadora (antes salía null).
-    estado, _, sin = http("POST", "/api/v1/reportes", {
-        "tipoServicio": "GAS", "ubicacion": LETICIA, "inicioEstimado": hace(1), "magnitud": "VIVIENDA"},
-        correlacion=str(uuid.uuid4()), token=autor)
-    comprobar(estado == 201, f"reporte en Leticia (sin empresa con cobertura) ({estado})")
-    LETICIA_SIN_EMPRESA = "&sinEmpresa=true&codigoMunicipio=91001"
-    comprobar(esperar(lambda: caso_de(admin, sin["idReporte"], LETICIA_SIN_EMPRESA) is not None, 30),
-              "su caso se abrió sin empresa")
-    id_caso_sin = caso_de(admin, sin["idReporte"], LETICIA_SIN_EMPRESA)["idCaso"]
-    comprobar(http("POST", f"/api/v1/casos/{id_caso_sin}/atender", token=admin)[0] == 200,
-              "el administrador atiende el caso sin empresa")         # caso.actualizado sin empresa
+    # Un caso SIN empresa ya no se produce desde la API: todo rincón tiene dueña en los 5 servicios
+    # (ADR-37). Su caso.actualizado sin idEmpresaOperadora lo cubren las pruebas de contrato de
+    # Atención ("abrir/atender un caso sin empresa").
 
     denuncia = {"tipoServicio": "ENERGIA", "ubicacion": BOGOTA,
                 "descripcion": "Conexión directa al poste (contrato de eventos)"}

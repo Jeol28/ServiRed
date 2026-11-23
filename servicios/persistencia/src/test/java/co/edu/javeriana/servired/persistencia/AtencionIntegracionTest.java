@@ -175,10 +175,19 @@ class AtencionIntegracionTest {
         consultar("/interno/v1/catalogo/cobertura?latitud=4.8300&longitud=-73.8300&tipoServicio=ENERGIA")
                 .andExpect(jsonPath("$.idZona").value("25322-R"))
                 .andExpect(jsonPath("$.empresa.idEmpresa").value(ENERGIA_ANDINA));
-        // Nadie presta gas natural en Leticia: la zona existe, sin empresa.
+        // Sin red de gas natural en Leticia: la dueña es una distribuidora de GLP (ADR-37).
         consultar("/interno/v1/catalogo/cobertura?codigoMunicipio=91001&tipoServicio=GAS")
                 .andExpect(jsonPath("$.idZona").value("91001-U"))
-                .andExpect(jsonPath("$.empresa").doesNotExist());
+                .andExpect(jsonPath("$.empresa.nombre").value("DISTRIBUIDORA RIMAR GAS SAS ESP"));
+        // Un área no municipalizada sin prestadores: el departamento en prestación directa.
+        consultar("/interno/v1/catalogo/cobertura?codigoMunicipio=91405&tipoServicio=ACUEDUCTO")
+                .andExpect(jsonPath("$.empresa.nombre").value("DEPARTAMENTO DE AMAZONAS (PRESTACIÓN DIRECTA)"));
+        // Ningún rincón sin dueña: toda cabecera y todo resto rural tiene empresa en los 5 servicios.
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM catalogo.zonas z CROSS JOIN catalogo.tipos_servicio t
+                WHERE z.tipo IN ('URBANA', 'RURAL') AND NOT EXISTS (
+                    SELECT 1 FROM catalogo.coberturas_zona c WHERE c.id_zona = z.id AND c.tipo_servicio = t.codigo)""",
+                Integer.class)).isZero();
         consultar("/interno/v1/catalogo/cobertura?tipoServicio=GAS").andExpect(status().isBadRequest());
     }
 

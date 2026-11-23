@@ -50,7 +50,7 @@ const ROLES_PERSONAL: Rol[] = ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'];
                   {{ buscandoEmpresas() ? 'Buscando…' : empresasEncontradas().length + ' empresa(s): elija una' }}
                 </option>
                 @for (e of empresasEncontradas(); track e.idEmpresa) {
-                  <option [ngValue]="e.idEmpresa">{{ e.nombre }} · NIT {{ e.nit }} · {{ etiquetaServicios(e) }}</option>
+                  <option [ngValue]="e.idEmpresa">{{ e.nombre }}{{ e.nit ? ' · NIT ' + e.nit : '' }} · {{ etiquetaServicios(e) }}</option>
                 }
               </select>
             </label>

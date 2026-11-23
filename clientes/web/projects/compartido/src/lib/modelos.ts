@@ -72,7 +72,8 @@ export interface EvidenciaCaso {
 /** Empresa prestadora real del catálogo (ADR-35). */
 export interface EmpresaPrestadora {
   idEmpresa: string;
-  nit: string;
+  /** Null para un municipio o departamento en prestación directa sin NIT conocido (ADR-37). */
+  nit: string | null;
   nombre: string;
   /** Servicios que presta en alguna zona. */
   servicios: TipoServicio[];

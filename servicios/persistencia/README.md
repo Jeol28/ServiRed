@@ -77,6 +77,9 @@ no se puede guardar. Readiness incluye el almacén. Ver
   empresas con una sola dueña por zona y servicio, y V22 reasigna lo existente. Se regeneran con
   `python3 herramientas/generar-zonas-comunas.py` y
   `python3 herramientas/generar-prestadores.py > src/main/resources/db/migracion/V21__prestadores_reales.sql`.
+  V24 (`--complemento`) da dueña a cada municipio y servicio que no la tenía (GLP para el gas y
+  prestación directa del municipio o el departamento para los demás, ADR-37), y V25 enruta lo que
+  había quedado sin empresa.
 
 ## Variables
 `PERSISTENCIA_DB_URL`, `PERSISTENCIA_DB_USUARIO`, `PERSISTENCIA_DB_CLAVE`,

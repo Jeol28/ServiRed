@@ -84,6 +84,8 @@ La llave primaria (zona, servicio) garantiza una sola empresa.
     - los municipios del Pacífico de Nariño y Cauca quedan con el operador del departamento.
 - **Zonas sin prestador** (por ejemplo, gas en Leticia): la zona queda sin dueño y el caso,
   sin empresa.
+  **Corregido en [ADR-37](ADR-37-una-duena-en-cada-municipio-y-servicio.md):** GLP para el gas y prestación directa del municipio o el
+  departamento para los demás servicios; ya no quedan zonas sin dueña.
 - **Resultado:** 1 803 empresas y 10 159 coberturas. El identificador de cada empresa es el
   UUID v5 de su NIT, así que no cambia al regenerar.
 - **Reproducible:** `herramientas/generar-prestadores.py` (V21) y
