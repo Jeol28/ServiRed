@@ -69,6 +69,21 @@ export interface EvidenciaCaso {
   creadaEn: string;
 }
 
+/** Empresa prestadora real del catálogo (ADR-35). */
+export interface EmpresaPrestadora {
+  idEmpresa: string;
+  nit: string;
+  nombre: string;
+}
+
+/** Zona de servicio de un caso y su única empresa dueña (ADR-35); sin empresa si nadie presta allí. */
+export interface ZonaCaso {
+  idZona: string;
+  nombreZona: string;
+  idEmpresa?: string | null;
+  nombreEmpresa?: string | null;
+}
+
 export interface Caso {
   idCaso: string;
   idReporte: string;

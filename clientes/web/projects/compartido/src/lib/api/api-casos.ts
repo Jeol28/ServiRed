@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../configuracion';
-import { Caso, FiltroCasos, Pagina, Prioridad } from '../modelos';
+import { Caso, FiltroCasos, Pagina, Prioridad, ZonaCaso } from '../modelos';
 import { parametros } from './parametros';
 
 /** Atención de casos (RF-6, RF-7). Un operador solo ve los casos de su empresa. */
@@ -40,7 +40,12 @@ export class ApiCasos {
     return this.http.put<Caso>(`${this.url}/${idCaso}/prioridad`, { prioridad });
   }
 
-  /** Solo el administrador enruta un caso a otra empresa. */
+  /** Zona del caso y su única empresa dueña (ADR-35). */
+  zona(idCaso: string): Observable<ZonaCaso> {
+    return this.http.get<ZonaCaso>(`${this.url}/${idCaso}/zona`);
+  }
+
+  /** Solo el administrador enruta un caso, y solo a la empresa dueña de su zona (ADR-35). */
   enrutar(idCaso: string, idEmpresa: string): Observable<Caso> {
     return this.http.put<Caso>(`${this.url}/${idCaso}/empresa`, { idEmpresa });
   }

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import {
   ApiCuentas, Cuenta, FechaCortaPipe, NuevaCuentaPersonal, Pagina, Rol, mensajeDeError,
 } from 'compartido';
-import { EMPRESAS, nombreEmpresa } from '../empresas';
+import { Empresas } from '../empresas';
 
 const ROLES_PERSONAL: Rol[] = ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'];
 
@@ -28,9 +28,16 @@ const ROLES_PERSONAL: Rol[] = ['OPERADOR', 'REGULADOR', 'ADMINISTRADOR'];
           </select>
         </label>
         @if (nueva.rol === 'OPERADOR') {
+          <label>Buscar empresa
+            <input name="buscarEmpresa" placeholder="Nombre o NIT" [ngModel]="busquedaEmpresa()"
+                   (ngModelChange)="busquedaEmpresa.set($event)" />
+          </label>
           <label>Empresa
             <select name="empresa" required [(ngModel)]="nueva.idEmpresa">
-              @for (e of empresas; track e.id) { <option [ngValue]="e.id">{{ e.nombre }}</option> }
+              <option [ngValue]="undefined">Elegir…</option>
+              @for (e of empresasEncontradas(); track e.idEmpresa) {
+                <option [ngValue]="e.idEmpresa">{{ e.nombre }} ({{ e.nit }})</option>
+              }
             </select>
           </label>
         }
@@ -93,8 +100,10 @@ export class Cuentas {
   private readonly api = inject(ApiCuentas);
   protected readonly roles = ROLES_PERSONAL;
   protected readonly todosLosRoles: Rol[] = ['CIUDADANO', ...ROLES_PERSONAL];
-  protected readonly empresas = EMPRESAS;
-  protected readonly empresa = nombreEmpresa;
+  private readonly empresas = inject(Empresas);
+  /** Hay unas 1800 empresas reales (ADR-35): se elige entre las que coinciden con la búsqueda. */
+  protected readonly busquedaEmpresa = signal('');
+  protected readonly empresasEncontradas = computed(() => this.empresas.buscar(this.busquedaEmpresa()));
   protected nueva: NuevaCuentaPersonal = this.vacia();
   protected filtroRol: Rol | undefined = undefined;
   protected filtroCorreo = '';
@@ -108,7 +117,12 @@ export class Cuentas {
   });
 
   constructor() {
+    this.empresas.cargar();
     this.buscar(0);
+  }
+
+  protected empresa(id?: string | null): string {
+    return this.empresas.nombre(id);
   }
 
   protected buscar(pagina: number): void {
@@ -152,6 +166,6 @@ export class Cuentas {
   }
 
   private vacia(): NuevaCuentaPersonal {
-    return { correo: '', clave: '', nombre: '', rol: 'OPERADOR', idEmpresa: EMPRESAS[0].id };
+    return { correo: '', clave: '', nombre: '', rol: 'OPERADOR', idEmpresa: undefined };
   }
 }

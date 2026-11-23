@@ -7,7 +7,7 @@ import { DetalleCaso } from './detalle-caso';
 
 const CASO: Caso = {
   idCaso: 'k1', idReporte: 'r1', tipoServicio: 'ENERGIA', codigoMunicipio: '11001', nombreMunicipio: 'Bogotá, D.C.',
-  magnitud: 'CUADRA', estado: 'RECIBIDO', abiertoEn: '2026-11-17T10:00:00Z', idEmpresa: 'a0000000-0000-4000-8000-000000000001',
+  magnitud: 'CUADRA', estado: 'RECIBIDO', abiertoEn: '2026-11-17T10:00:00Z', idEmpresa: '619a2e48-402d-5782-9daf-57f16169b157',
   prioridad: 'MEDIA', prioridadManual: false, corteValidado: false, version: 0, historia: [], evidencias: [],
 };
 
@@ -49,9 +49,29 @@ describe('DetalleCaso', () => {
     expect(f.nativeElement.textContent).not.toContain('Acciones');
   });
 
-  it('el administrador puede enrutar', async () => {
+  it('el administrador solo puede enrutar a la empresa dueña de la zona', async () => {
+    const f = await abrir('ADMINISTRADOR', { ...CASO, idEmpresa: null as unknown as string });
+    backend.expectOne('/api/v1/casos/k1/zona').flush({
+      idZona: '11001-L11', nombreZona: 'Suba', idEmpresa: 'e-suba', nombreEmpresa: 'ÁREA LIMPIA',
+    });
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Zona: Suba · ÁREA LIMPIA');
+    expect(botones(f)).toContain('Enrutar a ÁREA LIMPIA');
+
+    const boton = [...f.nativeElement.querySelectorAll('button')]
+      .find((b: HTMLButtonElement) => b.textContent!.trim() === 'Enrutar a ÁREA LIMPIA') as HTMLButtonElement;
+    boton.click();
+    const r = backend.expectOne({ method: 'PUT', url: '/api/v1/casos/k1/empresa' });
+    expect(r.request.body).toEqual({ idEmpresa: 'e-suba' });
+  });
+
+  it('si el caso ya es de la dueña de su zona no hay a quién enrutarlo', async () => {
     const f = await abrir('ADMINISTRADOR');
-    expect(botones(f)).toContain('Enrutar');
+    backend.expectOne('/api/v1/casos/k1/zona').flush({
+      idZona: '11001-U', nombreZona: 'Cabecera de Bogotá', idEmpresa: CASO.idEmpresa, nombreEmpresa: 'ENEL',
+    });
+    f.detectChanges();
+    expect(botones(f).some((b) => b.startsWith('Enrutar'))).toBe(false);
   });
 
   it('un caso cerrado no ofrece acciones', async () => {

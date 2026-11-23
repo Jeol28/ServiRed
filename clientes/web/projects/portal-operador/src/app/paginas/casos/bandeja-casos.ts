@@ -6,7 +6,7 @@ import {
   NOMBRE_PRIORIDAD, NOMBRE_SERVICIO, PRIORIDADES, Pagina, SelectorTerritorio, ServicioSesion, TIPOS_SERVICIO,
   mensajeDeError,
 } from 'compartido';
-import { nombreEmpresa } from '../../empresas';
+import { Empresas } from '../../empresas';
 
 const TAMANO = 20;
 
@@ -104,7 +104,10 @@ export class BandejaCasos {
   protected readonly nombrePrioridad = NOMBRE_PRIORIDAD;
   protected readonly nombreMagnitud = NOMBRE_MAGNITUD;
   protected readonly colorPrioridad = COLOR_PRIORIDAD;
-  protected readonly empresa = nombreEmpresa;
+  private readonly empresas = inject(Empresas);
+  protected empresa(id?: string | null): string {
+    return this.empresas.nombre(id);
+  }
 
   protected readonly esOperador = computed(() => this.sesion.rol() === 'OPERADOR');
   protected readonly esAdmin = computed(() => this.sesion.rol() === 'ADMINISTRADOR');

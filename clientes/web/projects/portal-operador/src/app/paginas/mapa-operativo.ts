@@ -4,7 +4,7 @@ import {
   NOMBRE_MAGNITUD, NOMBRE_PRIORIDAD, PuntoOperativo, SelectorTerritorio, TIPOS_SERVICIO, TipoServicio, fechaCorta, filtroDePeriodo,
   formularioPeriodo, mensajeDeError,
 } from 'compartido';
-import { nombreEmpresa } from '../empresas';
+import { Empresas } from '../empresas';
 
 const PERIODOS = [
   { dias: 1, texto: '24 h' },
@@ -138,7 +138,10 @@ export class MapaOperativo {
     inject(DestroyRef).onDestroy(() => clearInterval(reloj));
   }
 
-  protected readonly empresa = nombreEmpresa;
+  private readonly empresas = inject(Empresas);
+  protected empresa(id?: string | null): string {
+    return this.empresas.nombre(id);
+  }
 
   protected filtrar(t: TipoServicio | undefined): void {
     this.servicio.set(t);

@@ -11,6 +11,7 @@ export * from './lib/api/parametros';
 export * from './lib/api/api-casos';
 export * from './lib/api/api-moderacion';
 export * from './lib/api/api-cuentas';
+export * from './lib/api/api-empresas';
 export * from './lib/api/api-auditoria';
 export * from './lib/api/api-indicadores';
 export * from './lib/mapa/mapa';

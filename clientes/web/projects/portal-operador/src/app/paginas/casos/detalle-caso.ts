@@ -3,10 +3,10 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import {
-  ApiCasos, COLOR_PRIORIDAD, COLOR_SERVICIO, Caso, FechaCortaPipe, MarcaMapa, Mapa, NOMBRE_ESTADO, NOMBRE_MAGNITUD,
+  ApiCasos, COLOR_PRIORIDAD, COLOR_SERVICIO, Caso, ZonaCaso, FechaCortaPipe, MarcaMapa, Mapa, NOMBRE_ESTADO, NOMBRE_MAGNITUD,
   NOMBRE_PRIORIDAD, NOMBRE_SERVICIO, PRIORIDADES, Prioridad, ServicioSesion, mensajeDeError, motivoDeError,
 } from 'compartido';
-import { EMPRESAS, nombreEmpresa } from '../../empresas';
+import { Empresas } from '../../empresas';
 
 /**
  * Detalle de un caso (RF-6, RF-7): datos operativos del reporte (sin ningún
@@ -73,15 +73,13 @@ import { EMPRESAS, nombreEmpresa } from '../../empresas';
             </label>
             <button type="button" [disabled]="ocupado() || prioridad === c.prioridad"
                     (click)="ejecutar(api.priorizar(c.idCaso, prioridad), 'Prioridad actualizada')">Cambiar prioridad</button>
-            @if (esAdmin()) {
-              <label>Empresa
-                <select [(ngModel)]="empresaDestino" name="empresa">
-                  <option [ngValue]="''">Elegir…</option>
-                  @for (e of empresas; track e.id) { <option [ngValue]="e.id">{{ e.nombre }}</option> }
-                </select>
-              </label>
-              <button type="button" [disabled]="ocupado() || !empresaDestino || empresaDestino === c.idEmpresa"
-                      (click)="ejecutar(api.enrutar(c.idCaso, empresaDestino), 'Caso enrutado')">Enrutar</button>
+            @if (esAdmin() && zona(); as z) {
+              <!-- Solo la empresa dueña de la zona gestiona el caso (ADR-35). -->
+              <span class="sr-suave">Zona: {{ z.nombreZona }} · {{ z.nombreEmpresa ?? 'ninguna empresa presta el servicio aquí' }}</span>
+              @if (z.idEmpresa && z.idEmpresa !== c.idEmpresa) {
+                <button type="button" [disabled]="ocupado()"
+                        (click)="ejecutar(api.enrutar(c.idCaso, z.idEmpresa), 'Caso enrutado')">Enrutar a {{ z.nombreEmpresa }}</button>
+              }
             }
           </div>
 
@@ -150,17 +148,19 @@ export class DetalleCaso {
   protected readonly fotos = signal<Record<string, string>>({});
 
   protected prioridad: Prioridad = 'MEDIA';
-  protected empresaDestino = '';
   protected texto = '';
 
   protected readonly prioridades = PRIORIDADES;
-  protected readonly empresas = EMPRESAS;
+  protected readonly zona = signal<ZonaCaso | null>(null);
   protected readonly nombreEstado = NOMBRE_ESTADO;
   protected readonly nombreServicio = NOMBRE_SERVICIO;
   protected readonly nombrePrioridad = NOMBRE_PRIORIDAD;
   protected readonly nombreMagnitud = NOMBRE_MAGNITUD;
   protected readonly colorPrioridad = COLOR_PRIORIDAD;
-  protected readonly empresa = nombreEmpresa;
+  private readonly empresas = inject(Empresas);
+  protected empresa(id?: string | null): string {
+    return this.empresas.nombre(id);
+  }
 
   protected readonly esAdmin = computed(() => this.sesion.rol() === 'ADMINISTRADOR');
   /** El regulador solo consulta (el gateway le rechaza cualquier cambio). */
@@ -217,6 +217,9 @@ export class DetalleCaso {
       next: (c) => {
         this.caso.set(c);
         this.prioridad = c.prioridad;
+        if (this.esAdmin()) {
+          this.api.zona(idCaso).subscribe({ next: (z) => this.zona.set(z), error: () => this.zona.set(null) });
+        }
       },
       error: (e: unknown) => this.error.set(mensajeDeError(e)),
     });
