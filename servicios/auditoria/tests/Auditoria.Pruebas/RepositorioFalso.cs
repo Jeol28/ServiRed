@@ -19,8 +19,11 @@ public sealed class RepositorioFalso : IRepositorioAuditoria, IMetricasAlertas
     public Task<bool> RegistrarAsync(RegistroAuditoria r, IdCorrelacion correlacion, CancellationToken ct) =>
         Task.FromResult(Registros.TryAdd(r.IdEvento, r));
 
+    public FiltroAuditoria? UltimoFiltro;
+
     public Task<PaginaAuditoria> ConsultarAsync(FiltroAuditoria f, IdCorrelacion correlacion, CancellationToken ct)
     {
+        UltimoFiltro = f;
         var lista = Registros.Values.Where(r => f.Categoria is null || r.Categoria == f.Categoria)
             .Select((r, i) => new RegistroConsultado(i, r.IdEvento, r.Tipo, r.Version, r.Origen, r.CorrelationId,
                 r.Categoria, r.Accion, r.Resultado, r.ActorId, r.ActorRol, r.RecursoTipo, r.RecursoId,

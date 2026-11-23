@@ -57,7 +57,8 @@ public static class EndpointsAuditoria
         int Entero(string campo, int porDefecto) => int.TryParse(q[campo], out var n) ? n : porDefecto;
         string? Texto(string campo) => string.IsNullOrWhiteSpace(q[campo]) ? null : q[campo].ToString();
         return new FiltroAuditoria(categoriaFija ?? Texto("categoria"), Texto("accion"), Id("actorId"), Texto("recursoId"),
-            Fecha("desde"), Fecha("hasta"), Entero("pagina", 0), Entero("tamano", 50));
+            Fecha("desde"), Fecha("hasta"), Entero("pagina", 0), Entero("tamano", 50),
+            Texto("actorRol")?.ToUpperInvariant(), Texto("recursoTipo")?.ToUpperInvariant());
     }
 
     /// <summary>Token compartido con Alertmanager (ALERTAS_TOKEN); sin token configurado el webhook está cerrado.</summary>

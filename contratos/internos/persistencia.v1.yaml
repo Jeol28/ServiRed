@@ -898,7 +898,7 @@ paths:
         "200": { description: Ya existía }
     get:
       operationId: consultarAuditoria
-      description: Solo `auditoria`. Filtros categoria, tipo, accion, actorId, recursoId, desde, hasta, pagina, tamano.
+      description: "Solo `auditoria`. Filtros categoria, tipo, accion, actorId, recursoId, actorRol (SISTEMA = sin rol), recursoTipo, desde, hasta, pagina, tamano."
       parameters: [{ $ref: "#/components/parameters/IdCorrelacion" }]
       responses:
         "200": { description: Página de registros }

@@ -883,6 +883,14 @@ paths:
       parameters:
         - { name: categoria, in: query, schema: { $ref: "#/components/schemas/CategoriaAuditoria" } }
         - { name: accion, in: query, schema: { type: string } }
+        - name: actorRol
+          in: query
+          description: "Rol de quien actuó; SISTEMA = acciones del sistema o anónimas (sin rol). Sin importar mayúsculas."
+          schema: { type: string, enum: [ADMINISTRADOR, CIUDADANO, OPERADOR, REGULADOR, SISTEMA] }
+        - name: recursoTipo
+          in: query
+          description: "Clase de recurso, p. ej. CASO, CUENTA, REPORTE, DENUNCIA, EXPORTACION, SESION, ALERTA"
+          schema: { type: string }
         - { name: actorId, in: query, schema: { type: string, format: uuid } }
         - { name: recursoId, in: query, schema: { type: string } }
         - { name: desde, in: query, schema: { type: string, format: date-time } }

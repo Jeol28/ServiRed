@@ -74,8 +74,15 @@ public class ControladorAuditoria {
                             @RequestParam(required = false) Instant desde,
                             @RequestParam(required = false) Instant hasta,
                             @RequestParam(defaultValue = "0") int pagina,
-                            @RequestParam(defaultValue = "50") int tamano) {
-        return auditoria.consultar(s, new Filtro(categoria, tipo, accion, actorId, recursoId, desde, hasta, pagina, tamano));
+                            @RequestParam(defaultValue = "50") int tamano,
+                            @RequestParam(required = false) String actorRol,
+                            @RequestParam(required = false) String recursoTipo) {
+        return auditoria.consultar(s, new Filtro(categoria, tipo, accion, actorId, recursoId, desde, hasta, pagina, tamano,
+                mayusculas(actorRol), mayusculas(recursoTipo)));
+    }
+
+    private static String mayusculas(String v) {
+        return v == null || v.isBlank() ? null : v.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     @GetMapping("/auditoria/integridad")

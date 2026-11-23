@@ -3,8 +3,13 @@ using ServiRed.Auditoria.Dominio;
 
 namespace ServiRed.Auditoria.Aplicacion;
 
+/// <summary>
+/// Filtro del registro. Además de los identificadores, por el rol de quien actuó (<c>SISTEMA</c> =
+/// acciones del sistema o anónimas) y por el tipo de recurso (CASO, CUENTA, REPORTE…).
+/// </summary>
 public sealed record FiltroAuditoria(string? Categoria = null, string? Accion = null, Guid? ActorId = null,
-    string? RecursoId = null, DateTimeOffset? Desde = null, DateTimeOffset? Hasta = null, int Pagina = 0, int Tamano = 50);
+    string? RecursoId = null, DateTimeOffset? Desde = null, DateTimeOffset? Hasta = null, int Pagina = 0, int Tamano = 50,
+    string? ActorRol = null, string? RecursoTipo = null);
 
 public sealed record RegistroConsultado(long Secuencia, Guid IdEvento, string Tipo, int Version, string Origen,
     Guid? CorrelationId, string Categoria, string Accion, string? Resultado, Guid? ActorId, string? ActorRol,

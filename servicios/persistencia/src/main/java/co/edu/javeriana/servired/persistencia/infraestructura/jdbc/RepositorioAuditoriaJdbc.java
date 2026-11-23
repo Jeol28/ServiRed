@@ -70,6 +70,9 @@ public class RepositorioAuditoriaJdbc implements RepositorioAuditoria {
                    AND (CAST(:accion AS text) IS NULL OR accion = :accion)
                    AND (CAST(:actor AS uuid) IS NULL OR actor_id = :actor)
                    AND (CAST(:recurso AS text) IS NULL OR recurso_id = :recurso)
+                   AND (CAST(:rol AS text) IS NULL OR actor_rol = :rol
+                        OR (:rol = 'SISTEMA' AND actor_rol IS NULL))
+                   AND (CAST(:recursoTipo AS text) IS NULL OR recurso_tipo = :recursoTipo)
                    AND (CAST(:desde AS timestamptz) IS NULL OR ocurrido_en >= :desde)
                    AND (CAST(:hasta AS timestamptz) IS NULL OR ocurrido_en < :hasta)
                 """;
@@ -94,6 +97,7 @@ public class RepositorioAuditoriaJdbc implements RepositorioAuditoria {
     private static JdbcClient.StatementSpec parametros(JdbcClient.StatementSpec sql, Filtro f) {
         return sql.param("categoria", f.categoria()).param("tipo", f.tipo()).param("accion", f.accion())
                 .param("actor", f.actorId()).param("recurso", f.recursoId())
+                .param("rol", f.actorRol()).param("recursoTipo", f.recursoTipo())
                 .param("desde", f.desde() == null ? null : Timestamp.from(f.desde()))
                 .param("hasta", f.hasta() == null ? null : Timestamp.from(f.hasta()));
     }

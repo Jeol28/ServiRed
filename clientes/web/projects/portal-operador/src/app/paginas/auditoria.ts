@@ -3,7 +3,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import {
   ApiAuditoria, CATEGORIAS_AUDITORIA, CategoriaAuditoria, FechaCortaPipe, FiltroAuditoria, Pagina,
-  RegistroAuditoria, ServicioSesion, VerificacionAuditoria, mensajeDeError,
+  ROLES_ACTOR_AUDITORIA, RegistroAuditoria, ServicioSesion, TIPOS_RECURSO_AUDITORIA, VerificacionAuditoria,
+  mensajeDeError,
 } from 'compartido';
 
 type Vista = 'registros' | 'alertas';
@@ -48,11 +49,31 @@ type Vista = 'registros' | 'alertas';
             @for (c of categorias; track c) { <option [ngValue]="c">{{ c }}</option> }
           </select>
         </label>
-        <label>Actor (id) <input name="actor" [(ngModel)]="filtro.actorId" size="20" /></label>
-        <label>Recurso (id) <input name="recurso" [(ngModel)]="filtro.recursoId" size="20" /></label>
+        <!-- Quién actuó y sobre qué, sin necesidad de conocer identificadores. -->
+        <label>Actor
+          <select name="actorRol" [(ngModel)]="filtro.actorRol">
+            <option [ngValue]="undefined">Todos</option>
+            @for (r of rolesActor; track r.valor) { <option [ngValue]="r.valor">{{ r.nombre }}</option> }
+          </select>
+        </label>
+        <label>Recurso
+          <select name="recursoTipo" [(ngModel)]="filtro.recursoTipo">
+            <option [ngValue]="undefined">Todos</option>
+            @for (t of tiposRecurso; track t.valor) { <option [ngValue]="t.valor">{{ t.nombre }}</option> }
+          </select>
+        </label>
       }
       <label>Acción <input name="accion" [(ngModel)]="filtro.accion" size="18" /></label>
       <button class="sr-primario" type="submit">Buscar</button>
+      @if (vista() === 'registros') {
+          <details class="por-id">
+            <summary>Buscar por identificador</summary>
+            <div class="sr-fila">
+              <label>Id del actor <input name="actor" [(ngModel)]="filtro.actorId" size="20" /></label>
+              <label>Id del recurso <input name="recurso" [(ngModel)]="filtro.recursoId" size="20" /></label>
+            </div>
+          </details>
+      }
     </form>
 
     @if (error()) { <p class="sr-aviso error" role="alert">{{ error() }}</p> }
@@ -73,8 +94,8 @@ type Vista = 'registros' | 'alertas';
                   <td>{{ r.categoria }}</td>
                   <td><code>{{ r.accion }}</code></td>
                   <td>{{ r.resultado ?? '—' }}</td>
-                  <td>{{ r.actorRol ?? '' }} <span class="sr-suave id">{{ r.actorId ?? 'sistema' }}</span></td>
-                  <td>{{ r.recursoTipo ?? '' }} <span class="sr-suave id">{{ r.recursoId ?? '' }}</span></td>
+                  <td>{{ nombreRol(r.actorRol) }} <span class="sr-suave id">{{ r.actorId ?? '' }}</span></td>
+                  <td>{{ nombreRecurso(r.recursoTipo) }} <span class="sr-suave id">{{ r.recursoId ?? '' }}</span></td>
                   <td>{{ r.origen }}</td>
                 </tr>
                 @if (abierto() === r.secuencia) {
@@ -101,6 +122,8 @@ type Vista = 'registros' | 'alertas';
     .id { font-size: .75rem; display: block; word-break: break-all; }
     pre { white-space: pre-wrap; word-break: break-all; margin: 0; font-size: .8rem; }
     .paginacion { align-items: center; margin-top: .75rem; }
+    .por-id { flex: 1 1 100%; }
+    .por-id summary { cursor: pointer; color: var(--sr-texto-suave); font-size: .9rem; }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -109,6 +132,16 @@ export class Auditoria {
   private readonly sesion = inject(ServicioSesion);
 
   protected readonly categorias: CategoriaAuditoria[] = CATEGORIAS_AUDITORIA;
+  protected readonly rolesActor = ROLES_ACTOR_AUDITORIA;
+  protected readonly tiposRecurso = TIPOS_RECURSO_AUDITORIA;
+
+  protected nombreRol(rol?: string | null): string {
+    return rol ? ROLES_ACTOR_AUDITORIA.find((r) => r.valor === rol)?.nombre ?? rol : 'Sistema o anónimo';
+  }
+
+  protected nombreRecurso(tipo?: string | null): string {
+    return tipo ? TIPOS_RECURSO_AUDITORIA.find((t) => t.valor === tipo)?.nombre ?? tipo : '—';
+  }
   protected readonly esAdmin = computed(() => this.sesion.rol() === 'ADMINISTRADOR');
   protected readonly vista = signal<Vista>('registros');
   protected filtro: FiltroAuditoria = {};

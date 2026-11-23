@@ -41,6 +41,8 @@ public sealed class ClientePersistencia(HttpClient http) : IRepositorioAuditoria
         Agregar("accion", f.Accion);
         Agregar("actorId", f.ActorId);
         Agregar("recursoId", f.RecursoId);
+        Agregar("actorRol", f.ActorRol);
+        Agregar("recursoTipo", f.RecursoTipo);
         Agregar("desde", f.Desde);
         Agregar("hasta", f.Hasta);
         var p = await EnviarAsync<PaginaDto>(HttpMethod.Get, "/interno/v1/auditoria/registros?" + string.Join('&', q), null,

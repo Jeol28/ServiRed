@@ -63,6 +63,17 @@ public class ApiPruebas : IClassFixture<ApiPruebas.Fabrica>
     }
 
     [Fact]
+    public async Task SeFiltraPorRolDelActorYTipoDeRecursoSinNecesitarIds()
+    {
+        var r = await Get("/api/v1/auditoria/registros?actorRol=administrador&recursoTipo=caso", Token(Rol.REGULADOR));
+
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("ADMINISTRADOR", _fabrica.Repo.UltimoFiltro!.ActorRol);
+        Assert.Equal("CASO", _fabrica.Repo.UltimoFiltro.RecursoTipo);
+        Assert.Null(_fabrica.Repo.UltimoFiltro.ActorId);
+    }
+
+    [Fact]
     public async Task LaAuditoriaSoloLaConsultanReguladorYAdministrador()
     {
         Assert.Equal(HttpStatusCode.Unauthorized, (await Get("/api/v1/auditoria/registros", null)).StatusCode);

@@ -22,8 +22,14 @@ public final class Auditoria {
                            Instant registradoEn, String hash) {
     }
 
+    /**
+     * Filtro del registro; null = sin filtro. {@code actorRol} busca por el rol de quien actuó
+     * ({@link #SIN_ROL} = acciones del sistema o anónimas, sin rol) y {@code recursoTipo} por la
+     * clase de recurso (CASO, CUENTA, REPORTE…), para no depender de los identificadores.
+     */
     public record Filtro(String categoria, String tipo, String accion, UUID actorId, String recursoId, Instant desde,
-                         Instant hasta, int pagina, int tamano) {
+                         Instant hasta, int pagina, int tamano, String actorRol, String recursoTipo) {
+        public static final String SIN_ROL = "SISTEMA";
     }
 
     public record Pagina(List<Registro> elementos, long total, int pagina, int tamano) {

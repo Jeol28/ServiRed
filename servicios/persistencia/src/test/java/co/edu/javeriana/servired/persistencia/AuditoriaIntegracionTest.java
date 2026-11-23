@@ -75,6 +75,32 @@ class AuditoriaIntegracionTest {
                 .formatted(idEvento, accion, UUID.randomUUID()), UUID.randomUUID().toString());
     }
 
+    private ResultActions consultar(String filtros) throws Exception {
+        return mvc.perform(get("/interno/v1/auditoria/registros?tamano=200&" + filtros)
+                .header("X-Clave-Servicio", AUDITORIA).header("X-Correlation-Id", UUID.randomUUID().toString()));
+    }
+
+    @Test
+    void filtraPorElRolDelActorYElTipoDeRecursoSinConocerSusIds() throws Exception {
+        String marca = UUID.randomUUID().toString();
+        for (String[] r : new String[][]{{"ADMINISTRADOR", "CUENTA"}, {"CIUDADANO", "REPORTE"}, {null, "DENUNCIA"}}) {
+            enviar(AUDITORIA, "/interno/v1/auditoria/registros", """
+                    {"idEvento":"%s","tipo":"accion.auditada","version":1,"origen":"identidad","categoria":"ADMINISTRACION",
+                     "accion":"%s",%s"recursoTipo":"%s","recursoId":"%s","detalle":{},
+                     "ocurridoEn":"2026-11-17T10:00:00Z"}""".formatted(UUID.randomUUID(), marca,
+                    r[0] == null ? "" : "\"actorId\":\"%s\",\"actorRol\":\"%s\",".formatted(UUID.randomUUID(), r[0]),
+                    r[1], UUID.randomUUID()), UUID.randomUUID().toString()).andExpect(status().isCreated());
+        }
+        consultar("accion=" + marca + "&actorRol=administrador")
+                .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.elementos[0].recursoTipo").value("CUENTA"));
+        consultar("accion=" + marca + "&actorRol=SISTEMA")
+                .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.elementos[0].recursoTipo").value("DENUNCIA"));
+        consultar("accion=" + marca + "&recursoTipo=reporte")
+                .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.elementos[0].actorRol").value("CIUDADANO"));
+        consultar("accion=" + marca + "&actorRol=CIUDADANO&recursoTipo=CUENTA").andExpect(jsonPath("$.total").value(0));
+        consultar("accion=" + marca).andExpect(jsonPath("$.total").value(3));
+    }
+
     private ResultActions verificar() throws Exception {
         return mvc.perform(get("/interno/v1/auditoria/integridad").header("X-Clave-Servicio", AUDITORIA)
                 .header("X-Correlation-Id", UUID.randomUUID().toString()));
