@@ -1,9 +1,11 @@
-// Copie este archivo a Local.xcconfig (no se versiona) para instalar la app en su
-// iPhone contra el servidor de pruebas (ADR-19). Luego: xcodegen generate (si cambió
-// project.yml) y Run en Xcode con el iPhone conectado.
+// Copie este archivo a Local.xcconfig (no se versiona) para cambiar la base del gateway o
+// instalar la app en su iPhone (ADR-19). Luego: xcodegen generate (si cambió project.yml)
+// y Run en Xcode.
 
-// Dirección que imprime "infra/servidor/servired.sh publicar".
-API_BASE = https:/$()/servired.su-red.ts.net/
+// Por defecto la app usa el servidor en línea. Para el compose local (simulador):
+// API_BASE = http:/$()/localhost:8080/
+// Para otro servidor, la dirección que imprime "infra/servidor/servired.sh publicar":
+// API_BASE = https:/$()/servired.su-red.ts.net/
 
 // Equipo de firma gratuito: Xcode > Settings > Accounts > su Apple ID > "Personal Team".
 // El identificador aparece en Signing & Capabilities o en el portal de Apple.

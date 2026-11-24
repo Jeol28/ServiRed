@@ -33,9 +33,9 @@ project.yml     definición del proyecto (XcodeGen); ServiRed.xcodeproj se gener
 
 ## Ejecutar
 
-Requisitos: Xcode 26 o superior. El compose de la raíz debe estar arriba
-(`docker compose up -d --build --wait`). El simulador comparte la red de la Mac, así que
-`http://localhost:8080/` llega al gateway; ATS solo permite HTTP hacia la red local.
+Requisitos: Xcode 26 o superior. La app ya apunta al servidor en línea
+(`https://servired.taile94c21.ts.net/`): basta con abrir el proyecto y usar Run sobre un
+simulador de iPhone.
 
 ```bash
 open ServiRed.xcodeproj            # y Run sobre un simulador de iPhone
@@ -43,16 +43,23 @@ open ServiRed.xcodeproj            # y Run sobre un simulador de iPhone
 ```
 
 La base del gateway (`API_BASE`), el identificador y el equipo de firma están en
-`Configuracion/Debug.xcconfig` y `Release.xcconfig`. La configuración Release usa HTTPS.
+`Configuracion/Debug.xcconfig` y `Release.xcconfig`; `Configuracion/Local.xcconfig` (no se
+versiona, ver `Local.xcconfig.ejemplo`) los reemplaza.
 
-### En su iPhone, contra el servidor de pruebas
+### Contra el compose local
+
+Con el compose de la raíz arriba (`docker compose up -d --build --wait`), ponga
+`API_BASE = http:/$()/localhost:8080/` en `Configuracion/Local.xcconfig`. El simulador
+comparte la red de la Mac, así que `localhost` llega al gateway; ATS solo permite HTTP hacia
+la red local.
+
+### En su iPhone
 
 Sin tiendas ni cuenta de pago:
 
-1. Copie `Configuracion/Local.xcconfig.ejemplo` a `Configuracion/Local.xcconfig`. Ese
-   archivo no se versiona.
-2. Ponga la dirección del servidor, su *Personal Team* (Xcode > Settings > Accounts, con
-   su Apple ID gratuito) y un identificador propio.
+1. Copie `Configuracion/Local.xcconfig.ejemplo` a `Configuracion/Local.xcconfig`.
+2. Ponga su *Personal Team* (Xcode > Settings > Accounts, con su Apple ID gratuito) y un
+   identificador propio.
 3. Conecte el iPhone, active el *Modo de desarrollador* y use Run en Xcode.
 
 Firmada con un Apple ID gratuito, la app caduca a los 7 días: se vuelve a instalar igual.
@@ -61,8 +68,12 @@ Ver [infra/servidor](../../infra/servidor/README.md).
 ## Pruebas
 
 ```bash
-xcodebuild -scheme ServiRed -destination 'platform=iOS Simulator,name=iPhone 17' test
+TEST_RUNNER_SERVIRED_API_BASE=http://localhost:8080/ \
+  xcodebuild -scheme ServiRed -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
+
+Las pruebas que crean cuentas van siempre al compose local: las de interfaz fijan
+`SERVIRED_API_BASE` al abrir la app, y el flujo completo se omite si la base no es `localhost`.
 
 - **Unitarias (Swift Testing):** reglas; fechas con zona; gestor de tokens (un solo uso,
   renovaciones simultáneas, petición que no salió); cliente HTTP con un transporte en memoria

@@ -51,6 +51,8 @@ final class RecorridoCapturasUITests: XCTestCase {
         let (correo, clave) = try ciudadanoConReporte()
         let app = XCUIApplication()
         app.launchArguments = ["--sesion-limpia"]
+        // Al compose local: la base por defecto es el servidor en línea y esta prueba crea cuentas.
+        app.launchEnvironment["SERVIRED_API_BASE"] = ProcessInfo.processInfo.environment["SERVIRED_BASE"] ?? "http://localhost:8080/"
         app.launch()
         XCTAssertTrue(app.buttons["ingresar"].waitForExistence(timeout: 15))
         capturar("i0-mapa-sin-cuenta", esperar: 6)

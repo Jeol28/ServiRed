@@ -35,39 +35,44 @@ app/src/main/java/co/edu/javeriana/servired/app/
 
 Requisitos: Android Studio 2025.3 o superior (AGP 9.2; o su JDK 21 en `JAVA_HOME`) y el SDK con la plataforma 37.
 Para abrirlo: **File > Open** sobre la carpeta `clientes/android`.
-El compose de la raíz debe estar arriba (`docker compose up -d --build --wait`).
+
+La app ya apunta al servidor en línea (`https://servired.taile94c21.ts.net/`): basta con
+Run desde Android Studio, o con el teléfono conectado por USB (depuración USB activa):
+
+```bash
+./gradlew installDebug
+```
+
+También puede generar el APK (`./gradlew assembleDebug`, queda en
+`app/build/outputs/apk/debug/`) y abrirlo en el teléfono.
+
+### Contra el compose local
+
+Con el compose de la raíz arriba (`docker compose up -d --build --wait`):
 
 ```bash
 adb reverse tcp:8080 tcp:8080          # el emulador ve el gateway en localhost:8080
-./gradlew installDebug                 # o Run desde Android Studio
+./gradlew installDebug -PapiBase=http://localhost:8080/
 ```
 
 Android 17 bloquea por defecto el acceso a la red local (incluido `10.0.2.2`), por eso
-se usa `adb reverse`. Para otro gateway: `./gradlew installDebug -PapiBase=https://api.ejemplo.co/`.
-La versión release solo admite HTTPS.
-
-### En su teléfono, contra el servidor de pruebas
-
-Sin tiendas: conecte el teléfono por USB con la depuración USB activa y ejecute
-
-```bash
-./gradlew installDebug -PapiBase=https://servired.<su-red>.ts.net/
-```
-
-Para no repetir la dirección, póngala en `~/.gradle/gradle.properties` (fuera del
-repositorio): `apiBase=https://servired.<su-red>.ts.net/`. También puede generar el APK
-(`./gradlew assembleDebug`, queda en `app/build/outputs/apk/debug/`) y abrirlo en el
-teléfono. Ver [infra/servidor](../../infra/servidor/README.md).
+se usa `adb reverse`. Para no repetir la dirección, póngala en `~/.gradle/gradle.properties`
+(fuera del repositorio): `apiBase=http://localhost:8080/`. La versión release solo admite
+HTTPS. Ver [infra/servidor](../../infra/servidor/README.md).
 
 ## Pruebas
 
 ```bash
 ./gradlew testDebugUnitTest            # JVM: reglas, tokens, interceptores (MockWebServer),
                                        # outbox e idempotencia, denuncia anónima, ViewModel
-./gradlew connectedDebugAndroidTest    # emulador: Room, flujo completo contra el gateway real
+./gradlew connectedDebugAndroidTest -PapiBase=http://localhost:8080/
+                                       # emulador: Room, flujo completo contra el gateway real
                                        # y registro desde la interfaz (requiere adb reverse)
 ./gradlew lintDebug assembleRelease    # lint y compilación con R8
 ```
+
+El flujo completo y el registro desde la interfaz crean cuentas: sin `-PapiBase` apuntando
+al compose (es decir, contra el servidor en línea) se saltan.
 
 El flujo completo (`FlujoCiudadanoE2E`) hace lo siguiente contra el compose:
 

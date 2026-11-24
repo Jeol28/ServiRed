@@ -35,9 +35,16 @@ final class Contenedor {
         monitor = MonitorRed { Task { await reportes.enviarPendientes() } }
     }
 
-    /// Base del gateway desde el Info.plist (API_BASE en project.yml).
+    /// Base del gateway desde el Info.plist (API_BASE en los xcconfig: por defecto, el servidor
+    /// en línea). En Debug, SERVIRED_API_BASE la reemplaza: así las pruebas de interfaz y de
+    /// punta a punta van al compose local y nunca crean datos en el servidor en línea.
     nonisolated static func baseConfigurada() -> URL {
-        let texto = Bundle.main.object(forInfoDictionaryKey: "ServiRedAPIBase") as? String ?? "http://localhost:8080/"
+        #if DEBUG
+        if let propia = ProcessInfo.processInfo.environment["SERVIRED_API_BASE"], let url = URL(string: propia) {
+            return url
+        }
+        #endif
+        let texto = Bundle.main.object(forInfoDictionaryKey: "ServiRedAPIBase") as? String ?? "https://servired.taile94c21.ts.net/"
         return URL(string: texto)!
     }
 }

@@ -16,10 +16,10 @@ android {
         versionCode = 1
         versionName = "0.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // Base del gateway. En desarrollo se usa el puerto del anfitrión reenviado con
+        // Base del gateway. Por defecto, el servidor en línea: quien descarga el repositorio corre la app sin
+        // configurar nada. Contra el compose local: -PapiBase=http://localhost:8080/ con
         // `adb reverse tcp:8080 tcp:8080` (Android 17 bloquea 10.0.2.2 como red local).
-        // Se puede cambiar sin tocar código: -PapiBase=https://api.ejemplo.co/
-        val apiBase = (project.findProperty("apiBase") as String?) ?: "http://localhost:8080/"
+        val apiBase = (project.findProperty("apiBase") as String?) ?: "https://servired.taile94c21.ts.net/"
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
     }
 

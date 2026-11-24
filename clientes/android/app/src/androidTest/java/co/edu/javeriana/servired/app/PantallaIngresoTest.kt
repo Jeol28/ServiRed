@@ -30,6 +30,7 @@ class PantallaIngresoTest {
     companion object {
         /** Sin esto, el diálogo de permiso de ubicación tapa el mapa en una instalación nueva. */
         @BeforeClass @JvmStatic fun concederUbicacion() {
+            soloContraElComposeLocal() // crea una cuenta
             val i = InstrumentationRegistry.getInstrumentation()
             listOf("android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION").forEach {
                 i.uiAutomation.grantRuntimePermission(i.targetContext.packageName, it)

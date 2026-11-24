@@ -29,18 +29,24 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
  * De punta a punta contra el entorno de Docker Compose (gateway en el
- * anfitrión: 10.0.2.2:8080 desde el emulador). Usa las mismas piezas que la
- * app, con un cofre en memoria y Room en memoria.
+ * anfitrión, con `adb reverse tcp:8080 tcp:8080` y -PapiBase=http://localhost:8080/).
+ * Usa las mismas piezas que la app, con un cofre en memoria y Room en memoria.
+ * Crea cuentas, reportes y denuncias: contra el servidor en línea (la base por
+ * defecto) se salta: ver [soloContraElComposeLocal].
  */
 @RunWith(AndroidJUnit4::class)
 class FlujoCiudadanoE2E {
     private val contexto = InstrumentationRegistry.getInstrumentation().targetContext
     private val base = BuildConfig.API_BASE
+
+    @Before
+    fun soloContraElEntornoLocal() = soloContraElComposeLocal()
 
     private class CofreMemoria : CofreTokens {
         private var r: String? = null

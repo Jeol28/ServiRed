@@ -2,8 +2,10 @@ import Foundation
 import Testing
 @testable import ServiRed
 
-/// Solo contra el compose local: esta prueba crea cuentas, reportes y denuncias reales. Contra
-/// el servidor de pruebas (Supabase) hay que pedirlo: TEST_RUNNER_SERVIRED_E2E_REMOTO=1 xcodebuild …
+/// Solo contra el compose local: esta prueba crea cuentas, reportes y denuncias reales. La base
+/// por defecto es el servidor en línea, así que se omite salvo que se apunte al compose:
+/// TEST_RUNNER_SERVIRED_API_BASE=http://localhost:8080/ xcodebuild … (o Local.xcconfig).
+/// Contra el servidor en línea (Supabase) hay que pedirlo: TEST_RUNNER_SERVIRED_E2E_REMOTO=1.
 private let destinoPermitido: Bool = {
     let host = Contenedor.baseConfigurada().host() ?? ""
     return ["localhost", "127.0.0.1"].contains(host) || ProcessInfo.processInfo.environment["SERVIRED_E2E_REMOTO"] == "1"

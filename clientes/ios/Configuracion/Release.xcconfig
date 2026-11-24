@@ -1,5 +1,5 @@
 // Configuración Release: solo HTTPS.
 PRODUCT_BUNDLE_IDENTIFIER = co.edu.javeriana.servired
-API_BASE = https:/$()/api.servired.example/
+API_BASE = https:/$()/servired.taile94c21.ts.net/
 
 #include? "Local.xcconfig"
